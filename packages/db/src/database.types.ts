@@ -120,6 +120,37 @@ export interface Database {
         };
         Update: Partial<Database["public"]["Tables"]["ExtractionCache"]["Insert"]>;
       };
+      PriceReference: {
+        Row: {
+          id: string;
+          entityId: string;
+          cardDescription: string;
+          marketPriceUSD: number;
+          lastSoldUSD: number | null;
+          lastSoldDate: string | null;
+          source: string;
+          gradedPSA10: number | null;
+          gradedPSA9: number | null;
+          rawPrice: number | null;
+          notes: string | null;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          entityId: string;
+          cardDescription: string;
+          marketPriceUSD: number;
+          lastSoldUSD?: number | null;
+          lastSoldDate?: string | null;
+          source: string;
+          gradedPSA10?: number | null;
+          gradedPSA9?: number | null;
+          rawPrice?: number | null;
+          notes?: string | null;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["PriceReference"]["Insert"]>;
+      };
       AlertSent: {
         Row: {
           id: string;

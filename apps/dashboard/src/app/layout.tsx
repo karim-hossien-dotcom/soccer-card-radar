@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Soccer Card Radar",
-  description: "Card alert system — eBay, Mercari, Japan market monitoring",
+  description: "Card deal scanner — find steals across eBay, Mercari, Japan",
 };
 
 export default function RootLayout({

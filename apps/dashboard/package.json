@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@next/font": "^14.2.15",
     "@soccer-card-radar/db": "workspace:*",
     "@soccer-card-radar/ebay": "workspace:*",
     "@soccer-card-radar/extractor": "workspace:*",
