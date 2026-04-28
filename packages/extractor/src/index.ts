@@ -1,2 +1,1 @@
-// @soccer-card-radar/extractor — stub
-export {};
+export { extractListingMeta } from "./extract";

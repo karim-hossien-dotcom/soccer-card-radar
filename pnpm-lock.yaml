@@ -23,6 +23,12 @@ importers:
       '@soccer-card-radar/ebay':
         specifier: workspace:*
         version: link:../../packages/scrapers/ebay
+      '@soccer-card-radar/extractor':
+        specifier: workspace:*
+        version: link:../../packages/extractor
+      '@soccer-card-radar/matcher':
+        specifier: workspace:*
+        version: link:../../packages/matcher
       '@soccer-card-radar/mercari-us':
         specifier: workspace:*
         version: link:../../packages/scrapers/mercari-us
@@ -105,20 +111,38 @@ importers:
 
   packages/extractor:
     dependencies:
+      '@anthropic-ai/sdk':
+        specifier: ^0.52.0
+        version: 0.52.0
+      '@soccer-card-radar/db':
+        specifier: workspace:*
+        version: link:../db
       '@soccer-card-radar/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
 
   packages/matcher:
     dependencies:
+      '@soccer-card-radar/db':
+        specifier: workspace:*
+        version: link:../db
+      '@soccer-card-radar/extractor':
+        specifier: workspace:*
+        version: link:../extractor
       '@soccer-card-radar/shared':
         specifier: workspace:*
         version: link:../shared
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.7.0
         version: 5.9.3
@@ -172,6 +196,10 @@ importers:
         version: 5.9.3
 
 packages:
+
+  '@anthropic-ai/sdk@0.52.0':
+    resolution: {integrity: sha512-d4c+fg+xy9e46c8+YnrrgIQR45CZlAi7PwdzIfDXDM6ACxEZli1/fxhURsq30ZpMZy6LvSkr41jGq5aF5TD7rQ==}
+    hasBin: true
 
   '@esbuild/aix-ppc64@0.27.7':
     resolution: {integrity: sha512-EKX3Qwmhz1eMdEJokhALr0YiD0lhQNwDqkPYyPhiSwKrh7/4KRjQc04sZ8db+5DVVnZ1LmbNDI1uAMPEUBnQPg==}
@@ -733,6 +761,8 @@ packages:
         optional: true
 
 snapshots:
+
+  '@anthropic-ai/sdk@0.52.0': {}
 
   '@esbuild/aix-ppc64@0.27.7':
     optional: true

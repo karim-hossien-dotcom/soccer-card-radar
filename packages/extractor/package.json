@@ -10,9 +10,12 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.52.0",
+    "@soccer-card-radar/db": "workspace:*",
     "@soccer-card-radar/shared": "workspace:*"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "typescript": "^5.7.0"
   }
 }
