@@ -7,12 +7,16 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test:search": "tsx src/test-search.ts"
   },
   "dependencies": {
-    "@soccer-card-radar/shared": "workspace:*"
+    "@soccer-card-radar/shared": "workspace:*",
+    "playwright": "^1.52.0"
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
     "typescript": "^5.7.0"
   }
 }

@@ -4,6 +4,7 @@ const nextConfig = {
     "@soccer-card-radar/shared",
     "@soccer-card-radar/db",
     "@soccer-card-radar/ebay",
+    "@soccer-card-radar/mercari-us",
   ],
 };
 
