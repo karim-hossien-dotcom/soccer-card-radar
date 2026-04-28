@@ -1,50 +1,50 @@
 import { supabase } from "@soccer-card-radar/db";
 
-interface MatchRow {
-  id: string;
-  score: number;
-  reasons: Record<string, boolean>;
-  entityId: string;
-  listing: {
-    id: string;
-    title: string;
-    priceUSD: number;
-    currency: string;
-    platform: string;
-    url: string;
-    imageUrl: string | null;
-    firstSeenAt: string;
-  };
-  entity: {
-    player: string;
-    yearMin: number | null;
-    yearMax: number | null;
-  };
-}
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function ReviewQueue() {
-  const { data: matches, error } = await supabase
+  // Fetch matches
+  const { data: matchRows, error: matchError } = await supabase
     .from("MatchScore")
-    .select(
-      `
-      id,
-      score,
-      reasons,
-      entityId,
-      listing:Listing(id, title, priceUSD, currency, platform, url, imageUrl, firstSeenAt),
-      entity:TrackedEntity(player, yearMin, yearMax)
-    `
-    )
+    .select("*")
     .gte("score", 1)
     .order("score", { ascending: false })
     .limit(50);
 
+  // Fetch all entities
   const { data: entities } = await supabase
     .from("TrackedEntity")
-    .select("id, player, active")
+    .select("*")
     .eq("active", true);
 
-  const rows = (matches ?? []) as unknown as MatchRow[];
+  // Build entity lookup
+  const entityMap = new Map(
+    (entities ?? []).map((e) => [e.id, e])
+  );
+
+  // Fetch listing details for matched listings
+  const listingIds = [
+    ...new Set((matchRows ?? []).map((m) => m.listingId)),
+  ];
+
+  const { data: listings } = listingIds.length > 0
+    ? await supabase
+        .from("Listing")
+        .select("*")
+        .in("id", listingIds)
+    : { data: [] };
+
+  const listingMap = new Map(
+    (listings ?? []).map((l) => [l.id, l])
+  );
+
+  // Combine into display rows
+  const rows = (matchRows ?? []).map((match) => ({
+    ...match,
+    listing: listingMap.get(match.listingId),
+    entity: entityMap.get(match.entityId),
+  })).filter((r) => r.listing && r.entity);
 
   return (
     <main style={{ padding: "2rem", fontFamily: "system-ui", maxWidth: "900px" }}>
@@ -53,7 +53,7 @@ export default async function ReviewQueue() {
         Tracking {entities?.length ?? 0} entities | {rows.length} scored matches
       </p>
 
-      {error && <p style={{ color: "red" }}>Error: {error.message}</p>}
+      {matchError && <p style={{ color: "red" }}>Error: {matchError.message}</p>}
 
       {rows.length === 0 && (
         <div style={{ padding: "2rem", textAlign: "center", color: "#999" }}>
@@ -66,9 +66,9 @@ export default async function ReviewQueue() {
 
       <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
         {rows.map((match) => {
-          const listing = match.listing;
-          const entity = match.entity;
-          if (!listing || !entity) return null;
+          const listing = match.listing!;
+          const entity = match.entity!;
+          const reasons = match.reasons as Record<string, boolean>;
 
           const scoreColor =
             match.score >= 85
@@ -168,7 +168,7 @@ export default async function ReviewQueue() {
                     flexWrap: "wrap",
                   }}
                 >
-                  {Object.entries(match.reasons).map(([key, value]) => {
+                  {Object.entries(reasons).map(([key, value]) => {
                     if (key === "excludeTermHit" || key === "isLot") return null;
                     if (!value) return null;
                     return (
