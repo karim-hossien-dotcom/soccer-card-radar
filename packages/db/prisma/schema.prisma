@@ -1,0 +1,89 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model TrackedEntity {
+  id              String   @id @default(cuid())
+  player          String
+  yearMin         Int?
+  yearMax         Int?
+  setKeywords     String[]
+  parallelTerms   String[]
+  excludeTerms    String[]
+  priceCeilingUSD Float?
+  alertThreshold  Int      @default(70)
+  smsThreshold    Int      @default(85)
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  matches         MatchScore[]
+}
+
+model Listing {
+  id           String        @id @default(cuid())
+  platform     String        // "ebay" | "mercari_us" | "yja" | "mercari_jp"
+  externalId   String
+  url          String
+  title        String
+  priceUSD     Float
+  priceNative  Float
+  currency     String
+  imageUrl     String?
+  sellerInfo   Json?
+  rawData      Json
+  firstSeenAt  DateTime      @default(now())
+  lastSeenAt   DateTime      @default(now())
+  soldAt       DateTime?
+  prices       PriceHistory[]
+  matches      MatchScore[]
+  alertsSent   AlertSent[]
+
+  @@unique([platform, externalId])
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  listingId String
+  priceUSD  Float
+  priceNative Float
+  currency  String
+  recordedAt DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id])
+
+  @@index([listingId, recordedAt])
+}
+
+model MatchScore {
+  id        String        @id @default(cuid())
+  listingId String
+  entityId  String
+  score     Int
+  reasons   Json
+  alerted   Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  listing   Listing       @relation(fields: [listingId], references: [id])
+  entity    TrackedEntity @relation(fields: [entityId], references: [id])
+
+  @@unique([listingId, entityId])
+}
+
+model ExtractionCache {
+  titleHash String   @id
+  extracted Json
+  createdAt DateTime @default(now())
+}
+
+model AlertSent {
+  id        String   @id @default(cuid())
+  listingId String
+  entityId  String
+  channel   String   // "web_push" | "sms"
+  sentAt    DateTime @default(now())
+  listing   Listing  @relation(fields: [listingId], references: [id])
+
+  @@unique([listingId, entityId, channel])
+}
