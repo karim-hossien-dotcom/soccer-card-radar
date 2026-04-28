@@ -1,6 +1,10 @@
-import { PrismaClient } from "@prisma/client";
+import { createClient } from "@supabase/supabase-js";
+import type { Database } from "./database.types.js";
 
-const prisma = new PrismaClient();
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+
+const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
 
 const entities = [
   {
@@ -41,17 +45,21 @@ const entities = [
 async function seed() {
   console.log("Seeding tracked entities...");
 
-  for (const entity of entities) {
-    const created = await prisma.trackedEntity.create({ data: entity });
-    console.log(`  Created: ${created.player} (${created.id})`);
+  const { data, error } = await supabase
+    .from("TrackedEntity")
+    .insert(entities)
+    .select();
+
+  if (error) {
+    console.error("Seed failed:", error.message);
+    process.exit(1);
+  }
+
+  for (const entity of data) {
+    console.log(`  Created: ${entity.player} (${entity.id})`);
   }
 
   console.log("Seed complete.");
 }
 
-seed()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(() => prisma.$disconnect());
+seed();

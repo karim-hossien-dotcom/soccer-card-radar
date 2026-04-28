@@ -1,12 +1,24 @@
-export default function Home() {
+import { supabase } from "@soccer-card-radar/db";
+
+export default async function Home() {
+  const { data: entities, error } = await supabase
+    .from("TrackedEntity")
+    .select("*")
+    .eq("active", true)
+    .order("createdAt", { ascending: false });
+
   return (
     <main style={{ padding: "2rem", fontFamily: "system-ui" }}>
       <h1>Soccer Card Radar</h1>
-      <p>Phase 0 — monorepo scaffolding complete.</p>
+      <p>Tracking {entities?.length ?? 0} entities</p>
+      {error && <p style={{ color: "red" }}>Error: {error.message}</p>}
       <ul>
-        <li>Review queue: coming in Phase 4</li>
-        <li>Entity CRUD: coming in Phase 1</li>
-        <li>Alert settings: coming in Phase 6</li>
+        {entities?.map((e) => (
+          <li key={e.id}>
+            <strong>{e.player}</strong> ({e.yearMin}–{e.yearMax}) —{" "}
+            {e.setKeywords.join(", ")}
+          </li>
+        ))}
       </ul>
     </main>
   );
