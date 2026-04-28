@@ -28,16 +28,56 @@ type MatchWithDetails = {
   discount: number | null;
 };
 
+// Price-aware recommendation using market comps
 function getRecommendation(
   score: number,
   priceUSD: number,
-  _ceiling: number | null
-): { label: string; type: string } {
-  // Without price reference data, use score + price heuristics
-  if (score >= 90) return { label: "BUY NOW", type: "buy" };
-  if (score >= 80) return { label: "BID / OFFER", type: "bid" };
-  if (score >= 65) return { label: "WATCH", type: "watch" };
-  return { label: "SKIP", type: "skip" };
+  marketPrice: number | null,
+): { type: string; marketPrice: number | null; discount: number | null } {
+  if (marketPrice && marketPrice > 0) {
+    const discount = ((marketPrice - priceUSD) / marketPrice) * 100;
+    if (discount >= 30) return { type: "buy", marketPrice, discount: Math.round(discount) };
+    if (discount >= 10) return { type: "bid", marketPrice, discount: Math.round(discount) };
+    if (discount >= -10) return { type: "watch", marketPrice, discount: Math.round(discount) };
+    return { type: "skip", marketPrice, discount: Math.round(discount) };
+  }
+  // Fallback to score-based
+  if (score >= 90) return { type: "buy", marketPrice: null, discount: null };
+  if (score >= 80) return { type: "bid", marketPrice: null, discount: null };
+  if (score >= 65) return { type: "watch", marketPrice: null, discount: null };
+  return { type: "skip", marketPrice: null, discount: null };
+}
+
+// Find best matching price ref by keyword overlap
+function findMarketPrice(
+  entityId: string,
+  title: string,
+  priceRefs: { entityId: string; cardDescription: string; marketPriceUSD: number; gradedPSA10: number | null; gradedPSA9: number | null; rawPrice: number | null }[]
+): number | null {
+  const titleLower = title.toLowerCase();
+  const entityRefs = priceRefs.filter((r) => r.entityId === entityId);
+  if (entityRefs.length === 0) return null;
+
+  let bestRef: typeof entityRefs[0] | null = null;
+  let bestScore = 0;
+
+  for (const ref of entityRefs) {
+    const descWords = ref.cardDescription.toLowerCase().split(/\s+/);
+    const matches = descWords.filter((w) => w.length >= 3 && titleLower.includes(w));
+    const score = matches.length / descWords.length;
+    if (score > bestScore) {
+      bestScore = score;
+      bestRef = ref;
+    }
+  }
+
+  if (!bestRef || bestScore < 0.4) return null;
+
+  // Grade-aware pricing
+  if (titleLower.includes("psa 10") && bestRef.gradedPSA10) return bestRef.gradedPSA10;
+  if (titleLower.includes("psa 9") && bestRef.gradedPSA9) return bestRef.gradedPSA9;
+  if (bestRef.rawPrice && !titleLower.includes("psa")) return bestRef.rawPrice;
+  return bestRef.marketPriceUSD;
 }
 
 export default async function Dashboard() {
@@ -67,17 +107,21 @@ export default async function Dashboard() {
     (listings ?? []).map((l) => [l.id, l])
   );
 
+  // Fetch price references
+  const { data: priceRefs } = await supabase
+    .from("PriceReference")
+    .select("entityId, cardDescription, marketPriceUSD, gradedPSA10, gradedPSA9, rawPrice");
+
+  const refs = priceRefs ?? [];
+
   const rows: MatchWithDetails[] = (matchRows ?? [])
     .map((match) => {
       const listing = listingMap.get(match.listingId);
       const entity = entityMap.get(match.entityId);
       if (!listing || !entity) return null;
 
-      const rec = getRecommendation(
-        match.score,
-        listing.priceUSD,
-        entity.priceCeilingUSD
-      );
+      const marketPrice = findMarketPrice(match.entityId, listing.title, refs);
+      const rec = getRecommendation(match.score, listing.priceUSD, marketPrice);
 
       return {
         id: match.id,
@@ -99,11 +143,19 @@ export default async function Dashboard() {
           priceCeilingUSD: entity.priceCeilingUSD,
         },
         recommendation: rec.type,
-        marketPrice: null,
-        discount: null,
+        marketPrice: rec.marketPrice,
+        discount: rec.discount,
       };
     })
     .filter(Boolean) as MatchWithDetails[];
+
+  // Sort: BUY NOW first (biggest discounts), then by score
+  rows.sort((a, b) => {
+    const typeOrder: Record<string, number> = { buy: 0, bid: 1, watch: 2, skip: 3 };
+    const orderDiff = (typeOrder[a.recommendation] ?? 3) - (typeOrder[b.recommendation] ?? 3);
+    if (orderDiff !== 0) return orderDiff;
+    return (b.discount ?? 0) - (a.discount ?? 0) || b.score - a.score;
+  });
 
   const buyCount = rows.filter((r) => r.recommendation === "buy").length;
   const bidCount = rows.filter((r) => r.recommendation === "bid").length;
@@ -183,6 +235,8 @@ export default async function Dashboard() {
             yearMin={match.entity.yearMin}
             yearMax={match.entity.yearMax}
             recommendation={match.recommendation}
+            marketPrice={match.marketPrice}
+            discount={match.discount}
             index={i}
           />
         ))}

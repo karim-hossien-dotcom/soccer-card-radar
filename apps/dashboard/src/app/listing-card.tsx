@@ -12,6 +12,8 @@ interface ListingCardProps {
   yearMin: number | null;
   yearMax: number | null;
   recommendation: string;
+  marketPrice: number | null;
+  discount: number | null;
   index: number;
 }
 
@@ -31,7 +33,7 @@ const recStyles: Record<string, { color: string; bg: string; label: string }> = 
 };
 
 export default function ListingCard(props: ListingCardProps) {
-  const { score, reasons, title, priceUSD, platform, url, player, yearMin, yearMax, recommendation, index } = props;
+  const { score, reasons, title, priceUSD, platform, url, player, yearMin, yearMax, recommendation, marketPrice, discount, index } = props;
 
   const rec = recStyles[recommendation] ?? recStyles.skip;
 
@@ -161,7 +163,7 @@ export default function ListingCard(props: ListingCardProps) {
       </div>
 
       {/* Price + Action */}
-      <div style={{ textAlign: "right", flexShrink: 0 }}>
+      <div style={{ textAlign: "right", flexShrink: 0, minWidth: "110px" }}>
         <div
           className="mono"
           style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}
@@ -170,6 +172,33 @@ export default function ListingCard(props: ListingCardProps) {
             ? priceUSD.toFixed(2)
             : priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
         </div>
+
+        {/* Market comparison */}
+        {marketPrice && (
+          <div
+            className="mono"
+            style={{
+              fontSize: "0.6rem",
+              color: "var(--text-muted)",
+              marginTop: "2px",
+            }}
+          >
+            mkt ~${marketPrice < 1000
+              ? marketPrice.toFixed(0)
+              : marketPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+            {discount !== null && discount > 0 && (
+              <span style={{ color: "var(--buy-now)", marginLeft: "4px" }}>
+                -{discount}%
+              </span>
+            )}
+            {discount !== null && discount < 0 && (
+              <span style={{ color: "var(--score-hot)", marginLeft: "4px" }}>
+                +{Math.abs(discount)}%
+              </span>
+            )}
+          </div>
+        )}
+
         <div
           className="mono"
           style={{
