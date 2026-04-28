@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@soccer-card-radar/db": "workspace:*",
+    "@soccer-card-radar/ebay": "workspace:*",
     "@soccer-card-radar/shared": "workspace:*",
     "next": "^14.2.0",
     "react": "^18.3.0",

@@ -20,6 +20,9 @@ importers:
       '@soccer-card-radar/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@soccer-card-radar/ebay':
+        specifier: workspace:*
+        version: link:../../packages/scrapers/ebay
       '@soccer-card-radar/shared':
         specifier: workspace:*
         version: link:../../packages/shared
@@ -133,6 +136,9 @@ importers:
         specifier: workspace:*
         version: link:../../shared
     devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.17
       typescript:
         specifier: ^5.7.0
         version: 5.9.3

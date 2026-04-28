@@ -8,4 +8,4 @@ export type {
   AlertPayload,
   ScraperSearchParams,
   NormalizedListing,
-} from "./types.js";
+} from "./types";
