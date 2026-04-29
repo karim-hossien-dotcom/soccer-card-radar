@@ -14,6 +14,7 @@ interface ParallelListing {
   tier: ParallelTier;
   numbered: string;
   signal: string;
+  imageUrl: string | null;
 }
 
 function detectParallelTier(title: string): { tier: ParallelTier; numbered: string } | null {
@@ -59,7 +60,7 @@ function extractPlayerFromTitle(title: string, entities: string[]): string {
 export default async function ParallelsPage() {
   const { data: listings } = await supabase
     .from("Listing")
-    .select("id, title, priceUSD, url, platform")
+    .select("id, title, priceUSD, url, platform, imageUrl")
     .order("priceUSD", { ascending: true });
 
   const { data: entities } = await supabase
@@ -107,6 +108,7 @@ export default async function ParallelsPage() {
         tier: detected.tier,
         numbered: detected.numbered,
         signal,
+        imageUrl: listing.imageUrl,
       };
     })
     .filter(Boolean) as ParallelListing[];
@@ -178,10 +180,15 @@ export default async function ParallelsPage() {
                 animation: `fadeInUp 0.3s ease-out ${i * 25}ms both`,
               }}
             >
-              {/* Tier badge */}
-              <div style={{ textAlign: "center" }}>
-                <div className="mono" style={{ fontSize: "0.9rem", fontWeight: 700, color: tc.color }}>{p.numbered}</div>
-                <div className="mono" style={{ fontSize: "0.5rem", color: tc.color, opacity: 0.6 }}>{p.tier.toUpperCase()}</div>
+              {/* Image + Tier */}
+              <div style={{ textAlign: "center", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {p.imageUrl && (
+                  <img src={p.imageUrl} alt="" style={{ width: "40px", height: "50px", objectFit: "contain", borderRadius: "3px" }} />
+                )}
+                <div>
+                  <div className="mono" style={{ fontSize: "0.9rem", fontWeight: 700, color: tc.color }}>{p.numbered}</div>
+                  <div className="mono" style={{ fontSize: "0.5rem", color: tc.color, opacity: 0.6 }}>{p.tier.toUpperCase()}</div>
+                </div>
               </div>
 
               {/* Content */}

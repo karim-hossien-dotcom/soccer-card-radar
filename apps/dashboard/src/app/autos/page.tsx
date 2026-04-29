@@ -17,6 +17,7 @@ interface AutoListing {
   grade: string | null;
   signal: string;
   marketPrice: number | null;
+  imageUrl: string | null;
 }
 
 function detectAutoType(title: string): AutoType | null {
@@ -64,7 +65,7 @@ function extractPlayerFromTitle(title: string, entities: string[]): string {
 export default async function AutosPage() {
   const { data: listings } = await supabase
     .from("Listing")
-    .select("id, title, priceUSD, url, platform")
+    .select("id, title, priceUSD, url, platform, imageUrl")
     .order("priceUSD", { ascending: true });
 
   const { data: entities } = await supabase
@@ -120,6 +121,7 @@ export default async function AutosPage() {
         grade,
         signal,
         marketPrice,
+        imageUrl: listing.imageUrl,
       };
     })
     .filter(Boolean) as AutoListing[];
@@ -197,8 +199,12 @@ export default async function AutosPage() {
                 animation: `fadeInUp 0.3s ease-out ${i * 25}ms both`,
               }}
             >
-              {/* Type badge */}
-              <div style={{ textAlign: "center" }}>
+              {/* Image + Type badge */}
+              <div style={{ textAlign: "center", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                {a.imageUrl && (
+                  <img src={a.imageUrl} alt="" style={{ width: "40px", height: "50px", objectFit: "contain", borderRadius: "3px" }} />
+                )}
+                <div>
                 <div className="mono" style={{ fontSize: "0.6rem", fontWeight: 600, color: tc.color, letterSpacing: "0.04em" }}>
                   {tc.label}
                 </div>
@@ -212,6 +218,7 @@ export default async function AutosPage() {
                     {a.grade}
                   </div>
                 )}
+                </div>
               </div>
 
               {/* Content */}
