@@ -106,7 +106,7 @@ export default async function RookiesPage() {
   // Get real listings for each rookie from DB
   const { data: listings } = await supabase
     .from("Listing")
-    .select("id, title, priceUSD, url, imageUrl, platform")
+    .select("id, title, priceUSD, url, imageUrl, platform, rawData")
     .order("priceUSD", { ascending: true });
 
   const { data: entities } = await supabase
@@ -141,6 +141,27 @@ export default async function RookiesPage() {
       listingsByPlayer[player]!.push(l);
       usedListingIds.add(l.id);
     }
+  }
+
+  // Rank cards by value: autos + numbered first, then cheapest
+  function cardValueScore(title: string, price: number): number {
+    const t = title.toLowerCase();
+    let score = 0;
+    if (t.includes("auto") || t.includes("autograph")) score += 100;
+    if (t.match(/\/[0-9]{1,2}\b/)) score += 80; // low numbered
+    if (t.match(/\/[0-9]{2,3}\b/)) score += 40;
+    if (t.includes("psa 10") || t.includes("bgs 10")) score += 60;
+    if (t.includes("rc") || t.includes("rookie")) score += 30;
+    if (t.includes("ssp") || t.includes("case hit")) score += 50;
+    // Cheaper = better value (inverse price, capped)
+    score += Math.max(0, 50 - price / 10);
+    return score;
+  }
+
+  for (const p of playerNames) {
+    const cards = listingsByPlayer[p] ?? [];
+    cards.sort((a, b) => cardValueScore(b.title, b.priceUSD) - cardValueScore(a.title, a.priceUSD));
+    listingsByPlayer[p] = cards.slice(0, 5);
   }
 
   return (
@@ -232,40 +253,54 @@ export default async function RookiesPage() {
               {/* Real card listings with images */}
               {cards.length > 0 && (
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "0.5rem" }}>
-                  {cards.map((card) => (
-                    <a
-                      key={card.id}
-                      href={card.url}
-                      target="_blank"
-                      rel="noopener"
-                      style={{
-                        display: "flex",
-                        flexDirection: "column",
-                        background: "var(--bg-surface)",
-                        border: "1px solid var(--border)",
-                        borderRadius: "6px",
-                        overflow: "hidden",
-                        textDecoration: "none",
-                        color: "inherit",
-                      }}
-                    >
-                      {card.imageUrl && (
-                        <img
-                          src={card.imageUrl}
-                          alt=""
-                          style={{ width: "100%", height: "120px", objectFit: "contain", background: "#1a1a24", padding: "4px" }}
-                        />
-                      )}
-                      <div style={{ padding: "0.4rem 0.5rem" }}>
-                        <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {card.title}
+                  {cards.map((card) => {
+                    const raw = card.rawData as Record<string, unknown> | null;
+                    const isBIN = raw?.isBIN === true;
+                    const acceptsOffers = raw?.acceptsOffers === true;
+                    const isAuction = raw?.isAuction === true;
+                    const buyLabel = isBIN && acceptsOffers ? "SEND OFFER" : isBIN ? "BUY NOW" : isAuction ? "AUCTION" : "BUY";
+                    const buyColor = acceptsOffers ? "var(--bid)" : isBIN ? "var(--buy-now)" : "var(--score-hot)";
+
+                    return (
+                      <a
+                        key={card.id}
+                        href={card.url}
+                        target="_blank"
+                        rel="noopener"
+                        style={{
+                          display: "flex",
+                          flexDirection: "column",
+                          background: "var(--bg-surface)",
+                          border: "1px solid var(--border)",
+                          borderRadius: "6px",
+                          overflow: "hidden",
+                          textDecoration: "none",
+                          color: "inherit",
+                        }}
+                      >
+                        {card.imageUrl && (
+                          <img
+                            src={card.imageUrl}
+                            alt=""
+                            style={{ width: "100%", height: "120px", objectFit: "contain", background: "#1a1a24", padding: "4px" }}
+                          />
+                        )}
+                        <div style={{ padding: "0.4rem 0.5rem" }}>
+                          <div style={{ fontSize: "0.6rem", color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {card.title}
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "0.2rem" }}>
+                            <div className="mono" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                              ${card.priceUSD < 1000 ? card.priceUSD.toFixed(2) : card.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                            </div>
+                            <span className="mono" style={{ fontSize: "0.5rem", fontWeight: 600, padding: "1px 5px", borderRadius: "3px", background: `${buyColor}15`, color: buyColor }}>
+                              {buyLabel}
+                            </span>
+                          </div>
                         </div>
-                        <div className="mono" style={{ fontSize: "0.8rem", fontWeight: 600, color: "var(--buy-now)", marginTop: "0.15rem" }}>
-                          ${card.priceUSD < 1000 ? card.priceUSD.toFixed(2) : card.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
-                        </div>
-                      </div>
-                    </a>
-                  ))}
+                      </a>
+                    );
+                  })}
                 </div>
               )}
 
