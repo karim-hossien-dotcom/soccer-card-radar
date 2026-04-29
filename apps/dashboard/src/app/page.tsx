@@ -171,30 +171,9 @@ export default async function Dashboard() {
         zIndex: 1,
       }}
     >
-      {/* Header */}
-      <header style={{ marginBottom: "2rem" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem", marginBottom: "0.5rem" }}>
-          <h1
-            className="mono"
-            style={{
-              fontSize: "1.5rem",
-              fontWeight: 700,
-              letterSpacing: "-0.02em",
-              background: "linear-gradient(135deg, var(--accent), #c084fc)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}
-          >
-            SOCCER CARD RADAR
-          </h1>
-          <span className="mono" style={{ fontSize: "0.7rem", color: "var(--text-muted)" }}>
-            v1.0
-          </span>
-        </div>
-        <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)" }}>
-          {entities?.length ?? 0} players tracked — {rows.length} matches scored
-        </p>
-      </header>
+      <p style={{ fontSize: "0.85rem", color: "var(--text-secondary)", marginBottom: "1.5rem" }}>
+        {entities?.length ?? 0} players tracked — {rows.length} matches scored
+      </p>
 
       {/* Stats Bar */}
       <div
