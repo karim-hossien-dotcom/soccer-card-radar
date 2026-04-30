@@ -18,18 +18,18 @@ interface ListingCardProps {
 }
 
 const reasonLabels: Record<string, string> = {
-  yearInRange: "YEAR",
-  setKeywordHit: "SET",
-  parallelTermHit: "PARALLEL",
-  belowPriceCeiling: "PRICE OK",
-  autographMatch: "AUTO",
+  yearInRange: "Year",
+  setKeywordHit: "Set",
+  parallelTermHit: "Parallel",
+  belowPriceCeiling: "Price OK",
+  autographMatch: "Auto",
 };
 
-const recStyles: Record<string, { color: string; bg: string; label: string }> = {
-  buy: { color: "var(--buy-now)", bg: "var(--buy-now-bg)", label: "BUY NOW" },
-  bid: { color: "var(--bid)", bg: "var(--bid-bg)", label: "BID / OFFER" },
-  watch: { color: "var(--watch)", bg: "var(--watch-bg)", label: "WATCH" },
-  skip: { color: "var(--skip)", bg: "var(--skip-bg)", label: "SKIP" },
+const recStyles: Record<string, { color: string; bg: string; label: string; border: string }> = {
+  buy: { color: "#fff", bg: "#0d9f4f", label: "BUY NOW", border: "#0d9f4f" },
+  bid: { color: "#fff", bg: "#c77d15", label: "BID / OFFER", border: "#c77d15" },
+  watch: { color: "#fff", bg: "#2563eb", label: "WATCH", border: "#2563eb" },
+  skip: { color: "#fff", bg: "#9b9bab", label: "SKIP", border: "#9b9bab" },
 };
 
 export default function ListingCard(props: ListingCardProps) {
@@ -38,61 +38,53 @@ export default function ListingCard(props: ListingCardProps) {
   const rec = recStyles[recommendation] ?? recStyles.skip;
 
   const scoreColor =
-    score >= 90
-      ? "var(--score-hot)"
-      : score >= 80
-        ? "var(--score-high)"
-        : score >= 65
-          ? "var(--score-mid)"
-          : "var(--score-low)";
+    score >= 90 ? "var(--score-hot)" :
+    score >= 80 ? "var(--score-high)" :
+    score >= 65 ? "var(--score-mid)" :
+    "var(--score-low)";
 
   return (
     <a
       href={url}
       target="_blank"
       rel="noopener"
-      className="listing-card"
       style={{
         display: "grid",
-        gridTemplateColumns: "56px 1fr auto",
+        gridTemplateColumns: "52px 1fr auto",
         gap: "1rem",
         alignItems: "center",
-        padding: "0.875rem 1rem",
+        padding: "0.875rem 1.15rem",
         background: "var(--bg-card)",
         border: "1px solid var(--border)",
-        borderRadius: "8px",
-        transition: "all 0.15s ease",
-        animation: `fadeInUp 0.3s ease-out ${index * 30}ms both`,
+        borderRadius: "10px",
+        boxShadow: "var(--shadow-sm)",
+        transition: "all 0.2s ease",
+        animation: `fadeInUp 0.3s ease-out ${index * 25}ms both`,
         cursor: "pointer",
         textDecoration: "none",
         color: "inherit",
       }}
       onMouseEnter={(e) => {
-        const el = e.currentTarget;
-        el.style.background = "var(--bg-card-hover)";
-        el.style.borderColor = "var(--border-hover)";
-        el.style.transform = "translateY(-1px)";
+        e.currentTarget.style.boxShadow = "var(--shadow-hover)";
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.borderColor = "var(--border-hover)";
       }}
       onMouseLeave={(e) => {
-        const el = e.currentTarget;
-        el.style.background = "var(--bg-card)";
-        el.style.borderColor = "var(--border)";
-        el.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "var(--shadow-sm)";
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.borderColor = "var(--border)";
       }}
     >
       {/* Score */}
       <div style={{ textAlign: "center" }}>
         <div
           className="mono"
-          style={{ fontSize: "1.5rem", fontWeight: 700, color: scoreColor, lineHeight: 1 }}
+          style={{ fontSize: "1.4rem", fontWeight: 700, color: scoreColor, lineHeight: 1 }}
         >
           {score}
         </div>
-        <div
-          className="mono"
-          style={{ fontSize: "0.55rem", color: "var(--text-muted)", marginTop: "2px" }}
-        >
-          SCORE
+        <div style={{ fontSize: "0.55rem", color: "var(--text-muted)", marginTop: "3px", fontWeight: 500 }}>
+          score
         </div>
       </div>
 
@@ -101,7 +93,7 @@ export default function ListingCard(props: ListingCardProps) {
         <div
           style={{
             fontSize: "0.85rem",
-            fontWeight: 500,
+            fontWeight: 600,
             color: "var(--text-primary)",
             whiteSpace: "nowrap",
             overflow: "hidden",
@@ -116,24 +108,25 @@ export default function ListingCard(props: ListingCardProps) {
           style={{
             display: "flex",
             alignItems: "center",
-            gap: "0.75rem",
-            marginTop: "0.35rem",
+            gap: "0.6rem",
+            marginTop: "0.4rem",
             fontSize: "0.75rem",
             flexWrap: "wrap",
           }}
         >
-          <span style={{ color: "var(--accent)", fontWeight: 500 }}>{player}</span>
-          <span style={{ color: "var(--text-muted)" }}>
-            {yearMin}–{yearMax}
+          <span style={{ color: "var(--accent)", fontWeight: 600 }}>{player}</span>
+          <span style={{ color: "var(--text-muted)", fontSize: "0.7rem" }}>
+            {yearMin}--{yearMax}
           </span>
           <span
             className="mono"
             style={{
               fontSize: "0.6rem",
-              padding: "1px 5px",
-              borderRadius: "3px",
+              padding: "2px 6px",
+              borderRadius: "4px",
               background: "var(--bg-surface)",
               color: "var(--text-muted)",
+              fontWeight: 500,
               textTransform: "uppercase",
             }}
           >
@@ -145,14 +138,13 @@ export default function ListingCard(props: ListingCardProps) {
             return (
               <span
                 key={key}
-                className="mono"
                 style={{
-                  fontSize: "0.55rem",
-                  padding: "1px 4px",
-                  borderRadius: "2px",
+                  fontSize: "0.6rem",
+                  padding: "2px 6px",
+                  borderRadius: "4px",
                   background: "var(--buy-now-bg)",
                   color: "var(--buy-now)",
-                  letterSpacing: "0.03em",
+                  fontWeight: 600,
                 }}
               >
                 {reasonLabels[key]}
@@ -163,36 +155,26 @@ export default function ListingCard(props: ListingCardProps) {
       </div>
 
       {/* Price + Action */}
-      <div style={{ textAlign: "right", flexShrink: 0, minWidth: "110px" }}>
+      <div style={{ textAlign: "right", minWidth: "115px" }}>
         <div
           className="mono"
-          style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}
+          style={{ fontSize: "1.05rem", fontWeight: 700, color: "var(--text-primary)" }}
         >
           ${priceUSD < 1000
             ? priceUSD.toFixed(2)
             : priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
         </div>
 
-        {/* Market comparison */}
         {marketPrice && (
-          <div
-            className="mono"
-            style={{
-              fontSize: "0.6rem",
-              color: "var(--text-muted)",
-              marginTop: "2px",
-            }}
-          >
-            mkt ~${marketPrice < 1000
-              ? marketPrice.toFixed(0)
-              : marketPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+          <div style={{ fontSize: "0.65rem", color: "var(--text-muted)", marginTop: "2px" }}>
+            <span className="mono">mkt ${marketPrice < 1000 ? marketPrice.toFixed(0) : marketPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
             {discount !== null && discount > 0 && (
-              <span style={{ color: "var(--buy-now)", marginLeft: "4px" }}>
+              <span className="mono" style={{ color: "var(--buy-now)", fontWeight: 600, marginLeft: "4px" }}>
                 -{discount}%
               </span>
             )}
             {discount !== null && discount < 0 && (
-              <span style={{ color: "var(--score-hot)", marginLeft: "4px" }}>
+              <span className="mono" style={{ color: "var(--score-hot)", fontWeight: 600, marginLeft: "4px" }}>
                 +{Math.abs(discount)}%
               </span>
             )}
@@ -200,17 +182,16 @@ export default function ListingCard(props: ListingCardProps) {
         )}
 
         <div
-          className="mono"
           style={{
             fontSize: "0.6rem",
-            fontWeight: 600,
-            padding: "2px 8px",
-            borderRadius: "3px",
+            fontWeight: 700,
+            padding: "3px 10px",
+            borderRadius: "5px",
             background: rec.bg,
             color: rec.color,
             display: "inline-block",
-            marginTop: "4px",
-            letterSpacing: "0.06em",
+            marginTop: "5px",
+            letterSpacing: "0.04em",
           }}
         >
           {rec.label}

@@ -3,10 +3,10 @@
 import { usePathname } from "next/navigation";
 
 const links = [
-  { href: "/", label: "DEALS" },
-  { href: "/rookies", label: "ROOKIES" },
-  { href: "/parallels", label: "PARALLELS" },
-  { href: "/autos", label: "AUTOS" },
+  { href: "/", label: "Deals", icon: "&#9733;" },
+  { href: "/rookies", label: "Rookies", icon: "&#9889;" },
+  { href: "/parallels", label: "Parallels", icon: "&#9670;" },
+  { href: "/autos", label: "Autos", icon: "&#9997;" },
 ];
 
 export default function Nav() {
@@ -16,12 +16,10 @@ export default function Nav() {
     <nav
       style={{
         display: "flex",
-        gap: "0.25rem",
-        padding: "0.5rem",
-        background: "var(--bg-card)",
-        borderRadius: "8px",
-        border: "1px solid var(--border)",
+        gap: "0.5rem",
         marginBottom: "1.5rem",
+        borderBottom: "1px solid var(--border)",
+        paddingBottom: "0.75rem",
       }}
     >
       {links.map((link) => {
@@ -30,19 +28,21 @@ export default function Nav() {
           <a
             key={link.href}
             href={link.href}
-            className="mono"
             style={{
-              fontSize: "0.7rem",
-              padding: "6px 14px",
-              borderRadius: "5px",
+              fontSize: "0.85rem",
+              padding: "8px 16px",
+              borderRadius: "6px",
               background: active ? "var(--accent)" : "transparent",
-              color: active ? "#fff" : "var(--text-muted)",
+              color: active ? "#fff" : "var(--text-secondary)",
               textDecoration: "none",
-              fontWeight: active ? 600 : 400,
-              letterSpacing: "0.08em",
+              fontWeight: active ? 600 : 500,
               transition: "all 0.15s ease",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.4rem",
             }}
           >
+            <span dangerouslySetInnerHTML={{ __html: link.icon }} style={{ fontSize: "0.75rem" }} />
             {link.label}
           </a>
         );

@@ -15,25 +15,36 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "1.5rem 1.5rem 0" }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem", marginBottom: "1rem" }}>
+        {/* Top bar */}
+        <div
+          style={{
+            background: "#1a1a2e",
+            padding: "0.75rem 0",
+            marginBottom: "1.5rem",
+            borderBottom: "3px solid #dc2626",
+          }}
+        >
+          <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 1.5rem", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <a
               href="/"
-              className="mono"
               style={{
-                fontSize: "1.25rem",
-                fontWeight: 700,
-                letterSpacing: "-0.02em",
-                background: "linear-gradient(135deg, #7c5cff, #c084fc)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
+                fontSize: "1.3rem",
+                fontWeight: 800,
+                letterSpacing: "-0.03em",
+                color: "#ffffff",
                 textDecoration: "none",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.5rem",
               }}
             >
-              SOCCER CARD RADAR
+              <span style={{ color: "#dc2626", fontSize: "1.5rem" }}>&#9679;</span>
+              Soccer Card Radar
             </a>
-            <span className="mono" style={{ fontSize: "0.6rem", color: "var(--text-muted)" }}>v1.0</span>
+            <span className="mono" style={{ fontSize: "0.6rem", color: "rgba(255,255,255,0.4)" }}>LIVE</span>
           </div>
+        </div>
+        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 1.5rem" }}>
           <Nav />
         </div>
         {children}

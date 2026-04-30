@@ -256,27 +256,27 @@ function StatCard({
   return (
     <div
       style={{
-        background: bg,
-        border: `1px solid ${color}22`,
-        borderRadius: "8px",
-        padding: "1rem",
+        background: "var(--bg-card)",
+        border: "1px solid var(--border)",
+        borderRadius: "10px",
+        padding: "1rem 1.25rem",
+        boxShadow: "var(--shadow-sm)",
         animation: "fadeInUp 0.4s ease-out",
+        borderLeft: `4px solid ${color}`,
       }}
     >
       <div
         className="mono"
-        style={{ fontSize: "1.75rem", fontWeight: 700, color, lineHeight: 1 }}
+        style={{ fontSize: "1.75rem", fontWeight: 800, color, lineHeight: 1 }}
       >
         {count}
       </div>
       <div
-        className="mono"
         style={{
-          fontSize: "0.65rem",
-          color,
-          opacity: 0.7,
+          fontSize: "0.7rem",
+          color: "var(--text-secondary)",
           marginTop: "0.35rem",
-          letterSpacing: "0.08em",
+          fontWeight: 600,
         }}
       >
         {label}
@@ -296,16 +296,16 @@ function FilterBadge({
 }) {
   return (
     <span
-      className="mono"
       style={{
-        fontSize: "0.65rem",
-        padding: "4px 10px",
-        borderRadius: "4px",
+        fontSize: "0.75rem",
+        padding: "6px 14px",
+        borderRadius: "6px",
         border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
-        background: active ? "var(--accent)18" : "transparent",
-        color: color ?? "var(--text-secondary)",
+        background: active ? "var(--accent)" : "var(--bg-card)",
+        color: active ? "#fff" : color ?? "var(--text-secondary)",
         cursor: "pointer",
-        letterSpacing: "0.05em",
+        fontWeight: 600,
+        boxShadow: active ? "none" : "var(--shadow-sm)",
       }}
     >
       {label}
