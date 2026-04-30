@@ -31,6 +31,7 @@ export interface Database {
           createdAt?: string;
         };
         Update: Partial<Database["public"]["Tables"]["TrackedEntity"]["Insert"]>;
+        Relationships: [];
       };
       Listing: {
         Row: {
@@ -74,6 +75,7 @@ export interface Database {
           lane?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["Listing"]["Insert"]>;
+        Relationships: [];
       };
       PriceHistory: {
         Row: {
@@ -93,6 +95,7 @@ export interface Database {
           recordedAt?: string;
         };
         Update: Partial<Database["public"]["Tables"]["PriceHistory"]["Insert"]>;
+        Relationships: [];
       };
       MatchScore: {
         Row: {
@@ -114,6 +117,7 @@ export interface Database {
           createdAt?: string;
         };
         Update: Partial<Database["public"]["Tables"]["MatchScore"]["Insert"]>;
+        Relationships: [];
       };
       ExtractionCache: {
         Row: {
@@ -127,6 +131,7 @@ export interface Database {
           createdAt?: string;
         };
         Update: Partial<Database["public"]["Tables"]["ExtractionCache"]["Insert"]>;
+        Relationships: [];
       };
       PriceReference: {
         Row: {
@@ -158,6 +163,7 @@ export interface Database {
           updatedAt?: string;
         };
         Update: Partial<Database["public"]["Tables"]["PriceReference"]["Insert"]>;
+        Relationships: [];
       };
       AlertSent: {
         Row: {
@@ -175,7 +181,10 @@ export interface Database {
           sentAt?: string;
         };
         Update: Partial<Database["public"]["Tables"]["AlertSent"]["Insert"]>;
+        Relationships: [];
       };
     };
+    Views: Record<string, never>;
+    Functions: Record<string, never>;
   };
 }

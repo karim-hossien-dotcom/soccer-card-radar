@@ -1,31 +1,64 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@soccer-card-radar/db";
+import { getResearchActions } from "../../research-engine";
+import { isQualityCard, isVintageLegend } from "../../card-filter";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-const EBAY_APP_ID = process.env.EBAY_APP_ID!;
-const EBAY_CERT_ID = process.env.EBAY_CERT_ID!;
+// ─── eBay OAuth (inlined from packages/scrapers/ebay/src/auth.ts) ─────────────
 
-let appToken: string | null = null;
-let tokenExpiresAt = 0;
-
-async function getAppToken(): Promise<string> {
-  if (appToken && Date.now() < tokenExpiresAt) return appToken;
-  const credentials = Buffer.from(`${EBAY_APP_ID}:${EBAY_CERT_ID}`).toString("base64");
-  const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
-    method: "POST",
-    headers: { Authorization: `Basic ${credentials}`, "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ grant_type: "client_credentials", scope: "https://api.ebay.com/oauth/api_scope" }),
-  });
-  const data = await res.json();
-  appToken = data.access_token;
-  tokenExpiresAt = Date.now() + (data.expires_in - 300) * 1000;
-  return appToken!;
+interface AppTokenCache {
+  token: string;
+  expiresAt: number;
 }
 
-async function searchEbay(query: string, limit = 12) {
-  const token = await getAppToken();
+let appTokenCache: AppTokenCache | null = null;
+
+async function getEbayAppToken(): Promise<string> {
+  if (appTokenCache && Date.now() < appTokenCache.expiresAt) {
+    return appTokenCache.token;
+  }
+
+  const appId = process.env.EBAY_APP_ID;
+  const certId = process.env.EBAY_CERT_ID;
+  if (!appId || !certId) {
+    throw new Error("EBAY_APP_ID and EBAY_CERT_ID are required");
+  }
+
+  const credentials = Buffer.from(`${appId}:${certId}`).toString("base64");
+
+  const res = await fetch("https://api.ebay.com/identity/v1/oauth2/token", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${credentials}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      grant_type: "client_credentials",
+      scope: "https://api.ebay.com/oauth/api_scope",
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`eBay app token failed (${res.status}): ${text}`);
+  }
+
+  const data = await res.json();
+
+  appTokenCache = {
+    token: data.access_token,
+    expiresAt: Date.now() + (data.expires_in - 300) * 1000,
+  };
+
+  return data.access_token;
+}
+
+// ─── eBay Browse API search ───────────────────────────────────────────────────
+
+async function searchEbay(query: string, limit = 10): Promise<unknown[]> {
+  const token = await getEbayAppToken();
   const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
   url.searchParams.set("q", query);
   url.searchParams.set("category_ids", "212");
@@ -33,177 +66,155 @@ async function searchEbay(query: string, limit = 12) {
   url.searchParams.set("fieldgroups", "MATCHING_ITEMS,EXTENDED");
 
   const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${token}`, "X-EBAY-C-MARKETPLACE-ID": "EBAY_US" },
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+    },
   });
+
   if (!res.ok) return [];
   const data = await res.json();
   return data.itemSummaries ?? [];
 }
 
-function norm(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, " ").trim();
+// ─── Delay helper ─────────────────────────────────────────────────────────────
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// ─── Full scan endpoint ───────────────────────────────────────────────────────
+
 /**
- * GET /api/scan — full scan across all players
- * Searches eBay, imports new listings, scores matches, filters excludes.
- * Designed to be called by cron every 30 min.
+ * GET /api/scan — research-driven full scan across all 17 actions.
+ * Uses exact searchQueries from the research engine, filters junk via
+ * isQualityCard/isVintageLegend, and stores deals tagged with actionId + lane.
+ * Capped at 100 API calls. Designed to be called by cron every 30 min.
  */
 export async function GET() {
   const startTime = Date.now();
 
-  const { data: entities } = await supabase
-    .from("TrackedEntity")
-    .select("*")
-    .eq("active", true);
-
-  if (!entities || entities.length === 0) {
-    return NextResponse.json({ message: "No active entities" });
-  }
+  const actions = getResearchActions();
 
   let apiCalls = 0;
   let imported = 0;
+  let updated = 0;
   let skipped = 0;
-  let excluded = 0;
 
-  for (const entity of entities) {
-    if (apiCalls >= 150) break;
+  for (const action of actions) {
+    if (apiCalls >= 100) break;
 
-    const queries = [
-      `${entity.player} auto card -leaf`,
-      `${entity.player} /50 OR /25 OR /10 refractor -leaf`,
-      `${entity.player} rookie RC card -leaf`,
-    ];
+    for (const searchQuery of action.searchQueries) {
+      if (apiCalls >= 100) break;
 
-    for (const query of queries) {
-      if (apiCalls >= 150) break;
-
-      const items = await searchEbay(query, 10);
+      const items = await searchEbay(searchQuery, 10);
       apiCalls++;
 
-      for (const item of items) {
-        const title = item.title ?? "";
-        const titleLower = norm(title);
+      for (const item of items as Record<string, unknown>[]) {
+        const title = (item.title as string) ?? "";
 
-        // Check exclude terms
-        if (entity.excludeTerms.some((t: string) => titleLower.includes(norm(t)))) {
-          excluded++;
-          continue;
-        }
-
-        const priceNum = parseFloat(item.price?.value ?? "0");
-        const buyingOptions: string[] = item.buyingOptions ?? [];
-
-        // Skip if exists
-        const { data: existing } = await supabase
-          .from("Listing")
-          .select("id")
-          .eq("platform", "ebay")
-          .eq("externalId", item.itemId)
-          .limit(1);
-
-        if (existing && existing.length > 0) {
-          // Update price + metadata
-          await supabase.from("Listing").update({
-            priceUSD: priceNum,
-            lastSeenAt: new Date().toISOString(),
-            rawData: {
-              condition: item.condition,
-              buyingOptions,
-              isBIN: buyingOptions.includes("FIXED_PRICE"),
-              isAuction: buyingOptions.includes("AUCTION"),
-              acceptsOffers: buyingOptions.includes("BEST_OFFER"),
-              itemEndDate: item.itemEndDate ?? null,
-              shippingCost: item.shippingOptions?.[0]?.shippingCost?.value ?? null,
-            },
-          }).eq("id", existing[0].id);
+        // Quality gate — must pass isQualityCard OR be a vintage legend
+        if (!isQualityCard(title) && !isVintageLegend(title)) {
           skipped++;
           continue;
         }
 
+        const priceValue = (item.price as Record<string, unknown>)?.value;
+        const priceNum = parseFloat((priceValue as string) ?? "0");
+        const priceCurrency =
+          ((item.price as Record<string, unknown>)?.currency as string) ?? "USD";
+        const buyingOptions: string[] = (item.buyingOptions as string[]) ?? [];
+        const imageUrl =
+          ((item.image as Record<string, unknown>)?.imageUrl as string) ?? null;
+        const seller = item.seller as Record<string, unknown> | null;
+        const itemId = item.itemId as string;
+
+        const rawData = {
+          condition: (item.condition as string) ?? null,
+          buyingOptions,
+          isBIN: buyingOptions.includes("FIXED_PRICE"),
+          isAuction: buyingOptions.includes("AUCTION"),
+          acceptsOffers: buyingOptions.includes("BEST_OFFER"),
+          itemEndDate: (item.itemEndDate as string) ?? null,
+          shippingCost:
+            (
+              (
+                (item.shippingOptions as Record<string, unknown>[])?.[0]
+                  ?.shippingCost as Record<string, unknown>
+              )?.value as string
+            ) ?? null,
+        };
+
+        // Check if listing already exists
+        const { data: existing } = await supabase
+          .from("Listing")
+          .select("id")
+          .eq("platform", "ebay")
+          .eq("externalId", itemId)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          // Update price, metadata, actionId, and lane
+          await supabase
+            .from("Listing")
+            .update({
+              priceUSD: priceNum,
+              lastSeenAt: new Date().toISOString(),
+              actionId: action.id,
+              lane: action.lane,
+              rawData,
+            })
+            .eq("id", existing[0].id);
+          updated++;
+          continue;
+        }
+
+        // Insert new listing
         const { error } = await supabase.from("Listing").insert({
           platform: "ebay",
-          externalId: item.itemId,
-          url: item.itemWebUrl,
+          externalId: itemId,
+          url: (item.itemWebUrl as string) ?? "",
           title,
           priceUSD: priceNum,
           priceNative: priceNum,
-          currency: item.price?.currency ?? "USD",
-          imageUrl: item.image?.imageUrl ?? null,
-          sellerInfo: item.seller ? { username: item.seller.username, feedbackScore: item.seller.feedbackScore } : null,
-          rawData: {
-            condition: item.condition,
-            buyingOptions,
-            isBIN: buyingOptions.includes("FIXED_PRICE"),
-            isAuction: buyingOptions.includes("AUCTION"),
-            acceptsOffers: buyingOptions.includes("BEST_OFFER"),
-            itemEndDate: item.itemEndDate ?? null,
-            shippingCost: item.shippingOptions?.[0]?.shippingCost?.value ?? null,
-          },
+          currency: priceCurrency,
+          imageUrl,
+          sellerInfo: seller
+            ? {
+                username: seller.username,
+                feedbackScore: seller.feedbackScore,
+              }
+            : null,
+          rawData,
+          actionId: action.id,
+          lane: action.lane,
+          avgSoldPrice: null,
+          pctBelowMarket: null,
         });
 
-        if (!error) imported++;
-      }
-
-      await new Promise((r) => setTimeout(r, 150));
-    }
-  }
-
-  // Re-score all
-  const { data: allListings } = await supabase.from("Listing").select("*");
-  let matchCount = 0;
-
-  if (allListings) {
-    for (const listing of allListings) {
-      for (const entity of entities) {
-        const t = norm(listing.title);
-        const p = norm(entity.player);
-        const lastName = p.split(" ").pop() ?? "";
-
-        if (!(t.includes(p) || (lastName.length >= 3 && t.includes(lastName)))) continue;
-        if (entity.excludeTerms.some((et: string) => t.includes(norm(et)))) continue;
-
-        let score = 0;
-        const yearMatch = listing.title.match(/\b(20\d{2})(?:-\d{2})?\b/);
-        const yearNum = yearMatch ? parseInt(yearMatch[1]) : null;
-        if (yearNum && entity.yearMin && entity.yearMax && yearNum >= entity.yearMin && yearNum <= entity.yearMax) score += 25;
-        if (entity.setKeywords.some((kw: string) => t.includes(norm(kw)))) score += 25;
-        if (entity.parallelTerms.some((pt: string) => t.includes(norm(pt)))) score += 20;
-        if (entity.priceCeilingUSD === null || listing.priceUSD <= entity.priceCeilingUSD) score += 15;
-        if (t.includes("auto")) score += 15;
-
-        if (score > 0) {
-          await supabase.from("MatchScore").upsert({
-            listingId: listing.id,
-            entityId: entity.id,
-            score,
-            reasons: {
-              playerMatch: true,
-              yearInRange: !!yearNum,
-              setKeywordHit: entity.setKeywords.some((kw: string) => t.includes(norm(kw))),
-              parallelTermHit: entity.parallelTerms.some((pt: string) => t.includes(norm(pt))),
-              belowPriceCeiling: entity.priceCeilingUSD === null || listing.priceUSD <= entity.priceCeilingUSD,
-              autographMatch: t.includes("auto"),
-              excludeTermHit: false,
-              isLot: false,
-            },
-          }, { onConflict: "listingId,entityId" });
-          matchCount++;
+        if (!error) {
+          imported++;
         }
       }
+
+      // Rate limiting: 150ms between API calls
+      await delay(150);
     }
   }
+
+  const { count: totalListings } = await supabase
+    .from("Listing")
+    .select("*", { count: "exact", head: true });
 
   const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
   return NextResponse.json({
-    status: "ok",
+    status: "done",
     elapsed: `${elapsed}s`,
     apiCalls,
     imported,
-    updated: skipped,
-    excluded,
-    matchesScored: matchCount,
-    totalListings: allListings?.length ?? 0,
+    updated,
+    skipped,
+    totalListings: totalListings ?? 0,
   });
 }
