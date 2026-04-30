@@ -175,6 +175,11 @@ export default async function BuyPage() {
                 ? Math.round(((listing.avgSoldPrice! - listing.priceUSD) / listing.avgSoldPrice!) * 100)
                 : null;
 
+              // Offer suggestion for BIN+offers cards
+              const suggestedOffer = (isBIN && acceptsOffers)
+                ? Math.round(listing.priceUSD * 0.75) // offer 75% of asking
+                : null;
+
               return (
                 <a
                   key={listing.id}
@@ -235,14 +240,19 @@ export default async function BuyPage() {
                     )}
                   </div>
 
-                  {/* Right: price + action */}
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div className="mono" style={{ fontSize: "0.95rem", fontWeight: 800, marginBottom: "0.25rem" }}>
-                      ${listing.priceUSD.toFixed(2)}
+                  {/* Right: price + offer + action */}
+                  <div style={{ textAlign: "right", flexShrink: 0, minWidth: "110px" }}>
+                    <div className="mono" style={{ fontSize: "0.95rem", fontWeight: 800, marginBottom: "0.15rem" }}>
+                      ${listing.priceUSD < 1000 ? listing.priceUSD.toFixed(2) : listing.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                     </div>
                     {hasMarket && pctBelow !== null && pctBelow > 0 && (
-                      <div style={{ fontSize: "0.6rem", color: "var(--buy-now)", fontWeight: 600, marginBottom: "0.25rem" }}>
-                        vs avg ${listing.avgSoldPrice!.toFixed(0)} &middot; {pctBelow}% below
+                      <div style={{ fontSize: "0.58rem", color: "var(--buy-now)", fontWeight: 600, marginBottom: "0.15rem" }}>
+                        avg sold ${listing.avgSoldPrice!.toFixed(0)} &middot; {pctBelow}% below
+                      </div>
+                    )}
+                    {suggestedOffer && (
+                      <div style={{ fontSize: "0.6rem", color: "#c77d15", fontWeight: 700, marginBottom: "0.2rem" }}>
+                        Offer ~${suggestedOffer}
                       </div>
                     )}
                     <span style={{

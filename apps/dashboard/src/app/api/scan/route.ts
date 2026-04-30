@@ -102,10 +102,10 @@ export async function GET() {
   let skipped = 0;
 
   for (const action of actions) {
-    if (apiCalls >= 100) break;
+    if (apiCalls >= 200) break;
 
     for (const searchQuery of action.searchQueries) {
-      if (apiCalls >= 100) break;
+      if (apiCalls >= 200) break;
 
       const items = await searchEbay(searchQuery, 10);
       apiCalls++;

@@ -347,6 +347,43 @@ export function getResearchActions(): ResearchAction[] {
         "https://img.a.transfermarkt.technology/portrait/header/28003-1727938734.jpg",
     },
 
+    {
+      id: "kylian-mbappe",
+      player: "Kylian Mbappe",
+      signal: "HOLD",
+      lane: "legacy",
+      searchQueries: [
+        "Kylian Mbappe Prizm World Cup rookie",
+        "Kylian Mbappe auto /50 Chrome",
+        "Kylian Mbappe Donruss Optic /50",
+      ],
+      soldData: null,
+      stats: null,
+      reasoning:
+        "2018 WC RC PSA 10 stable at ~$190. Market fully priced in. Blue-chip hold — won't 10x but won't crash. France WC contender.",
+      catalyst: "France WC 2026 run. If France wins = spike. Otherwise stable.",
+      timeframe: "Hold — slow appreciation",
+      photo: "",
+    },
+    {
+      id: "mohamed-salah",
+      player: "Mohamed Salah",
+      signal: "BUY",
+      lane: "steal",
+      searchQueries: [
+        "Mohamed Salah gold refractor /50 Chrome",
+        "Mohamed Salah auto /50 Topps",
+        "Mohamed Salah /25 Chrome refractor",
+      ],
+      soldData: null,
+      stats: null,
+      reasoning:
+        "Gold refractors still undervalued for a player of his caliber. Egypt WC squad. 2017 Chrome Gold /50 is a grail — anything under $1K is a deal.",
+      catalyst: "Egypt WC 2026 + potential Liverpool farewell season",
+      timeframe: "6-12 months",
+      photo: "",
+    },
+
     // ─── SELL Targets ──────────────────────────────────────────────────────
 
     {
