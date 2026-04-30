@@ -242,27 +242,17 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
             actionBg = "#c77d15";
           }
 
-          // Offer suggestion: use avg sold if available, otherwise 75% of asking
+          // Offer suggestion: 70-80% of asking depending on price tier
           let suggestedOffer: number | null = null;
           if (card.isBIN && card.acceptsOffers) {
-            if (card.avgSoldPrice && card.avgSoldPrice > 0) {
-              // Offer 85% of avg sold (you want to pay below market)
-              suggestedOffer = Math.round(card.avgSoldPrice * 0.85);
-            } else {
-              suggestedOffer = Math.round(card.priceUSD * 0.75);
-            }
+            if (card.priceUSD < 50) suggestedOffer = Math.round(card.priceUSD * 0.70);
+            else if (card.priceUSD < 200) suggestedOffer = Math.round(card.priceUSD * 0.75);
+            else suggestedOffer = Math.round(card.priceUSD * 0.80);
           }
-
-          const hasMarket = typeof card.avgSoldPrice === "number" && card.avgSoldPrice > 0;
-          const pctBelow = hasMarket
-            ? Math.round(((card.avgSoldPrice! - card.priceUSD) / card.avgSoldPrice!) * 100)
-            : null;
 
           const valueScore = sortMode === "value" ? getValueScore(card) : null;
           const prediction = getPrediction(card);
-          const projectedValue = card.avgSoldPrice
-            ? Math.round(card.avgSoldPrice * prediction.multiplier)
-            : Math.round(card.priceUSD * prediction.multiplier);
+          const projectedValue = Math.round(card.priceUSD * prediction.multiplier);
           const potentialROI = Math.round(((projectedValue - card.priceUSD) / card.priceUSD) * 100);
 
           return (
@@ -317,11 +307,6 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                 <div className="mono" style={{ fontSize: "0.95rem", fontWeight: 800, marginBottom: "0.15rem" }}>
                   ${card.priceUSD < 1000 ? card.priceUSD.toFixed(2) : card.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </div>
-                {hasMarket && pctBelow !== null && pctBelow > 0 && (
-                  <div style={{ fontSize: "0.55rem", color: "#0d9f4f", fontWeight: 600, marginBottom: "0.1rem" }}>
-                    avg sold ${card.avgSoldPrice!.toFixed(0)} · {pctBelow}% below
-                  </div>
-                )}
                 {suggestedOffer && (
                   <div style={{ fontSize: "0.6rem", color: "#c77d15", fontWeight: 700, marginBottom: "0.15rem" }}>
                     Offer ~${suggestedOffer}
