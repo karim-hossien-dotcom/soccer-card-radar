@@ -213,14 +213,23 @@ export default async function BuyPage() {
                     )}
                   </div>
 
-                  {/* Middle: title + player */}
+                  {/* Middle: player + title + why */}
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: "0.78rem", fontWeight: 600, marginBottom: "0.15rem", lineHeight: 1.4 }}>
+                    {action && (
+                      <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.25rem" }}>
+                        <img src={action.photo} alt="" style={{ width: "22px", height: "22px", borderRadius: "50%", objectFit: "cover" }} />
+                        <span style={{ fontWeight: 700, fontSize: "0.8rem" }}>{action.player}</span>
+                      </div>
+                    )}
+                    <div style={{ fontSize: "0.72rem", fontWeight: 500, marginBottom: "0.2rem", lineHeight: 1.35, color: "var(--text-primary)" }}>
                       {listing.title}
                     </div>
                     {action && (
-                      <div style={{ fontSize: "0.65rem", color: "var(--text-muted)" }}>
-                        {action.player}
+                      <div style={{ fontSize: "0.62rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                        <span style={{ fontStyle: "italic" }}>{action.reasoning}</span>
+                        <span style={{ color: "var(--text-muted)", marginLeft: "0.4rem" }}>
+                          {action.catalyst} &middot; {action.timeframe}
+                        </span>
                       </div>
                     )}
                   </div>
