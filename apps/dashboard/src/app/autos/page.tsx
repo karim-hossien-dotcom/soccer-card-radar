@@ -90,8 +90,6 @@ export default async function AutosPage() {
         timeLeft = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
       }
 
-      const numMatch = l.title.match(/\/(\d+)\b/);
-
       return {
         id: l.id,
         title: l.title,
