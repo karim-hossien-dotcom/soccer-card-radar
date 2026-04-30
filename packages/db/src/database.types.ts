@@ -48,6 +48,10 @@ export interface Database {
           firstSeenAt: string;
           lastSeenAt: string;
           soldAt: string | null;
+          actionId: string | null;
+          avgSoldPrice: number | null;
+          pctBelowMarket: number | null;
+          lane: string | null;
         };
         Insert: {
           id?: string;
@@ -64,6 +68,10 @@ export interface Database {
           firstSeenAt?: string;
           lastSeenAt?: string;
           soldAt?: string | null;
+          actionId?: string | null;
+          avgSoldPrice?: number | null;
+          pctBelowMarket?: number | null;
+          lane?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["Listing"]["Insert"]>;
       };
