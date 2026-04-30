@@ -263,11 +263,8 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
           const potentialROI = Math.round(((projectedValue - card.priceUSD) / card.priceUSD) * 100);
 
           return (
-            <a
+            <div
               key={card.id}
-              href={card.url}
-              target="_blank"
-              rel="noopener noreferrer"
               style={{
                 display: "grid",
                 gridTemplateColumns: "auto 1fr auto",
@@ -277,8 +274,6 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                 background: "var(--bg-card)",
                 border: "1px solid var(--border)",
                 borderRadius: "10px",
-                textDecoration: "none",
-                color: "inherit",
                 boxShadow: "var(--shadow-sm)",
               }}
             >
@@ -298,9 +293,9 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                 <div style={{ fontWeight: 700, fontSize: "0.78rem", marginBottom: "0.15rem" }}>
                   {card.playerName}
                 </div>
-                <div style={{ fontSize: "0.7rem", fontWeight: 500, marginBottom: "0.2rem", lineHeight: 1.35, color: "var(--text-primary)" }}>
+                <a href={card.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: "0.7rem", fontWeight: 500, marginBottom: "0.2rem", lineHeight: 1.35, color: "var(--text-primary)", textDecoration: "none", display: "block" }}>
                   {card.title}
-                </div>
+                </a>
                 <div style={{ fontSize: "0.6rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
                   <span style={{ fontStyle: "italic" }}>{card.reasoning}</span>
                   <span style={{ color: "var(--text-muted)", marginLeft: "0.3rem" }}>
@@ -375,7 +370,7 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                   </a>
                 </div>
               </div>
-            </a>
+            </div>
           );
         })}
       </div>
