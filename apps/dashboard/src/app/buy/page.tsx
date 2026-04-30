@@ -58,6 +58,7 @@ export default async function BuyPage() {
         reasoning: action?.reasoning ?? "",
         catalyst: action?.catalyst ?? "",
         timeframe: action?.timeframe ?? "",
+        lane: action?.lane ?? "rookie",
       };
     });
 

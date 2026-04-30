@@ -26,6 +26,65 @@ interface BuyCard {
   reasoning: string;
   catalyst: string;
   timeframe: string;
+  lane: string;
+}
+
+// Predictive multiplier based on player stage + catalyst proximity
+// Returns estimated price multiplier over next 3-6 months
+function getPrediction(card: BuyCard): { multiplier: number; label: string; color: string } {
+  const t = card.timeframe.toLowerCase();
+  const c = card.catalyst.toLowerCase();
+  const lane = card.lane;
+
+  // World Cup catalyst (June 11 - July 19) — ~6 weeks away
+  const hasWCCatalyst = c.includes("world cup") || c.includes("wc 2026") || c.includes("june");
+
+  // Transfer catalyst
+  const hasTransferCatalyst = c.includes("transfer") || c.includes("buy-back") || c.includes("move");
+
+  // Retirement / last tournament
+  const hasRetirementCatalyst = c.includes("last") || c.includes("retirement") || c.includes("final");
+
+  // Breakout / pre-breakout
+  const hasBreakoutCatalyst = c.includes("breakout") || c.includes("pre-breakout") || c.includes("broke") || c.includes("record");
+
+  if (lane === "legacy" && hasRetirementCatalyst) {
+    return { multiplier: 2.0, label: "2x (retirement premium)", color: "#7c3aed" };
+  }
+
+  if (lane === "rookie" && hasBreakoutCatalyst && hasWCCatalyst) {
+    return { multiplier: 3.0, label: "3x (breakout + WC)", color: "#0d9f4f" };
+  }
+
+  if (lane === "rookie" && hasWCCatalyst) {
+    return { multiplier: 2.5, label: "2.5x (WC hype)", color: "#0d9f4f" };
+  }
+
+  if (lane === "rookie" && hasTransferCatalyst) {
+    return { multiplier: 3.0, label: "3x (transfer spike)", color: "#0d9f4f" };
+  }
+
+  if (lane === "rookie" && hasBreakoutCatalyst) {
+    return { multiplier: 2.0, label: "2x (pre-breakout)", color: "#0d9f4f" };
+  }
+
+  if (lane === "steal" && hasWCCatalyst) {
+    return { multiplier: 1.5, label: "1.5x (WC bounce)", color: "#c77d15" };
+  }
+
+  if (lane === "steal") {
+    return { multiplier: 1.3, label: "1.3x (dip recovery)", color: "#c77d15" };
+  }
+
+  if (lane === "legacy") {
+    return { multiplier: 1.5, label: "1.5x (legacy appreciation)", color: "#7c3aed" };
+  }
+
+  if (t.includes("long-term") || t.includes("12+")) {
+    return { multiplier: 2.0, label: "2x (long-term)", color: "#2563eb" };
+  }
+
+  return { multiplier: 1.2, label: "1.2x (hold)", color: "var(--text-muted)" };
 }
 
 function getTimeRemaining(endDate: string): { label: string; hours: number } {
@@ -88,10 +147,24 @@ function getValueScore(card: BuyCard): number {
   // SSP / case hit = rare
   if (t.includes("ssp") || t.includes("case hit")) score += 15;
 
+  // PREDICTIVE BONUS: higher multiplier = more upside = better value
+  const prediction = getPrediction(card);
+  if (prediction.multiplier >= 3) score += 30;
+  else if (prediction.multiplier >= 2) score += 20;
+  else if (prediction.multiplier >= 1.5) score += 10;
+
+  // ROI projection: if we know avg sold AND prediction, calculate potential return
+  if (card.avgSoldPrice && card.avgSoldPrice > 0) {
+    const projectedValue = card.avgSoldPrice * prediction.multiplier;
+    const potentialReturn = ((projectedValue - card.priceUSD) / card.priceUSD) * 100;
+    if (potentialReturn > 200) score += 25;
+    else if (potentialReturn > 100) score += 15;
+    else if (potentialReturn > 50) score += 8;
+  }
+
   // PENALTY: non-accredited/unlicensed brands
   if (t.includes("wild card") || t.includes("futera") || t.includes("custom")) score -= 100;
 
-  // PENALTY: non Topps/Panini products that sneak through
   const hasLicensedBrand = t.includes("topps") || t.includes("panini") || t.includes("bowman") ||
     t.includes("prizm") || t.includes("select") || t.includes("chrome") || t.includes("merlin") ||
     t.includes("obsidian") || t.includes("finest") || t.includes("museum") || t.includes("donruss") ||
@@ -186,6 +259,11 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
             : null;
 
           const valueScore = sortMode === "value" ? getValueScore(card) : null;
+          const prediction = getPrediction(card);
+          const projectedValue = card.avgSoldPrice
+            ? Math.round(card.avgSoldPrice * prediction.multiplier)
+            : Math.round(card.priceUSD * prediction.multiplier);
+          const potentialROI = Math.round(((projectedValue - card.priceUSD) / card.priceUSD) * 100);
 
           return (
             <a
@@ -249,9 +327,20 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                     Offer ~${suggestedOffer}
                   </div>
                 )}
-                {valueScore !== null && (
-                  <div className="mono" style={{ fontSize: "0.5rem", color: "var(--text-muted)", marginBottom: "0.15rem" }}>
-                    Value: {valueScore}
+                {/* Prediction */}
+                <div style={{ fontSize: "0.55rem", marginBottom: "0.15rem" }}>
+                  <span style={{ color: prediction.color, fontWeight: 600 }}>
+                    {prediction.label}
+                  </span>
+                  {potentialROI > 0 && (
+                    <span className="mono" style={{ color: "#0d9f4f", fontWeight: 700, marginLeft: "0.3rem" }}>
+                      +{potentialROI}% ROI
+                    </span>
+                  )}
+                </div>
+                {projectedValue > card.priceUSD && (
+                  <div className="mono" style={{ fontSize: "0.5rem", color: "var(--text-muted)" }}>
+                    Buy ${card.priceUSD < 100 ? card.priceUSD.toFixed(0) : card.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })} → Proj ${projectedValue < 100 ? projectedValue : projectedValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                   </div>
                 )}
                 <span style={{
