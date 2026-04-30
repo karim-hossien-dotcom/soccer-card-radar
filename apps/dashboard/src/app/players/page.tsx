@@ -1,4 +1,5 @@
 import { supabase } from "@soccer-card-radar/db";
+import { isQualityCard } from "../card-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -142,24 +143,8 @@ export default async function HomePage() {
   for (const p of playerNames) listingsByPlayer[p] = [];
   const usedIds = new Set<string>();
 
-  // Only keep numbered (/99 or less), SSP, case hits, 1/1
-  function isCollectible(title: string): boolean {
-    const t = title.toLowerCase();
-    // Numbered /99 or less
-    const numMatch = t.match(/\/(\d+)\b/);
-    if (numMatch && parseInt(numMatch[1]) <= 99) return true;
-    // SSP, case hit, 1/1
-    if (t.includes("ssp") || t.includes("case hit") || t.includes("1/1")) return true;
-    // Auto (autos are always collectible)
-    if (t.includes("auto") || t.includes("autograph") || t.includes("signature")) return true;
-    // Graded
-    if (t.includes("psa") || t.includes("bgs") || t.includes("sgc") || t.includes("cgc")) return true;
-    // Skip everything else (base, common refractors, /150+, etc.)
-    return false;
-  }
-
   for (const l of listings ?? []) {
-    if (!isCollectible(l.title)) continue;
+    if (!isQualityCard(l.title)) continue;
     const player = findPlayer(l.title);
     if (player && !usedIds.has(l.id)) {
       listingsByPlayer[player]!.push(l);

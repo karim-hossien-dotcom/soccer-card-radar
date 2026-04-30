@@ -1,5 +1,6 @@
 import { supabase } from "@soccer-card-radar/db";
 import { getPlayerSignal, signalStyles } from "../player-signals";
+import { isQualityCard } from "../card-filter";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ export default async function AutosPage() {
   const day = 24 * 60 * 60 * 1000;
 
   const cards = (listings ?? []).map((l) => {
+    if (!isQualityCard(l.title)) return null;
     const autoType = detectAutoType(l.title);
     if (!autoType) return null;
 
