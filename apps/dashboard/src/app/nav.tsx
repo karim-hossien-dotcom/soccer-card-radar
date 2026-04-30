@@ -6,6 +6,7 @@ const links = [
   { href: "/", label: "Rookies", icon: "&#9889;" },
   { href: "/parallels", label: "Parallels", icon: "&#9670;" },
   { href: "/autos", label: "Autos", icon: "&#9997;" },
+  { href: "/research", label: "Research", icon: "&#128200;" },
 ];
 
 export default function Nav() {

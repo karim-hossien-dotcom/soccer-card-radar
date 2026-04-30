@@ -64,6 +64,14 @@ export default async function AutosPage() {
       const autoType = detectAutoType(l.title);
       if (!autoType) return null;
 
+      // Only show numbered autos (/99 or less), graded, SSP, or case hits
+      const tLower = l.title.toLowerCase();
+      const numMatch = tLower.match(/\/(\d+)\b/);
+      const isNumbered = numMatch && parseInt(numMatch[1]) <= 99;
+      const isGraded = tLower.includes("psa") || tLower.includes("bgs") || tLower.includes("sgc") || tLower.includes("cgc");
+      const isSSP = tLower.includes("ssp") || tLower.includes("case hit") || tLower.includes("1/1");
+      if (!isNumbered && !isGraded && !isSSP) return null;
+
       const raw = l.rawData as Record<string, unknown> | null;
       const isBIN = raw?.isBIN === true;
       const acceptsOffers = raw?.acceptsOffers === true;

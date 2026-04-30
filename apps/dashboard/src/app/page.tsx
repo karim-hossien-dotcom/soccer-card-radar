@@ -142,7 +142,24 @@ export default async function HomePage() {
   for (const p of playerNames) listingsByPlayer[p] = [];
   const usedIds = new Set<string>();
 
+  // Only keep numbered (/99 or less), SSP, case hits, 1/1
+  function isCollectible(title: string): boolean {
+    const t = title.toLowerCase();
+    // Numbered /99 or less
+    const numMatch = t.match(/\/(\d+)\b/);
+    if (numMatch && parseInt(numMatch[1]) <= 99) return true;
+    // SSP, case hit, 1/1
+    if (t.includes("ssp") || t.includes("case hit") || t.includes("1/1")) return true;
+    // Auto (autos are always collectible)
+    if (t.includes("auto") || t.includes("autograph") || t.includes("signature")) return true;
+    // Graded gems
+    if (t.includes("psa 10") || t.includes("bgs 10") || t.includes("sgc 10") || t.includes("cgc 10")) return true;
+    // Skip everything else (base, common refractors, /150+, etc.)
+    return false;
+  }
+
   for (const l of listings ?? []) {
+    if (!isCollectible(l.title)) continue;
     const player = findPlayer(l.title);
     if (player && !usedIds.has(l.id)) {
       listingsByPlayer[player]!.push(l);
@@ -158,7 +175,6 @@ export default async function HomePage() {
     if (t.match(/\/[0-9]{1,2}\b/)) score += 80;
     if (t.match(/\/[0-9]{2,3}\b/)) score += 40;
     if (t.includes("psa 10") || t.includes("bgs 10")) score += 60;
-    if (t.includes("rc") || t.includes("rookie")) score += 30;
     if (t.includes("ssp") || t.includes("case hit")) score += 50;
     score += Math.max(0, 50 - price / 10);
     return score;
