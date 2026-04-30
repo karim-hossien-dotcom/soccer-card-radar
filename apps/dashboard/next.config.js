@@ -1,13 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  transpilePackages: [
-    "@soccer-card-radar/shared",
-    "@soccer-card-radar/db",
-    "@soccer-card-radar/ebay",
-    "@soccer-card-radar/extractor",
-    "@soccer-card-radar/matcher",
-    "@soccer-card-radar/mercari-us",
-  ],
+  transpilePackages: ["@soccer-card-radar/shared", "@soccer-card-radar/db"],
 };
 
 module.exports = nextConfig;
