@@ -383,9 +383,11 @@ export default async function HomePage() {
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                 {[
                   { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212`, color: "#e53238" },
+                  { label: "eBay Sold", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#a31631" },
+                  { label: "COMC", url: `https://www.comc.com/Players/Soccer/${encodeURIComponent(name.replace(/ /g, "_"))}`, color: "#c77d15" },
+                  { label: "Card Hobby", url: `https://www.cardhobby.com/search?q=${encodeURIComponent(name)}`, color: "#0d9f4f" },
                   { label: "FB Marketplace", url: `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(name + " soccer card")}`, color: "#1877f2" },
                   { label: "Mercari", url: `https://www.mercari.com/search/?keyword=${encodeURIComponent(name + " card")}`, color: "#ef4444" },
-                  { label: "COMC", url: `https://www.comc.com/Players/Soccer/${encodeURIComponent(name.replace(/ /g, "_"))}`, color: "#c77d15" },
                   { label: "SCI Prices", url: `https://www.sportscardinvestor.com/subjects/${encodeURIComponent(name.toLowerCase().replace(/ /g, "-"))}-soccer`, color: "#2563eb" },
                 ].map((link) => (
                   <a key={link.label} href={link.url} target="_blank" rel="noopener" style={{
