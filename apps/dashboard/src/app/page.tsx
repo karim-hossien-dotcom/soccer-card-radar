@@ -218,13 +218,8 @@ export default async function ResearchPage() {
                 {/* Marketplace links */}
                 <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.5rem" }}>
                   {[
-                    { label: "eBay US", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto card")}&_sacat=212`, color: "#e53238" },
-                    { label: "eBay UK", url: `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto card")}&_sacat=212`, color: "#a31631" },
-                    { label: "Cardmarket", url: `https://www.cardmarket.com/en/OtherTCG/Products/Search?searchString=${encodeURIComponent(pick.player)}`, color: "#0a4d8c" },
-                    { label: "COMC", url: `https://www.comc.com/Players/Soccer/${encodeURIComponent(pick.player.replace(/ /g, "_"))}`, color: "#c77d15" },
-                    { label: "MySlabs", url: `https://myslabs.com/search?q=${encodeURIComponent(pick.player + " soccer")}`, color: "#7c3aed" },
-                    { label: "FB Mkt", url: `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(pick.player + " soccer card")}`, color: "#1877f2" },
-                    { label: "Whatnot", url: `https://www.whatnot.com/search?q=${encodeURIComponent(pick.player + " card")}`, color: "#00c2a8" },
+                    { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto /50 OR /25 OR /10 -base -lot -leaf")}&_sacat=212`, color: "#e53238" },
+                    { label: "Sold Comps", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto /50 OR /25 OR /10")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#8b0000" },
                   ].map((link) => (
                     <a key={link.label} href={link.url} target="_blank" rel="noopener" style={{
                       fontSize: "0.5rem", padding: "2px 5px", borderRadius: "3px",

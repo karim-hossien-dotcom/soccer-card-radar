@@ -152,8 +152,8 @@ export default async function HomePage() {
     if (t.includes("ssp") || t.includes("case hit") || t.includes("1/1")) return true;
     // Auto (autos are always collectible)
     if (t.includes("auto") || t.includes("autograph") || t.includes("signature")) return true;
-    // Graded gems
-    if (t.includes("psa 10") || t.includes("bgs 10") || t.includes("sgc 10") || t.includes("cgc 10")) return true;
+    // Graded
+    if (t.includes("psa") || t.includes("bgs") || t.includes("sgc") || t.includes("cgc")) return true;
     // Skip everything else (base, common refractors, /150+, etc.)
     return false;
   }
@@ -382,15 +382,10 @@ export default async function HomePage() {
               {/* Marketplace links */}
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                 {[
-                  { label: "eBay US", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212`, color: "#e53238" },
-                  { label: "eBay UK", url: `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212`, color: "#a31631" },
-                  { label: "eBay Sold", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#8b0000" },
+                  { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " auto /50 OR /25 OR /10 -base -lot -leaf")}&_sacat=212`, color: "#e53238" },
+                  { label: "Sold Comps", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " auto /50 OR /25 OR /10")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#8b0000" },
                   { label: "Cardmarket", url: `https://www.cardmarket.com/en/OtherTCG/Products/Search?searchString=${encodeURIComponent(name)}`, color: "#0a4d8c" },
-                  { label: "COMC", url: `https://www.comc.com/Players/Soccer/${encodeURIComponent(name.replace(/ /g, "_"))}`, color: "#c77d15" },
-                  { label: "MySlabs", url: `https://myslabs.com/search?q=${encodeURIComponent(name + " soccer")}`, color: "#7c3aed" },
-                  { label: "Whatnot", url: `https://www.whatnot.com/search?q=${encodeURIComponent(name + " card")}`, color: "#00c2a8" },
-                  { label: "FB Mkt", url: `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(name + " soccer card")}`, color: "#1877f2" },
-                  { label: "SCI Prices", url: `https://www.sportscardinvestor.com/subjects/${encodeURIComponent(name.toLowerCase().replace(/ /g, "-"))}-soccer`, color: "#2563eb" },
+                  { label: "Price Guide", url: `https://www.sportscardinvestor.com/subjects/${encodeURIComponent(name.toLowerCase().replace(/ /g, "-"))}-soccer`, color: "#2563eb" },
                 ].map((link) => (
                   <a key={link.label} href={link.url} target="_blank" rel="noopener" style={{
                     fontSize: "0.6rem", padding: "3px 8px", borderRadius: "4px",
