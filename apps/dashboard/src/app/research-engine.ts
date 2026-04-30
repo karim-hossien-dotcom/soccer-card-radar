@@ -282,6 +282,25 @@ export function getResearchActions(): ResearchAction[] {
         "https://img.a.transfermarkt.technology/portrait/header/568177-1727938734.jpg",
     },
 
+    {
+      id: "mateus-mane",
+      player: "Mateus Mane",
+      signal: "BUY",
+      lane: "rookie",
+      searchQueries: [
+        "Mateus Mane auto Topps Chrome Premier League",
+        "Mateus Mane refractor /50 rookie",
+        "Mateus Mane auto /25 Chrome",
+      ],
+      soldData: null,
+      stats: null,
+      reasoning:
+        "18yo getting PL minutes at Wolves. 2G 1A. Cards will be ultra cheap — speculative play with high ceiling if he breaks out. Same profile as Kroupi.",
+      catalyst: "Continued PL starts. Summer transfer to bigger club = instant spike.",
+      timeframe: "Long-term hold (12+ months)",
+      photo: "",
+    },
+
     // ─── Lane 2: Current Steals ────────────────────────────────────────────
 
     {
