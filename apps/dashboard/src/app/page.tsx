@@ -218,8 +218,7 @@ export default async function ResearchPage() {
                 {/* Marketplace links */}
                 <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.5rem" }}>
                   {[
-                    { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto /50 OR /25 OR /10 -base -lot -leaf")}&_sacat=212`, color: "#e53238" },
-                    { label: "Sold Comps", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto /50 OR /25 OR /10")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#8b0000" },
+                    { label: "Search eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto /50 OR /25 OR /10 -base -lot -leaf")}&_sacat=212`, color: "#e53238" },
                   ].map((link) => (
                     <a key={link.label} href={link.url} target="_blank" rel="noopener" style={{
                       fontSize: "0.5rem", padding: "2px 5px", borderRadius: "3px",
