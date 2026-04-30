@@ -2,6 +2,9 @@ import {
   WorldCupCycleChart, AgeValueCurve, RookieRadar,
   MarketCycleChart, PlayerDirectionChart,
 } from "./research/charts";
+import ScanButton from "./scan-button";
+import { supabase } from "@soccer-card-radar/db";
+import { getPlayerSignal, signalStyles } from "./player-signals";
 
 export const dynamic = "force-dynamic";
 
@@ -107,7 +110,7 @@ const upcomingReleases = [
   { date: "July 19", product: "World Cup 2026 Final", impact: "Peak hype moment. Golden Ball winner cards explode. Sell window closes.", hot: true },
 ];
 
-export default function ResearchPage() {
+export default async function ResearchPage() {
   const actionStyles: Record<string, { color: string; bg: string }> = {
     "BUY NOW": { color: "#fff", bg: "#0d9f4f" },
     SELL: { color: "#fff", bg: "#dc2626" },
@@ -121,16 +124,120 @@ export default function ResearchPage() {
     medium: "var(--border)",
   };
 
+  // Fetch real cards for top picks
+  const { data: topPickListings } = await supabase
+    .from("Listing")
+    .select("id, title, priceUSD, url, imageUrl, rawData")
+    .order("priceUSD", { ascending: true })
+    .limit(500);
+
+  // Find best cards for urgent buy players
+  const urgentPlayers = ["Santiago Castro", "Geovany Quenda", "Lennart Karl", "Ethan Nwaneri", "Nico Paz", "Kobbie Mainoo"];
+  const topPicks: { player: string; signal: ReturnType<typeof getPlayerSignal>; cards: typeof topPickListings }[] = [];
+
+  for (const name of urgentPlayers) {
+    const sig = getPlayerSignal(name + " auto");
+    if (!sig) continue;
+
+    const playerCards = (topPickListings ?? []).filter((l) => {
+      const t = l.title.toLowerCase();
+      const last = name.split(" ").pop()!.toLowerCase();
+      return last.length >= 4 && t.includes(last);
+    }).slice(0, 3);
+
+    if (playerCards.length > 0) {
+      topPicks.push({ player: name, signal: sig, cards: playerCards });
+    }
+  }
+
   return (
     <main style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 1.5rem 3rem", position: "relative", zIndex: 1 }}>
 
       {/* Header */}
-      <div style={{ marginBottom: "1.5rem" }}>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }}>Weekly Research Agent</h2>
-        <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
-          Market intelligence compiled from SportsCardInvestor, Yahoo Sports, Beckett, eBay community &middot; Updated Apr 30, 2026
-        </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "1.5rem" }}>
+        <div>
+          <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }}>Weekly Research Agent</h2>
+          <p style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>
+            Market intelligence compiled from SportsCardInvestor, Yahoo Sports, Beckett, eBay community &middot; Updated Apr 30, 2026
+          </p>
+        </div>
+        <ScanButton />
       </div>
+
+      {/* TOP PICKS — Real cards you can buy right now */}
+      {topPicks.length > 0 && (
+        <div style={{
+          background: "var(--bg-card)", border: "2px solid #0d9f4f30", borderRadius: "12px",
+          padding: "1.25rem", marginBottom: "1.5rem", boxShadow: "var(--shadow-md)",
+        }}>
+          <h3 style={{ fontSize: "0.9rem", fontWeight: 700, marginBottom: "0.75rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ color: "#0d9f4f" }}>&#9733;</span> Top Picks Right Now — Cards You Can Buy
+          </h3>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "0.75rem" }}>
+            {topPicks.map((pick) => (
+              <div key={pick.player} style={{ padding: "0.75rem", borderRadius: "8px", background: "var(--bg-surface)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                  {pick.signal && <img src={pick.signal.photo} alt="" style={{ width: "28px", height: "28px", borderRadius: "50%", objectFit: "cover" }} />}
+                  <span style={{ fontWeight: 700, fontSize: "0.85rem" }}>{pick.player}</span>
+                  <span style={{ fontSize: "0.55rem", fontWeight: 700, padding: "1px 6px", borderRadius: "3px", background: "#0d9f4f", color: "#fff" }}>BUY</span>
+                  {pick.signal?.priceTarget && (
+                    <span className="mono" style={{ fontSize: "0.55rem", color: "var(--text-muted)" }}>
+                      Target: ${pick.signal.priceTarget.mid}-${pick.signal.priceTarget.ceiling}
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: "0.65rem", color: "var(--text-secondary)", marginBottom: "0.5rem", fontStyle: "italic" }}>
+                  {pick.signal?.catalyst}
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.3rem" }}>
+                  {pick.cards!.map((card) => {
+                    const raw = card.rawData as Record<string, unknown> | null;
+                    const isBIN = raw?.isBIN === true;
+                    const acceptsOffers = raw?.acceptsOffers === true;
+                    const label = isBIN && acceptsOffers ? "OFFER" : isBIN ? "BUY" : "BID";
+                    const labelColor = acceptsOffers ? "#c77d15" : isBIN ? "#0d9f4f" : "#dc2626";
+
+                    return (
+                      <a key={card.id} href={card.url} target="_blank" rel="noopener" style={{
+                        display: "flex", gap: "0.5rem", alignItems: "center", padding: "0.35rem 0.5rem",
+                        background: "var(--bg-card)", borderRadius: "6px", border: "1px solid var(--border)",
+                        textDecoration: "none", color: "inherit",
+                      }}>
+                        {card.imageUrl && <img src={card.imageUrl} alt="" style={{ width: "32px", height: "40px", objectFit: "contain", borderRadius: "3px" }} />}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: "0.6rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{card.title}</div>
+                        </div>
+                        <div style={{ textAlign: "right", flexShrink: 0 }}>
+                          <div className="mono" style={{ fontSize: "0.75rem", fontWeight: 700 }}>${card.priceUSD.toFixed(2)}</div>
+                          <span style={{ fontSize: "0.45rem", fontWeight: 700, padding: "1px 4px", borderRadius: "3px", background: `${labelColor}15`, color: labelColor }}>{label}</span>
+                        </div>
+                      </a>
+                    );
+                  })}
+                </div>
+                {/* Marketplace links */}
+                <div style={{ display: "flex", gap: "0.3rem", marginTop: "0.5rem" }}>
+                  {[
+                    { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(pick.player + " auto card")}&_sacat=212`, color: "#e53238" },
+                    { label: "COMC", url: `https://www.comc.com/Players/Soccer/${encodeURIComponent(pick.player.replace(/ /g, "_"))}`, color: "#c77d15" },
+                    { label: "Card Hobby", url: `https://www.cardhobby.com/search?q=${encodeURIComponent(pick.player)}`, color: "#0d9f4f" },
+                    { label: "FB Mkt", url: `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(pick.player + " card")}`, color: "#1877f2" },
+                    { label: "Mercari", url: `https://www.mercari.com/search/?keyword=${encodeURIComponent(pick.player + " card")}`, color: "#ef4444" },
+                  ].map((link) => (
+                    <a key={link.label} href={link.url} target="_blank" rel="noopener" style={{
+                      fontSize: "0.5rem", padding: "2px 5px", borderRadius: "3px",
+                      background: "var(--bg-card)", color: link.color, fontWeight: 600,
+                      border: "1px solid var(--border)", textDecoration: "none",
+                    }}>
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* THIS WEEK'S ACTIONS */}
       <div style={{
@@ -243,17 +350,7 @@ export default function ResearchPage() {
           </div>
 
           <div style={{ marginTop: "0.75rem" }}>
-            <a
-              href="/api/scan"
-              target="_blank"
-              style={{
-                display: "block", textAlign: "center", fontSize: "0.75rem",
-                fontWeight: 600, padding: "8px", borderRadius: "6px",
-                background: "var(--accent)", color: "#fff", textDecoration: "none",
-              }}
-            >
-              Run Full Scan Now
-            </a>
+            <ScanButton />
           </div>
         </div>
       </div>
