@@ -1,4 +1,5 @@
 import { getResearchActions, signalStyles } from "../research-engine";
+import { PlayerAvatar } from "../player-avatar";
 import { isQualityCard } from "../card-filter";
 import { supabase } from "@soccer-card-radar/db";
 
@@ -217,7 +218,7 @@ export default async function BuyPage() {
                   <div style={{ minWidth: 0 }}>
                     {action && (
                       <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.25rem" }}>
-                        <img src={action.photo} alt="" style={{ width: "22px", height: "22px", borderRadius: "50%", objectFit: "cover" }} />
+                        <PlayerAvatar name={action.player} size={22} />
                         <span style={{ fontWeight: 700, fontSize: "0.8rem" }}>{action.player}</span>
                       </div>
                     )}

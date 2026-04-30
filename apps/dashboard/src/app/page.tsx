@@ -1,4 +1,5 @@
 import { getResearchActions, signalStyles } from "./research-engine";
+import { PlayerAvatar } from "./player-avatar";
 import ScanButton from "./scan-button";
 import {
   WorldCupCycleChart,
@@ -113,14 +114,8 @@ export default async function ResearchPage() {
                     animation: "fadeInUp 0.3s ease-out both",
                   }}
                 >
-                  {/* Photo */}
-                  <img
-                    src={action.photo}
-                    alt={action.player}
-                    width={40}
-                    height={40}
-                    style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-                  />
+                  {/* Avatar */}
+                  <PlayerAvatar name={action.player} size={40} />
 
                   {/* Middle: name, reasoning, catalyst */}
                   <div style={{ minWidth: 0 }}>

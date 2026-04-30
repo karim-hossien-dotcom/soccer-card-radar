@@ -1,4 +1,5 @@
 import { getResearchActions, signalStyles } from "../research-engine";
+import { PlayerAvatar } from "../player-avatar";
 import { supabase } from "@soccer-card-radar/db";
 
 export const dynamic = "force-dynamic";
@@ -71,13 +72,7 @@ export default async function SellPage() {
           >
             {/* Player header */}
             <div style={{ display: "flex", alignItems: "flex-start", gap: "0.75rem", marginBottom: "0.75rem" }}>
-              <img
-                src={action.photo}
-                alt={action.player}
-                width={48}
-                height={48}
-                style={{ borderRadius: "50%", objectFit: "cover", flexShrink: 0 }}
-              />
+              <PlayerAvatar name={action.player} size={48} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.3rem", flexWrap: "wrap" }}>
                   <span style={{ fontWeight: 700, fontSize: "0.95rem" }}>{action.player}</span>
