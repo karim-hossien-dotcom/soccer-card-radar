@@ -59,6 +59,10 @@ export default async function ParallelsPage() {
       const detected = detectParallelTier(l.title);
       if (!detected) return null;
 
+      // Exclude autos — those belong on the /autos page
+      const tLower = l.title.toLowerCase();
+      if (tLower.includes("auto") || tLower.includes("autograph") || tLower.includes("signature")) return null;
+
       const raw = l.rawData as Record<string, unknown> | null;
       const isBIN = raw?.isBIN === true;
       const acceptsOffers = raw?.acceptsOffers === true;
