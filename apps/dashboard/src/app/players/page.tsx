@@ -382,12 +382,14 @@ export default async function HomePage() {
               {/* Marketplace links */}
               <div style={{ display: "flex", gap: "0.4rem", flexWrap: "wrap" }}>
                 {[
-                  { label: "eBay", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212`, color: "#e53238" },
-                  { label: "eBay Sold", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#a31631" },
+                  { label: "eBay US", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212`, color: "#e53238" },
+                  { label: "eBay UK", url: `https://www.ebay.co.uk/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212`, color: "#a31631" },
+                  { label: "eBay Sold", url: `https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(name + " card auto")}&_sacat=212&LH_Complete=1&LH_Sold=1`, color: "#8b0000" },
+                  { label: "Cardmarket", url: `https://www.cardmarket.com/en/OtherTCG/Products/Search?searchString=${encodeURIComponent(name)}`, color: "#0a4d8c" },
                   { label: "COMC", url: `https://www.comc.com/Players/Soccer/${encodeURIComponent(name.replace(/ /g, "_"))}`, color: "#c77d15" },
-                  { label: "Card Hobby", url: `https://www.cardhobby.com/search?q=${encodeURIComponent(name)}`, color: "#0d9f4f" },
-                  { label: "FB Marketplace", url: `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(name + " soccer card")}`, color: "#1877f2" },
-                  { label: "Mercari", url: `https://www.mercari.com/search/?keyword=${encodeURIComponent(name + " card")}`, color: "#ef4444" },
+                  { label: "MySlabs", url: `https://myslabs.com/search?q=${encodeURIComponent(name + " soccer")}`, color: "#7c3aed" },
+                  { label: "Whatnot", url: `https://www.whatnot.com/search?q=${encodeURIComponent(name + " card")}`, color: "#00c2a8" },
+                  { label: "FB Mkt", url: `https://www.facebook.com/marketplace/search/?query=${encodeURIComponent(name + " soccer card")}`, color: "#1877f2" },
                   { label: "SCI Prices", url: `https://www.sportscardinvestor.com/subjects/${encodeURIComponent(name.toLowerCase().replace(/ /g, "-"))}-soccer`, color: "#2563eb" },
                 ].map((link) => (
                   <a key={link.label} href={link.url} target="_blank" rel="noopener" style={{
