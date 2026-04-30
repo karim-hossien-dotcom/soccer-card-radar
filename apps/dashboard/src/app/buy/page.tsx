@@ -52,12 +52,11 @@ export default async function BuyPage() {
       .map((a) => [a.id, a])
   );
 
-  // Fetch all listings that are associated with buyable actions
+  // Fetch all listings — filter by actionId client-side since some may be null
+  const buyableIds = Array.from(buyableActions.keys());
   const { data: rawListings } = await supabase
     .from("Listing")
     .select("id, title, priceUSD, url, imageUrl, rawData, actionId, avgSoldPrice, pctBelowMarket, lane")
-    .in("actionId", Array.from(buyableActions.keys()))
-    .is("soldAt", null)
     .order("priceUSD", { ascending: true })
     .limit(500);
 
@@ -69,6 +68,8 @@ export default async function BuyPage() {
   const filtered = (rawListings ?? []).filter((listing) => {
     if (!isQualityCard(listing.title)) return false;
     if (listing.actionId && sellActionIds.has(listing.actionId)) return false;
+    // Must be associated with a buyable action
+    if (!listing.actionId || !buyableIds.includes(listing.actionId)) return false;
     return true;
   });
 
@@ -192,14 +193,6 @@ export default async function BuyPage() {
                     color: "inherit",
                     boxShadow: "var(--shadow-sm)",
                     transition: "box-shadow 0.15s ease, transform 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-hover)";
-                    (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.boxShadow = "var(--shadow-sm)";
-                    (e.currentTarget as HTMLElement).style.transform = "none";
                   }}
                 >
                   {/* Left: signal badge */}
