@@ -1,6 +1,8 @@
 import { getResearchActions, signalStyles } from "./research-engine";
 import { PlayerAvatar } from "./player-avatar";
 import ScanButton from "./scan-button";
+// SoldButton removed — web search sold data too unreliable
+// Real comps via "Sold?" link on each card in Buy tab
 import {
   WorldCupCycleChart,
   MarketCycleChart,

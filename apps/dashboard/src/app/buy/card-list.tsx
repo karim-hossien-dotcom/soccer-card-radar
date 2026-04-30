@@ -242,12 +242,19 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
             actionBg = "#c77d15";
           }
 
-          // Offer suggestion: 70-80% of asking depending on price tier
+          // Offer suggestion: use real sold avg when available, else % of asking
           let suggestedOffer: number | null = null;
           if (card.isBIN && card.acceptsOffers) {
-            if (card.priceUSD < 50) suggestedOffer = Math.round(card.priceUSD * 0.70);
-            else if (card.priceUSD < 200) suggestedOffer = Math.round(card.priceUSD * 0.75);
-            else suggestedOffer = Math.round(card.priceUSD * 0.80);
+            if (card.avgSoldPrice && card.avgSoldPrice > 0) {
+              // Offer 85% of what cards actually sell for
+              suggestedOffer = Math.round(card.avgSoldPrice * 0.85);
+            } else if (card.priceUSD < 50) {
+              suggestedOffer = Math.round(card.priceUSD * 0.70);
+            } else if (card.priceUSD < 200) {
+              suggestedOffer = Math.round(card.priceUSD * 0.75);
+            } else {
+              suggestedOffer = Math.round(card.priceUSD * 0.80);
+            }
           }
 
           const valueScore = sortMode === "value" ? getValueScore(card) : null;
@@ -302,11 +309,28 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                 </div>
               </div>
 
-              {/* Right: price + offer + action */}
-              <div style={{ textAlign: "right", flexShrink: 0, minWidth: "110px" }}>
+              {/* Right: price + sold comp + offer + action */}
+              <div style={{ textAlign: "right", flexShrink: 0, minWidth: "120px" }}>
                 <div className="mono" style={{ fontSize: "0.95rem", fontWeight: 800, marginBottom: "0.15rem" }}>
                   ${card.priceUSD < 1000 ? card.priceUSD.toFixed(2) : card.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                 </div>
+                {/* Real sold comp from eBay Playwright scrape */}
+                {card.avgSoldPrice && card.avgSoldPrice > 0 && (
+                  <div className="mono" style={{ fontSize: "0.55rem", marginBottom: "0.1rem" }}>
+                    <span style={{ color: "var(--text-muted)" }}>Sold avg </span>
+                    <span style={{ fontWeight: 700 }}>${card.avgSoldPrice < 1000 ? card.avgSoldPrice.toFixed(0) : card.avgSoldPrice.toLocaleString("en-US", { maximumFractionDigits: 0 })}</span>
+                    {card.pctBelowMarket !== null && card.pctBelowMarket > 0 && (
+                      <span style={{ color: "#0d9f4f", fontWeight: 700, marginLeft: "0.25rem" }}>
+                        {card.pctBelowMarket}% below
+                      </span>
+                    )}
+                    {card.pctBelowMarket !== null && card.pctBelowMarket < 0 && (
+                      <span style={{ color: "#dc2626", fontWeight: 700, marginLeft: "0.25rem" }}>
+                        {Math.abs(card.pctBelowMarket)}% above
+                      </span>
+                    )}
+                  </div>
+                )}
                 {suggestedOffer && (
                   <div style={{ fontSize: "0.6rem", color: "#c77d15", fontWeight: 700, marginBottom: "0.15rem" }}>
                     Offer ~${suggestedOffer}
@@ -328,12 +352,28 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                     Buy ${card.priceUSD < 100 ? card.priceUSD.toFixed(0) : card.priceUSD.toLocaleString("en-US", { maximumFractionDigits: 0 })} → Proj ${projectedValue < 100 ? projectedValue : projectedValue.toLocaleString("en-US", { maximumFractionDigits: 0 })}
                   </div>
                 )}
-                <span style={{
-                  fontSize: "0.55rem", fontWeight: 700, padding: "3px 8px",
-                  borderRadius: "4px", background: actionBg, color: "#fff",
-                }}>
-                  {actionLabel}
-                </span>
+                <div style={{ display: "flex", gap: "0.3rem", alignItems: "center", justifyContent: "flex-end" }}>
+                  <span style={{
+                    fontSize: "0.55rem", fontWeight: 700, padding: "3px 8px",
+                    borderRadius: "4px", background: actionBg, color: "#fff",
+                  }}>
+                    {actionLabel}
+                  </span>
+                  <a
+                    href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(card.playerName + " " + (card.title.match(/\/\d+/) ? card.title.match(/\/\d+/)?.[0] : "auto"))}&_sacat=212&LH_Sold=1&LH_Complete=1`}
+                    target="_blank"
+                    rel="noopener"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      fontSize: "0.5rem", fontWeight: 600, padding: "3px 6px",
+                      borderRadius: "4px", background: "var(--bg-surface)",
+                      color: "var(--text-muted)", border: "1px solid var(--border)",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Sold?
+                  </a>
+                </div>
               </div>
             </a>
           );
