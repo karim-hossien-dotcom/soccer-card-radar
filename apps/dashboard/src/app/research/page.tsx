@@ -1,3 +1,8 @@
+import {
+  WorldCupCycleChart, AgeValueCurve, RookieRadar,
+  MarketCycleChart, PlayerDirectionChart,
+} from "./charts";
+
 export const dynamic = "force-dynamic";
 
 // Research compiled from: Yahoo Sports, SportsCardInvestor, Beckett,
@@ -251,6 +256,29 @@ export default function ResearchPage() {
             </a>
           </div>
         </div>
+      </div>
+
+      {/* VISUAL ANALYTICS — Charts */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "12px", padding: "1.25rem", boxShadow: "var(--shadow-sm)" }}>
+          <WorldCupCycleChart />
+        </div>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "12px", padding: "1.25rem", boxShadow: "var(--shadow-sm)" }}>
+          <MarketCycleChart />
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem", marginBottom: "1.5rem" }}>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "12px", padding: "1.25rem", boxShadow: "var(--shadow-sm)" }}>
+          <AgeValueCurve />
+        </div>
+        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "12px", padding: "1.25rem", boxShadow: "var(--shadow-sm)" }}>
+          <RookieRadar />
+        </div>
+      </div>
+
+      <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: "12px", padding: "1.25rem", marginBottom: "1.5rem", boxShadow: "var(--shadow-sm)" }}>
+        <PlayerDirectionChart />
       </div>
 
       {/* HISTORICAL MARKET DATA — 10-20 year perspective */}
