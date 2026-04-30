@@ -53,6 +53,12 @@ export function isQualityCard(title: string): boolean {
   if (t.includes("digital") || t.includes("topps bunt")) return false;
   if (t.includes("sticker auto")) return false;
 
+  // Non-accredited / unlicensed products
+  if (t.includes("wild card") || t.includes("futera") || t.includes("cards alive")) return false;
+  if (t.includes("custom") || t.includes("reprint") || t.includes("novelty")) return false;
+  if (t.includes("not a real card") || t.includes("unofficial")) return false;
+  if (t.includes("acb") && !t.includes("topps") && !t.includes("panini")) return false;
+
   // === MUST HAVE at least one value marker ===
 
   // Numbered /99 or less — strict /XX pattern at word boundary

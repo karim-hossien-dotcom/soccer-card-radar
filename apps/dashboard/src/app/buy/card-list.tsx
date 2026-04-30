@@ -37,42 +37,75 @@ function getTimeRemaining(endDate: string): { label: string; hours: number } {
   return { label: h > 0 ? `${h}h ${m}m` : `${m}m`, hours };
 }
 
+// Price ceiling by player signal — a $19K card for a rookie is NOT a good value
+const priceCeilings: Record<string, number> = {
+  // Rookies: max $500 unless proven
+  "Lennart Karl": 500, "Santiago Castro": 100, "Geovany Quenda": 100,
+  "Ethan Nwaneri": 300, "Nico Paz": 500, "Shea Lacey": 200,
+  "Senny Mayulu": 200, "Eli Junior Kroupi": 100, "Claudio Echeverri": 100,
+  "Mateus Mane": 50, "Cole Palmer": 500,
+  // Steals: mid-range
+  "Kobbie Mainoo": 500, "Erling Haaland": 500, "Mohamed Salah": 1500,
+  // Legacy: higher ceiling
+  "Cristiano Ronaldo": 5000, "Lionel Messi": 5000,
+  // Hold: don't chase
+  "Lamine Yamal": 2000, "Kylian Mbappe": 500,
+};
+
 function getValueScore(card: BuyCard): number {
-  let score = 0;
   const t = card.title.toLowerCase();
 
-  // Lower price = better value
-  if (card.priceUSD < 25) score += 50;
-  else if (card.priceUSD < 50) score += 35;
-  else if (card.priceUSD < 100) score += 20;
-  else if (card.priceUSD < 200) score += 10;
+  // HARD PENALTY: over price ceiling for this player = terrible value
+  const ceiling = priceCeilings[card.playerName] ?? 500;
+  if (card.priceUSD > ceiling) return -100;
+
+  let score = 0;
+
+  // Price relative to ceiling — closer to floor = better value
+  const pricePct = card.priceUSD / ceiling;
+  if (pricePct < 0.1) score += 60;       // under 10% of ceiling = incredible
+  else if (pricePct < 0.25) score += 45;  // under 25% = great
+  else if (pricePct < 0.5) score += 30;   // under 50% = good
+  else if (pricePct < 0.75) score += 15;  // under 75% = fair
+  // above 75% = no price bonus
 
   // Auto = higher value
-  if (t.includes("auto")) score += 30;
+  if (t.includes("auto")) score += 25;
 
   // Lower numbered = rarer = better
   const numMatch = t.match(/\/(\d{1,2})\b/);
   if (numMatch) {
     const num = parseInt(numMatch[1]);
-    if (num <= 5) score += 40;
-    else if (num <= 10) score += 30;
-    else if (num <= 25) score += 20;
-    else if (num <= 50) score += 10;
+    if (num <= 5) score += 35;
+    else if (num <= 10) score += 25;
+    else if (num <= 25) score += 15;
+    else if (num <= 50) score += 8;
   }
 
   // Graded PSA 10 = premium
-  if (t.includes("psa 10")) score += 25;
+  if (t.includes("psa 10")) score += 20;
+  else if (t.includes("psa 9")) score += 10;
 
   // Below market = deal
   if (card.pctBelowMarket && card.pctBelowMarket > 0) {
-    score += card.pctBelowMarket;
+    score += Math.min(card.pctBelowMarket, 30); // cap at 30 bonus
   }
 
-  // Accepts offers = opportunity to negotiate
-  if (card.acceptsOffers) score += 10;
+  // Accepts offers = opportunity to negotiate lower
+  if (card.acceptsOffers) score += 8;
 
   // SSP / case hit = rare
-  if (t.includes("ssp") || t.includes("case hit")) score += 20;
+  if (t.includes("ssp") || t.includes("case hit")) score += 15;
+
+  // PENALTY: non-accredited/unlicensed brands
+  if (t.includes("wild card") || t.includes("futera") || t.includes("custom")) score -= 100;
+
+  // PENALTY: non Topps/Panini products that sneak through
+  const hasLicensedBrand = t.includes("topps") || t.includes("panini") || t.includes("bowman") ||
+    t.includes("prizm") || t.includes("select") || t.includes("chrome") || t.includes("merlin") ||
+    t.includes("obsidian") || t.includes("finest") || t.includes("museum") || t.includes("donruss") ||
+    t.includes("immaculate") || t.includes("impeccable") || t.includes("inception") || t.includes("deco");
+  if (!hasLicensedBrand) score -= 50;
 
   return score;
 }
@@ -80,7 +113,12 @@ function getValueScore(card: BuyCard): number {
 export default function CardList({ cards }: { cards: BuyCard[] }) {
   const [sortMode, setSortMode] = useState<SortMode>("urgency");
 
-  const sorted = [...cards].sort((a, b) => {
+  // Filter out cards with negative value scores (unlicensed, overpriced)
+  const filtered = sortMode === "value"
+    ? cards.filter((c) => getValueScore(c) > 0)
+    : cards;
+
+  const sorted = [...filtered].sort((a, b) => {
     if (sortMode === "cheapest") {
       return a.priceUSD - b.priceUSD;
     }
