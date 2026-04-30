@@ -37,37 +37,28 @@ function getTimeRemaining(endDate: string): { label: string; hours: number } {
   return { label: h > 0 ? `${h}h ${m}m` : `${m}m`, hours };
 }
 
-// Price ceiling by player signal — a $19K card for a rookie is NOT a good value
-const priceCeilings: Record<string, number> = {
-  // Rookies: max $500 unless proven
-  "Lennart Karl": 500, "Santiago Castro": 100, "Geovany Quenda": 100,
-  "Ethan Nwaneri": 300, "Nico Paz": 500, "Shea Lacey": 200,
-  "Senny Mayulu": 200, "Eli Junior Kroupi": 100, "Claudio Echeverri": 100,
-  "Mateus Mane": 50, "Cole Palmer": 500,
-  // Steals: mid-range
-  "Kobbie Mainoo": 500, "Erling Haaland": 500, "Mohamed Salah": 1500,
-  // Legacy: higher ceiling
-  "Cristiano Ronaldo": 5000, "Lionel Messi": 5000,
-  // Hold: don't chase
-  "Lamine Yamal": 2000, "Kylian Mbappe": 500,
-};
-
 function getValueScore(card: BuyCard): number {
   const t = card.title.toLowerCase();
-
-  // HARD PENALTY: over price ceiling for this player = terrible value
-  const ceiling = priceCeilings[card.playerName] ?? 500;
-  if (card.priceUSD > ceiling) return -100;
-
   let score = 0;
 
-  // Price relative to ceiling — closer to floor = better value
-  const pricePct = card.priceUSD / ceiling;
-  if (pricePct < 0.1) score += 60;       // under 10% of ceiling = incredible
-  else if (pricePct < 0.25) score += 45;  // under 25% = great
-  else if (pricePct < 0.5) score += 30;   // under 50% = good
-  else if (pricePct < 0.75) score += 15;  // under 75% = fair
-  // above 75% = no price bonus
+  // Use REAL sold data if available
+  if (card.avgSoldPrice && card.avgSoldPrice > 0) {
+    const pctBelow = ((card.avgSoldPrice - card.priceUSD) / card.avgSoldPrice) * 100;
+
+    if (pctBelow >= 40) score += 60;       // 40%+ below avg sold = steal
+    else if (pctBelow >= 25) score += 45;  // 25-40% below = great deal
+    else if (pctBelow >= 10) score += 30;  // 10-25% below = good deal
+    else if (pctBelow >= 0) score += 15;   // at market = fair
+    else if (pctBelow >= -15) score += 0;  // slightly above = meh
+    else score -= 30;                       // 15%+ above avg sold = bad deal
+  } else {
+    // No sold data — use price tiers as rough proxy
+    if (card.priceUSD < 25) score += 40;
+    else if (card.priceUSD < 50) score += 25;
+    else if (card.priceUSD < 100) score += 15;
+    else if (card.priceUSD < 250) score += 5;
+    // $250+ without sold data = risky, no bonus
+  }
 
   // Auto = higher value
   if (t.includes("auto")) score += 25;
@@ -178,9 +169,16 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
             actionBg = "#c77d15";
           }
 
-          const suggestedOffer = (card.isBIN && card.acceptsOffers)
-            ? Math.round(card.priceUSD * 0.75)
-            : null;
+          // Offer suggestion: use avg sold if available, otherwise 75% of asking
+          let suggestedOffer: number | null = null;
+          if (card.isBIN && card.acceptsOffers) {
+            if (card.avgSoldPrice && card.avgSoldPrice > 0) {
+              // Offer 85% of avg sold (you want to pay below market)
+              suggestedOffer = Math.round(card.avgSoldPrice * 0.85);
+            } else {
+              suggestedOffer = Math.round(card.priceUSD * 0.75);
+            }
+          }
 
           const hasMarket = typeof card.avgSoldPrice === "number" && card.avgSoldPrice > 0;
           const pctBelow = hasMarket

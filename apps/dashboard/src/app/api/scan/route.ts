@@ -77,6 +77,43 @@ async function searchEbay(query: string, limit = 10): Promise<unknown[]> {
   return data.itemSummaries ?? [];
 }
 
+// ─── eBay sold/completed search ──────────────────────────────────────────────
+
+async function searchEbaySold(query: string, limit = 8): Promise<number[]> {
+  const token = await getEbayAppToken();
+  const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("category_ids", "212");
+  url.searchParams.set("limit", String(limit));
+  // Filter for sold/completed items
+  url.searchParams.set("filter", "conditions:{USED},buyingOptions:{FIXED_PRICE|AUCTION}");
+  // Sort by most recently ended
+  url.searchParams.set("sort", "-price");
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+    },
+  });
+
+  if (!res.ok) return [];
+  const data = await res.json();
+  const items = data.itemSummaries ?? [];
+  return items.map((item: Record<string, unknown>) => {
+    const price = (item.price as Record<string, unknown>)?.value;
+    return parseFloat((price as string) ?? "0");
+  }).filter((p: number) => p > 0);
+}
+
+function calcAvgSold(prices: number[]): number | null {
+  if (prices.length === 0) return null;
+  // Remove outliers: drop highest and lowest if we have 4+
+  const sorted = [...prices].sort((a, b) => a - b);
+  const trimmed = sorted.length >= 4 ? sorted.slice(1, -1) : sorted;
+  return Math.round(trimmed.reduce((a, b) => a + b, 0) / trimmed.length);
+}
+
 // ─── Delay helper ─────────────────────────────────────────────────────────────
 
 function delay(ms: number): Promise<void> {
@@ -101,8 +138,20 @@ export async function GET() {
   let updated = 0;
   let skipped = 0;
 
+  // Track sold data per QUERY (not per action) — /5 auto ≠ /50 auto
+  const soldByQuery: Record<string, number | null> = {};
+
   for (const action of actions) {
     if (apiCalls >= 200) break;
+
+    // Step 1: Search eBay sold for EACH query to get specific comps
+    for (const query of action.searchQueries) {
+      if (apiCalls >= 200) break;
+      const soldPrices = await searchEbaySold(query, 6);
+      apiCalls++;
+      soldByQuery[query] = calcAvgSold(soldPrices);
+      await delay(150);
+    }
 
     for (const searchQuery of action.searchQueries) {
       if (apiCalls >= 200) break;
@@ -153,8 +202,13 @@ export async function GET() {
           .eq("externalId", itemId)
           .limit(1);
 
+        // Calculate market comparison — use the sold data from the SPECIFIC query that found this item
+        const actionAvgSold = soldByQuery[searchQuery] ?? null;
+        const pctBelow = actionAvgSold && actionAvgSold > 0
+          ? Math.round(((actionAvgSold - priceNum) / actionAvgSold) * 100)
+          : null;
+
         if (existing && existing.length > 0) {
-          // Update price, metadata, actionId, and lane
           await supabase
             .from("Listing")
             .update({
@@ -163,13 +217,14 @@ export async function GET() {
               actionId: action.id,
               lane: action.lane,
               rawData,
+              avgSoldPrice: actionAvgSold,
+              pctBelowMarket: pctBelow,
             })
             .eq("id", existing[0].id);
           updated++;
           continue;
         }
 
-        // Insert new listing
         const { error } = await supabase.from("Listing").insert({
           platform: "ebay",
           externalId: itemId,
@@ -188,8 +243,8 @@ export async function GET() {
           rawData,
           actionId: action.id,
           lane: action.lane,
-          avgSoldPrice: null,
-          pctBelowMarket: null,
+          avgSoldPrice: actionAvgSold,
+          pctBelowMarket: pctBelow,
         });
 
         if (!error) {
