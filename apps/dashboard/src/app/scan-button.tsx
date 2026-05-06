@@ -14,7 +14,7 @@ export default function ScanButton() {
       const res = await fetch("/api/quick-scan");
       const data = await res.json();
       setStatus("done");
-      setResult(data.message ?? `${data.newListings} new cards found`);
+      setResult(`${data.imported ?? 0} new, ${data.updated ?? 0} updated (${data.elapsed})`);
 
       // Auto-reset after 5s
       setTimeout(() => { setStatus("idle"); setResult(""); }, 5000);
