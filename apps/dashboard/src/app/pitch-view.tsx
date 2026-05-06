@@ -20,6 +20,25 @@ function lastName(name: string): string {
   return parts[parts.length - 1].toUpperCase();
 }
 
+// Map player names to local image files in /players/
+function playerImageUrl(name: string): string | null {
+  const slug = name.toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace("eli junior ", "eli-")
+    .replace("neymar jr", "neymar-jr");
+  // Check known slugs
+  const known = [
+    "cristiano-ronaldo", "lionel-messi", "kylian-mbappe", "erling-haaland",
+    "jude-bellingham", "vinicius-junior", "lamine-yamal", "cole-palmer",
+    "florian-wirtz", "mohamed-salah", "neymar-jr", "robert-lewandowski",
+    "kobbie-mainoo", "viktor-gyokeres", "geovany-quenda", "senny-mayulu",
+    "mateus-mane", "shea-lacey", "endrick", "eli-kroupi",
+    "santiago-castro", "nico-paz", "claudio-echeverri",
+  ];
+  if (known.includes(slug)) return `/players/${slug}.png`;
+  return null;
+}
+
 export default function PitchView({ players }: { players: PitchPlayerData[] }) {
   const [active, setActive] = useState<string | null>(null);
   const activePlayer = players.find((p) => p.name === active) ?? null;
@@ -95,30 +114,49 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                 padding: 0,
               }}
             >
-              {/* Avatar circle */}
-              <div style={{
-                width: isActive ? 60 : 52,
-                height: isActive ? 60 : 52,
-                borderRadius: "50%",
-                background: isActive
-                  ? `radial-gradient(circle at 35% 35%, ${ts.border}33, #0d1f14)`
-                  : "radial-gradient(circle at 35% 35%, #1a3a22, #0d1a12)",
-                border: `2px solid ${ts.border}`,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 15,
-                fontWeight: 700,
-                color: isActive ? ts.border : "var(--text)",
-                boxShadow: isActive
-                  ? `0 0 20px ${ts.glow}, 0 4px 16px rgba(0,0,0,0.5)`
-                  : "0 2px 8px rgba(0,0,0,0.45)",
-                transition: "all 0.18s ease",
-                fontFamily: "'Bebas Neue', sans-serif",
-                letterSpacing: "0.04em",
-              }}>
-                {initials(player.name)}
-              </div>
+              {/* Player avatar — photo if available, initials fallback */}
+              {(() => {
+                const imgUrl = playerImageUrl(player.name);
+                const size = isActive ? 64 : 52;
+                return (
+                  <div style={{
+                    width: size, height: size, borderRadius: "50%",
+                    border: `2.5px solid ${ts.border}`,
+                    overflow: "hidden",
+                    background: imgUrl ? "#0d1a12" : (isActive
+                      ? `radial-gradient(circle at 35% 35%, ${ts.border}33, #0d1f14)`
+                      : "radial-gradient(circle at 35% 35%, #1a3a22, #0d1a12)"),
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    boxShadow: isActive
+                      ? `0 0 24px ${ts.glow}, 0 4px 16px rgba(0,0,0,0.5)`
+                      : "0 2px 8px rgba(0,0,0,0.45)",
+                    transition: "all 0.2s ease",
+                  }}>
+                    {imgUrl ? (
+                      <img
+                        src={imgUrl}
+                        alt={player.name}
+                        style={{
+                          width: "100%", height: "100%",
+                          objectFit: "cover",
+                          objectPosition: "top center",
+                          filter: isActive ? "none" : "brightness(0.85)",
+                          transition: "filter 0.2s",
+                        }}
+                      />
+                    ) : (
+                      <span style={{
+                        fontSize: 15, fontWeight: 700,
+                        color: isActive ? ts.border : "var(--text)",
+                        fontFamily: "'Bebas Neue', sans-serif",
+                        letterSpacing: "0.04em",
+                      }}>
+                        {initials(player.name)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Last name */}
               <span style={{
