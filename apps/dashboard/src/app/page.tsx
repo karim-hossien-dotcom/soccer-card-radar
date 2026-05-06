@@ -152,12 +152,17 @@ export default async function Page() {
     .map((a) => a.player)
     .filter((n) => dealsByPlayer[n]?.deals.length);
 
-  // Fill squads — if a category has fewer than 5, pull from others
-  const allBuyPlayers = Object.keys(dealsByPlayer).sort((a, b) => (dealsByPlayer[b]?.deals.length ?? 0) - (dealsByPlayer[a]?.deals.length ?? 0));
+  // Build squads — no duplicates across pitches
+  const used = new Set<string>();
 
-  const rookieSquad = buildSquad(rookieNames.length >= 5 ? rookieNames : [...rookieNames, ...allBuyPlayers.filter((n) => !rookieNames.includes(n))]);
-  const starSquad = buildSquad(starNames.length >= 5 ? starNames : [...starNames, ...allBuyPlayers.filter((n) => !starNames.includes(n) && !rookieNames.slice(0, 5).includes(n))]);
-  const legendSquad = buildSquad(legendNames.length >= 5 ? legendNames : [...legendNames, ...allBuyPlayers.filter((n) => !legendNames.includes(n) && !rookieNames.slice(0, 5).includes(n) && !starNames.slice(0, 5).includes(n))]);
+  const rookieSquad = buildSquad(rookieNames.filter((n) => !used.has(n)).slice(0, 5));
+  rookieSquad.forEach((p) => used.add(p.name));
+
+  const starSquad = buildSquad(starNames.filter((n) => !used.has(n)).slice(0, 5));
+  starSquad.forEach((p) => used.add(p.name));
+
+  const legendSquad = buildSquad(legendNames.filter((n) => !used.has(n)).slice(0, 5));
+  legendSquad.forEach((p) => used.add(p.name));
 
   const totalDeals = Object.values(dealsByPlayer).reduce((sum, p) => sum + p.deals.length, 0);
 
