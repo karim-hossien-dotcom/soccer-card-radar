@@ -119,6 +119,13 @@ export async function GET() {
           continue;
         }
 
+        // Price cap by lane — don't import cards you'd never buy
+        const priceCap = action.lane === "legacy" ? 5000 : action.lane === "steal" ? 2000 : 1000;
+        if (priceNum > priceCap) {
+          skipped++;
+          continue;
+        }
+
         const priceValue = (item.price as Record<string, unknown>)?.value;
         const priceNum = parseFloat((priceValue as string) ?? "0");
         const priceCurrency =
