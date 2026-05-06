@@ -355,18 +355,18 @@ export default function CardList({ cards }: { cards: BuyCard[] }) {
                     {actionLabel}
                   </span>
                   <a
-                    href={`https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(card.playerName + " " + (card.title.match(/\/\d+/) ? card.title.match(/\/\d+/)?.[0] : "auto"))}&_sacat=212&LH_Sold=1&LH_Complete=1`}
+                    href={`https://130point.com/cards/?search=${encodeURIComponent(card.playerName + " " + (card.title.match(/\/\d+/) ? card.title.match(/\/\d+/)?.[0] : "auto"))}`}
                     target="_blank"
                     rel="noopener"
                     onClick={(e) => e.stopPropagation()}
                     style={{
                       fontSize: "0.5rem", fontWeight: 600, padding: "3px 6px",
                       borderRadius: "4px", background: "var(--bg-surface)",
-                      color: "var(--text-muted)", border: "1px solid var(--border)",
+                      color: "#2563eb", border: "1px solid var(--border)",
                       textDecoration: "none",
                     }}
                   >
-                    Sold?
+                    Comps
                   </a>
                 </div>
               </div>
