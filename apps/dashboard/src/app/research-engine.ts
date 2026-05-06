@@ -147,11 +147,11 @@ export function getResearchActions(): ResearchAction[] {
       id: "kobbie-mainoo",
       player: "Kobbie Mainoo",
       signal: "BUY",
-      lane: "rookie",
+      lane: "steal",
       searchQueries: [
-        "Kobbie Mainoo auto /50 Merlin",
-        "Kobbie Mainoo auto /25 Chrome",
-        "Kobbie Mainoo auto /10",
+        "Kobbie Mainoo auto /50 Merlin 2022",
+        "Kobbie Mainoo auto /25 Chrome 2022",
+        "Kobbie Mainoo auto /10 Topps",
       ],
       soldData: null,
       stats: null,
@@ -246,7 +246,7 @@ export function getResearchActions(): ResearchAction[] {
       id: "lamine-yamal",
       player: "Lamine Yamal",
       signal: "HOLD",
-      lane: "rookie",
+      lane: "steal",
       searchQueries: [
         "Lamine Yamal auto /50 Chrome",
         "Lamine Yamal SSP case hit",
@@ -266,7 +266,7 @@ export function getResearchActions(): ResearchAction[] {
       id: "cole-palmer",
       player: "Cole Palmer",
       signal: "BUY",
-      lane: "rookie",
+      lane: "steal",
       searchQueries: [
         "Cole Palmer auto /50 Topps Select",
         "Cole Palmer auto /25 Chrome",
@@ -301,7 +301,56 @@ export function getResearchActions(): ResearchAction[] {
       photo: "",
     },
 
-    // ─── Lane 2: Current Steals ────────────────────────────────────────────
+    // ─── Lane 2: Stars (Current Steals + Established) ─────────────────────
+
+    {
+      id: "jude-bellingham",
+      player: "Jude Bellingham",
+      signal: "HOLD",
+      lane: "steal",
+      searchQueries: [
+        "Jude Bellingham auto /50 Chrome 2020",
+        "Jude Bellingham auto /25 Sapphire",
+        "Jude Bellingham Prizm /50 refractor",
+      ],
+      soldData: null, stats: null,
+      reasoning: "Real Madrid star. England captain for WC 2026. RC year was 2020-21 Chrome. Cards stabilized after Ballon d'Or campaign.",
+      catalyst: "England WC 2026 run. Deep run = spike.",
+      timeframe: "Hold through WC",
+      photo: "",
+    },
+    {
+      id: "vinicius-junior",
+      player: "Vinicius Junior",
+      signal: "BUY",
+      lane: "steal",
+      searchQueries: [
+        "Vinicius Junior auto /50 Chrome",
+        "Vinicius Junior auto /25 Topps",
+        "Vinicius Junior gold refractor /50",
+      ],
+      soldData: null, stats: null,
+      reasoning: "Ballon d'Or contender. Brazil WC star. Cards dipped after award snub — good entry point before WC.",
+      catalyst: "Brazil WC 2026. If he performs = massive spike.",
+      timeframe: "Before WC June 11",
+      photo: "",
+    },
+    {
+      id: "florian-wirtz",
+      player: "Florian Wirtz",
+      signal: "BUY",
+      lane: "steal",
+      searchQueries: [
+        "Florian Wirtz auto /50 Chrome Bundesliga",
+        "Florian Wirtz auto /25 Topps",
+        "Florian Wirtz refractor /50 rookie",
+      ],
+      soldData: null, stats: null,
+      reasoning: "Germany's best talent. Leverkusen invincible season. Transfer to Real Madrid or Bayern rumored. Cards still accessible.",
+      catalyst: "Germany WC 2026 on home soil + big transfer imminent.",
+      timeframe: "Before WC June 11",
+      photo: "",
+    },
 
     {
       id: "erling-haaland",
@@ -370,7 +419,7 @@ export function getResearchActions(): ResearchAction[] {
       id: "kylian-mbappe",
       player: "Kylian Mbappe",
       signal: "HOLD",
-      lane: "legacy",
+      lane: "steal",
       searchQueries: [
         "Kylian Mbappe Prizm World Cup rookie",
         "Kylian Mbappe auto /50 Chrome",
@@ -388,7 +437,7 @@ export function getResearchActions(): ResearchAction[] {
       id: "mohamed-salah",
       player: "Mohamed Salah",
       signal: "BUY",
-      lane: "steal",
+      lane: "legacy",
       searchQueries: [
         "Mohamed Salah gold refractor /50 Chrome",
         "Mohamed Salah auto /50 Topps",
@@ -400,6 +449,39 @@ export function getResearchActions(): ResearchAction[] {
         "Gold refractors still undervalued for a player of his caliber. Egypt WC squad. 2017 Chrome Gold /50 is a grail — anything under $1K is a deal.",
       catalyst: "Egypt WC 2026 + potential Liverpool farewell season",
       timeframe: "6-12 months",
+      photo: "",
+    },
+
+    {
+      id: "neymar-jr",
+      player: "Neymar Jr",
+      signal: "BUY",
+      lane: "legacy",
+      searchQueries: [
+        "Neymar auto /50 Panini",
+        "Neymar Prizm World Cup /50",
+        "Neymar auto /25 Chrome",
+      ],
+      soldData: null, stats: null,
+      reasoning: "Career winding down but legacy cards hold. 2014/2018 WC Prizms are collectible. Auto prices accessible.",
+      catalyst: "Retirement approaching. Legacy premium building.",
+      timeframe: "Long-term hold",
+      photo: "",
+    },
+    {
+      id: "robert-lewandowski",
+      player: "Robert Lewandowski",
+      signal: "BUY",
+      lane: "legacy",
+      searchQueries: [
+        "Lewandowski auto /50 Chrome",
+        "Lewandowski gold refractor /50",
+        "Lewandowski auto /25 Topps",
+      ],
+      soldData: null, stats: null,
+      reasoning: "All-time Bundesliga goal scorer. Barcelona. 2017 Chrome Gold /50 is a grail. Still performing at 37.",
+      catalyst: "Poland WC 2026. Final tournament.",
+      timeframe: "Hold 2-5 years",
       photo: "",
     },
 
