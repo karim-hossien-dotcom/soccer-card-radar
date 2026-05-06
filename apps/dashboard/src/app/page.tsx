@@ -5,24 +5,62 @@ import ScanBtn from "./scan-btn";
 
 export const dynamic = "force-dynamic";
 
-// Prediction based on lane + catalyst
+// ── Product tier detection ──────────────────────────────────────────
+// Based on market guide: Chrome/Sapphire/Prizm > Finest/Select > Merlin > Donruss > budget
+function getProductTier(title: string): { tier: string; color: string } {
+  const t = title.toLowerCase();
+  if (t.includes("sapphire")) return { tier: "Sapphire", color: "#22c55e" };
+  if (t.includes("dynasty")) return { tier: "Dynasty", color: "#22c55e" };
+  if (t.includes("immaculate")) return { tier: "Immaculate", color: "#22c55e" };
+  if (t.includes("impeccable")) return { tier: "Impeccable", color: "#22c55e" };
+  if (t.includes("eminence")) return { tier: "Eminence", color: "#22c55e" };
+  if (t.includes("chrome") && !t.includes("merlin")) return { tier: "Chrome", color: "#3b82f6" };
+  if (t.includes("prizm") && !t.includes("donruss")) return { tier: "Prizm", color: "#3b82f6" };
+  if (t.includes("finest")) return { tier: "Finest", color: "#8b5cf6" };
+  if (t.includes("select")) return { tier: "Select", color: "#8b5cf6" };
+  if (t.includes("obsidian")) return { tier: "Obsidian", color: "#8b5cf6" };
+  if (t.includes("inception")) return { tier: "Inception", color: "#8b5cf6" };
+  if (t.includes("museum")) return { tier: "Museum", color: "#8b5cf6" };
+  if (t.includes("merlin chrome") || t.includes("chrome merlin")) return { tier: "Merlin Chrome", color: "#a1a1aa" };
+  if (t.includes("merlin")) return { tier: "Merlin", color: "#71717a" };
+  if (t.includes("donruss optic") || t.includes("optic")) return { tier: "Optic", color: "#71717a" };
+  if (t.includes("stadium club")) return { tier: "Stadium Club", color: "#71717a" };
+  if (t.includes("donruss")) return { tier: "Donruss", color: "#52525b" };
+  if (t.includes("mosaic")) return { tier: "Mosaic", color: "#52525b" };
+  if (t.includes("topps now")) return { tier: "NOW", color: "#52525b" };
+  if (t.includes("total football")) return { tier: "Total", color: "#52525b" };
+  return { tier: "", color: "#3f3f46" };
+}
+
+// ── Extract card details from title ─────────────────────────────────
+function parseCard(title: string): { numbered: string | null; isAuto: boolean; grade: string | null; isRC: boolean } {
+  const t = title.toLowerCase();
+  const numMatch = t.match(/\/(\d{1,3})\b/);
+  const numbered = numMatch ? `/${numMatch[1]}` : null;
+  const isAuto = (t.includes("auto") || t.includes("autograph") || t.includes("signature")) && !t.includes("sticker auto");
+  const gradeMatch = t.match(/psa\s*(\d+)/i) || t.match(/bgs\s*([\d.]+)/i) || t.match(/sgc\s*(\d+)/i) || t.match(/cgc\s*(\d+)/i);
+  const grade = gradeMatch ? gradeMatch[0].toUpperCase() : null;
+  const isRC = t.includes(" rc") || t.includes("rookie") || t.includes(" rc ");
+  return { numbered, isAuto, grade, isRC };
+}
+
+// ── Prediction ──────────────────────────────────────────────────────
 function predict(lane: string, catalyst: string): { label: string; mult: number } {
   const c = catalyst.toLowerCase();
-  if (lane === "legacy") return { label: "legacy hold", mult: 2 };
-  if (c.includes("breakout") && c.includes("wc")) return { label: "breakout + WC", mult: 3 };
-  if (c.includes("world cup") || c.includes("wc")) return { label: "WC hype", mult: 2.5 };
+  if (lane === "legacy") return { label: "legacy", mult: 2 };
+  if (c.includes("breakout") && c.includes("wc")) return { label: "breakout+WC", mult: 3 };
+  if (c.includes("world cup") || c.includes("wc")) return { label: "WC", mult: 2.5 };
   if (c.includes("transfer")) return { label: "transfer", mult: 3 };
   if (c.includes("breakout") || c.includes("record")) return { label: "breakout", mult: 2 };
-  if (lane === "steal") return { label: "dip recovery", mult: 1.5 };
+  if (lane === "steal") return { label: "dip", mult: 1.5 };
   return { label: "hold", mult: 1.3 };
 }
 
 function timeLeft(endDate: string): string | null {
   const diff = new Date(endDate).getTime() - Date.now();
-  if (diff <= 0) return null;
+  if (diff <= 0 || diff > 48 * 3600000) return null;
   const h = Math.floor(diff / 3600000);
   const m = Math.floor((diff % 3600000) / 60000);
-  if (h > 48) return null; // too far out
   return h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
@@ -32,14 +70,12 @@ export default async function Page() {
   const buyIds = new Set(actions.filter((a) => a.signal === "BUY" || a.signal === "HOLD").map((a) => a.id));
   const sellActions = actions.filter((a) => a.signal === "SELL");
 
-  // Fetch listings
   const { data: rows } = await supabase
     .from("Listing")
     .select("id, title, priceUSD, url, rawData, actionId, lane")
     .order("priceUSD", { ascending: true })
     .limit(500);
 
-  // Last scanned
   const { data: latest } = await supabase
     .from("Listing")
     .select("lastSeenAt")
@@ -51,16 +87,15 @@ export default async function Page() {
     ? new Date(latest.lastSeenAt).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
     : "never";
 
-  // Filter and enrich
   type Deal = {
     id: string; title: string; price: number; url: string;
-    player: string; signal: string; lane: string;
-    reasoning: string; catalyst: string;
+    player: string; lane: string;
+    product: { tier: string; color: string };
+    card: { numbered: string | null; isAuto: boolean; grade: string | null; isRC: boolean };
     pred: { label: string; mult: number };
     offer: number | null;
     type: "auction" | "offer" | "bin";
-    timeLeft: string | null;
-    compsUrl: string;
+    tl: string | null;
   };
 
   const deals: Deal[] = [];
@@ -69,17 +104,11 @@ export default async function Page() {
   for (const r of rows ?? []) {
     if (!r.actionId || !buyIds.has(r.actionId)) continue;
     if (!isQualityCard(r.title)) continue;
-
-    // Verify the player's name actually appears in the card title
-    // Prevents "Ronaldo" search returning "El Motie" cards
     const action = actionMap.get(r.actionId);
     if (!action) continue;
-    const titleLower = r.title.toLowerCase();
     const lastName = action.player.split(" ").pop()!.toLowerCase();
-    if (lastName.length >= 4 && !titleLower.includes(lastName)) continue;
-
-    const cap = priceCap[action.lane] ?? 1000;
-    if (r.priceUSD > cap) continue;
+    if (lastName.length >= 4 && !r.title.toLowerCase().includes(lastName)) continue;
+    if (r.priceUSD > (priceCap[action.lane] ?? 1000)) continue;
 
     const raw = (r.rawData ?? {}) as Record<string, unknown>;
     const isBIN = raw.isBIN === true;
@@ -89,194 +118,165 @@ export default async function Page() {
 
     let type: "auction" | "offer" | "bin" = "bin";
     let tl: string | null = null;
-
-    if (isAuction && endDate) {
-      tl = timeLeft(endDate);
-      if (!tl) continue; // ended or too far out
-      type = "auction";
-    } else if (isBIN && acceptsOffers) {
-      type = "offer";
-    }
+    if (isAuction && endDate) { tl = timeLeft(endDate); if (!tl) continue; type = "auction"; }
+    else if (isBIN && acceptsOffers) { type = "offer"; }
 
     const pred = predict(action.lane, action.catalyst);
-    const offer = type === "offer"
-      ? Math.round(r.priceUSD < 50 ? r.priceUSD * 0.70 : r.priceUSD < 200 ? r.priceUSD * 0.75 : r.priceUSD * 0.80)
-      : null;
-
-    const searchTerm = action.player + " " + (r.title.match(/\/\d+/)?.[0] ?? "auto");
+    const offer = type === "offer" ? Math.round(r.priceUSD * (r.priceUSD < 50 ? 0.70 : r.priceUSD < 200 ? 0.75 : 0.80)) : null;
 
     deals.push({
       id: r.id, title: r.title, price: r.priceUSD, url: r.url,
-      player: action.player, signal: action.signal, lane: action.lane,
-      reasoning: action.reasoning, catalyst: action.catalyst,
-      pred, offer, type, timeLeft: tl,
-      compsUrl: `https://130point.com/cards/?search=${encodeURIComponent(searchTerm)}`,
+      player: action.player, lane: action.lane,
+      product: getProductTier(r.title),
+      card: parseCard(r.title),
+      pred, offer, type, tl,
     });
   }
 
-  // Sort: auctions first (soonest), then offers (cheapest), then BIN (cheapest)
+  // Sort: auctions → offers (cheapest) → BIN (cheapest)
   const typeOrder = { auction: 0, offer: 1, bin: 2 };
-  deals.sort((a, b) => {
-    const to = typeOrder[a.type] - typeOrder[b.type];
-    if (to !== 0) return to;
-    return a.price - b.price;
-  });
+  deals.sort((a, b) => typeOrder[a.type] - typeOrder[b.type] || a.price - b.price);
 
   const auctions = deals.filter((d) => d.type === "auction");
   const offers = deals.filter((d) => d.type === "offer");
   const bins = deals.filter((d) => d.type === "bin");
 
-  const sections = [
-    { label: "ENDING SOON", items: auctions, accent: "var(--red)" },
-    { label: "SEND OFFERS", items: offers, accent: "var(--amber)" },
-    { label: "BUY NOW", items: bins, accent: "var(--green)" },
-  ].filter((s) => s.items.length > 0);
-
   return (
     <>
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.25rem" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 24 }}>
         <div>
-          <div className="sora" style={{ fontSize: "1.1rem", fontWeight: 800, letterSpacing: "-0.03em" }}>
-            Card Radar
-          </div>
-          <div className="mono" style={{ fontSize: "0.55rem", color: "var(--text-3)", marginTop: "2px" }}>
-            {deals.length} deals · scanned {scannedAt}
-          </div>
+          <h1 style={{ fontSize: 20, fontWeight: 700, letterSpacing: "-0.02em" }}>Card Radar</h1>
+          <p className="mono muted" style={{ fontSize: 11, marginTop: 2 }}>
+            {deals.length} deals · {scannedAt}
+          </p>
         </div>
         <ScanBtn />
       </div>
 
-      {/* Deal Feed */}
-      {sections.map(({ label, items, accent }) => (
-        <div key={label} style={{ marginBottom: "1.5rem" }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: "0.5rem",
-            marginBottom: "0.5rem", padding: "0 0.25rem",
-          }}>
-            <div style={{ width: "3px", height: "12px", background: accent, borderRadius: "2px" }} />
-            <span className="sora" style={{ fontSize: "0.6rem", fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.1em" }}>
-              {label}
+      {/* Sections */}
+      {[
+        { label: "Ending Soon", items: auctions, accent: "#ef4444" },
+        { label: "Send Offers", items: offers, accent: "#eab308" },
+        { label: "Buy Now", items: bins, accent: "#22c55e" },
+      ].filter((s) => s.items.length > 0).map(({ label, items, accent }) => (
+        <section key={label} style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 3, height: 14, borderRadius: 2, background: accent }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#71717a", letterSpacing: "0.06em" }}>
+              {label.toUpperCase()}
             </span>
-            <span className="mono" style={{ fontSize: "0.55rem", color: "var(--text-3)" }}>{items.length}</span>
+            <span className="mono" style={{ fontSize: 11, color: "#3f3f46" }}>{items.length}</span>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "1px", background: "var(--border)", borderRadius: "8px", overflow: "hidden" }}>
-            {items.map((deal) => {
-              const roi = Math.round((deal.pred.mult - 1) * 100);
-
-              return (
-                <div key={deal.id} className="deal-row" style={{ background: "var(--surface)", padding: "0.65rem 0.75rem" }}>
-                  {/* Row 1: Player + Title + Price */}
-                  <div style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", marginBottom: "0.3rem" }}>
-                    {/* Player */}
-                    <span style={{ fontSize: "0.7rem", fontWeight: 700, color: "var(--text)", flexShrink: 0 }}>
-                      {deal.player}
+          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+            {items.map((d) => (
+              <div key={d.id} className="deal">
+                {/* Row 1: Player · Product · Numbering · Grade */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>{d.player}</span>
+                  {d.product.tier && (
+                    <span className="mono" style={{ fontSize: 10, color: d.product.color, fontWeight: 500 }}>
+                      {d.product.tier}
                     </span>
-
-                    {/* Title — clickable eBay link */}
-                    <a href={deal.url} target="_blank" rel="noopener" style={{
-                      fontSize: "0.65rem", color: "var(--text-2)", flex: 1, minWidth: 0,
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>
-                      {deal.title}
-                    </a>
-
-                    {/* Price */}
-                    <span className="mono" style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text)", flexShrink: 0 }}>
-                      ${deal.price < 1000 ? deal.price.toFixed(2) : deal.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  )}
+                  {d.card.numbered && (
+                    <span className="mono" style={{ fontSize: 11, fontWeight: 600, color: "#a1a1aa" }}>
+                      {d.card.numbered}
                     </span>
-                  </div>
-
-                  {/* Row 2: Prediction + Offer + Action + Comps */}
-                  <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", fontSize: "0.55rem" }}>
-                    {/* Prediction */}
-                    <span style={{ color: "var(--green)" }}>
-                      {deal.pred.mult}x {deal.pred.label}
-                    </span>
-                    {roi > 0 && (
-                      <span className="mono" style={{ color: "var(--green)", fontWeight: 600 }}>+{roi}%</span>
-                    )}
-
-                    {/* Offer */}
-                    {deal.offer && (
-                      <span style={{ color: "var(--amber)", fontWeight: 600 }}>
-                        Offer ${deal.offer}
-                      </span>
-                    )}
-
-                    <div style={{ flex: 1 }} />
-
-                    {/* Comps link */}
-                    <a href={deal.compsUrl} target="_blank" rel="noopener" style={{
-                      color: "var(--text-3)", fontSize: "0.5rem", fontWeight: 500,
-                    }}>
-                      comps
-                    </a>
-
-                    {/* Action badge */}
-                    <span className="mono" style={{
-                      fontSize: "0.5rem", fontWeight: 700, padding: "2px 6px", borderRadius: "3px",
-                      background: deal.type === "auction" ? "var(--red)" : deal.type === "offer" ? "var(--amber)" : "var(--green)",
-                      color: "#000",
-                    }}>
-                      {deal.type === "auction" ? deal.timeLeft : deal.type === "offer" ? "OFFER" : "BUY"}
-                    </span>
-                  </div>
+                  )}
+                  {d.card.isAuto && (
+                    <span className="pill" style={{ background: "#22c55e20", color: "#22c55e", fontSize: 10 }}>AUTO</span>
+                  )}
+                  {d.card.isRC && (
+                    <span className="pill" style={{ background: "#3b82f620", color: "#3b82f6", fontSize: 10 }}>RC</span>
+                  )}
+                  {d.card.grade && (
+                    <span className="pill" style={{ background: "#eab30820", color: "#eab308", fontSize: 10 }}>{d.card.grade}</span>
+                  )}
                 </div>
-              );
-            })}
+
+                {/* Row 2: Title (clickable) */}
+                <a href={d.url} target="_blank" rel="noopener" style={{ fontSize: 12, color: "#a1a1aa", lineHeight: 1.4 }}>
+                  {d.title}
+                </a>
+
+                {/* Row 3: Price · Offer · Prediction · Action */}
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <span className="mono" style={{ fontSize: 16, fontWeight: 700 }}>
+                    ${d.price < 1000 ? d.price.toFixed(2) : d.price.toLocaleString("en-US", { maximumFractionDigits: 0 })}
+                  </span>
+
+                  {d.offer && (
+                    <span className="mono amber" style={{ fontSize: 11, fontWeight: 600 }}>
+                      offer ${d.offer}
+                    </span>
+                  )}
+
+                  <span className="green" style={{ fontSize: 11 }}>
+                    {d.pred.mult}x {d.pred.label}
+                  </span>
+
+                  <div style={{ flex: 1 }} />
+
+                  <a
+                    href={`https://130point.com/cards/?search=${encodeURIComponent(d.player + " " + (d.card.numbered ?? "auto"))}`}
+                    target="_blank" rel="noopener"
+                    className="muted" style={{ fontSize: 10 }}
+                  >
+                    comps
+                  </a>
+
+                  <span className="mono pill" style={{
+                    fontSize: 10, fontWeight: 700,
+                    background: d.type === "auction" ? "#ef4444" : d.type === "offer" ? "#eab308" : "#22c55e",
+                    color: "#000",
+                  }}>
+                    {d.type === "auction" ? d.tl : d.type === "offer" ? "OFFER" : "BUY"}
+                  </span>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
       ))}
 
       {deals.length === 0 && (
-        <div style={{ textAlign: "center", padding: "3rem 1rem", color: "var(--text-3)", fontSize: "0.8rem" }}>
-          No deals right now. Hit Scan to refresh.
+        <div className="card" style={{ textAlign: "center", padding: "40px 16px" }}>
+          <p className="dim" style={{ fontSize: 14 }}>No deals right now</p>
+          <p className="muted" style={{ fontSize: 12, marginTop: 4 }}>Hit Scan to refresh from eBay</p>
         </div>
       )}
 
       {/* Avoid */}
       {sellActions.length > 0 && (
-        <div style={{ marginBottom: "1.5rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", padding: "0 0.25rem" }}>
-            <div style={{ width: "3px", height: "12px", background: "var(--red)", borderRadius: "2px" }} />
-            <span className="sora" style={{ fontSize: "0.6rem", fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.1em" }}>AVOID</span>
+        <section style={{ marginBottom: 28 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 3, height: 14, borderRadius: 2, background: "#ef4444" }} />
+            <span style={{ fontSize: 12, fontWeight: 600, color: "#71717a", letterSpacing: "0.06em" }}>AVOID</span>
           </div>
-          <div style={{ background: "var(--surface)", borderRadius: "8px", padding: "0.6rem 0.75rem", border: "1px solid rgba(239,68,68,0.15)" }}>
+          <div className="card">
             {sellActions.map((a) => (
-              <div key={a.id} style={{ display: "flex", alignItems: "baseline", gap: "0.5rem", padding: "0.25rem 0" }}>
-                <span style={{ fontSize: "0.5rem", fontWeight: 700, padding: "1px 5px", borderRadius: "3px", background: "var(--red)", color: "#fff" }}>SELL</span>
-                <span style={{ fontSize: "0.7rem", fontWeight: 600 }}>{a.player}</span>
-                <span style={{ fontSize: "0.6rem", color: "var(--text-3)", flex: 1 }}>{a.reasoning.slice(0, 80)}...</span>
+              <div key={a.id} style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "6px 0" }}>
+                <span className="pill red" style={{ background: "#ef444420", fontSize: 10 }}>SELL</span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>{a.player}</span>
+                <span className="dim" style={{ fontSize: 11, flex: 1 }}>{a.reasoning.slice(0, 60)}...</span>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Market Intel — collapsed */}
-      <details style={{ marginTop: "1rem" }}>
-        <summary className="sora" style={{
-          fontSize: "0.6rem", fontWeight: 700, color: "var(--text-3)", letterSpacing: "0.1em",
-          cursor: "pointer", padding: "0.5rem 0.25rem", listStyle: "none",
-          display: "flex", alignItems: "center", gap: "0.5rem",
-        }}>
-          <span style={{ fontSize: "0.7rem" }}>&#9654;</span> MARKET ANALYSIS
+      {/* Market notes — collapsed */}
+      <details>
+        <summary className="dim" style={{ fontSize: 11, fontWeight: 600, cursor: "pointer", padding: "8px 0", letterSpacing: "0.06em" }}>
+          MARKET NOTES
         </summary>
-        <div style={{ padding: "1rem 0", color: "var(--text-2)", fontSize: "0.75rem" }}>
-          <p style={{ marginBottom: "0.5rem" }}>
-            <strong>Prizm WC release:</strong> May 22 (17 days) — expect older WC card prices to dip as supply floods in.
-          </p>
-          <p style={{ marginBottom: "0.5rem" }}>
-            <strong>World Cup:</strong> June 11 – July 19 — buy rookies NOW, sell into group stage hype.
-          </p>
-          <p style={{ marginBottom: "0.5rem" }}>
-            <strong>Best scan times:</strong> Tue-Thu 10am-2pm EST (low competition) · Sun 6-10pm EST (auction endings)
-          </p>
-          <p>
-            <strong>Key insight:</strong> Soccer cards grew 1,586% in 2021. Market recovered from 2022 crash. WC 2026 in USA = biggest demand spike ever.
-          </p>
+        <div className="card" style={{ marginTop: 8, fontSize: 12, color: "#71717a", lineHeight: 1.7 }}>
+          <p><strong style={{ color: "#a1a1aa" }}>Prizm WC drops May 22</strong> — older WC card prices will dip as supply floods in</p>
+          <p style={{ marginTop: 8 }}><strong style={{ color: "#a1a1aa" }}>World Cup Jun 11 – Jul 19</strong> — buy rookies now, sell into group stage</p>
+          <p style={{ marginTop: 8 }}><strong style={{ color: "#a1a1aa" }}>Best scan times</strong> — Tue-Thu 10am-2pm EST (low competition) · Sun 6-10pm EST (auctions ending)</p>
+          <p style={{ marginTop: 8 }}><strong style={{ color: "#a1a1aa" }}>Product tiers</strong> — <span style={{ color: "#22c55e" }}>Sapphire/Dynasty</span> &gt; <span style={{ color: "#3b82f6" }}>Chrome/Prizm</span> &gt; <span style={{ color: "#8b5cf6" }}>Finest/Select</span> &gt; <span style={{ color: "#71717a" }}>Merlin/Optic</span> &gt; <span style={{ color: "#52525b" }}>Donruss/budget</span></p>
         </div>
       </details>
     </>
