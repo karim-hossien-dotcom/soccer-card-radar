@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import Nav from "./nav";
 
 export const metadata: Metadata = {
   title: "Soccer Card Radar",
@@ -94,11 +93,6 @@ export default function RootLayout({
               </span>
             </div>
           </div>
-        </div>
-
-        {/* Nav */}
-        <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 1.5rem" }}>
-          <Nav />
         </div>
 
         {children}
