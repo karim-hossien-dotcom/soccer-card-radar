@@ -1,41 +1,45 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Light editorial palette — warm, readable, The Athletic vibes */
-  --bg-primary: #f8f6f3;
-  --bg-card: #ffffff;
-  --bg-card-hover: #fdfcfb;
-  --bg-surface: #f0ede8;
-  --border: #e2ddd5;
-  --border-hover: #ccc5ba;
-  --text-primary: #1a1a2e;
-  --text-secondary: #5c5c70;
-  --text-muted: #9b9bab;
+  /* Base surfaces */
+  --bg-primary: #0f1117;
+  --bg-card: #161b22;
+  --bg-card-hover: #1c2333;
+  --bg-surface: #21262d;
+  --border: #30363d;
+  --border-hover: #484f58;
 
-  /* Action colors — vivid against light bg */
-  --buy-now: #0d9f4f;
-  --buy-now-bg: #0d9f4f12;
-  --bid: #c77d15;
-  --bid-bg: #c77d1512;
-  --watch: #2563eb;
-  --watch-bg: #2563eb10;
-  --skip: #9b9bab;
-  --skip-bg: #9b9bab10;
+  /* Text */
+  --text-primary: #e6edf3;
+  --text-secondary: #8b949e;
+  --text-muted: #484f58;
 
-  /* Score colors */
-  --score-hot: #dc2626;
-  --score-high: #0d9f4f;
-  --score-mid: #c77d15;
-  --score-low: #9b9bab;
+  /* Action colors */
+  --buy-now: #10b981;
+  --buy-now-glow: #10b98130;
+  --bid: #f59e0b;
+  --bid-glow: #f59e0b30;
+  --sell: #ef4444;
+  --sell-glow: #ef444430;
+  --hold: #a78bfa;
+  --accent: #58a6ff;
 
-  /* Accents */
-  --accent: #1a1a2e;
-  --accent-secondary: #dc2626;
+  /* Legacy aliases (used by charts / card-list) */
+  --watch: #58a6ff;
+  --watch-bg: #58a6ff10;
+  --skip: #484f58;
+  --skip-bg: #484f5810;
+  --score-hot: #ef4444;
+  --score-high: #10b981;
+  --score-mid: #f59e0b;
+  --score-low: #484f58;
+  --accent-secondary: #ef4444;
 
-  /* Card shadows */
-  --shadow-sm: 0 1px 2px rgba(26,26,46,0.04), 0 1px 3px rgba(26,26,46,0.06);
-  --shadow-md: 0 2px 8px rgba(26,26,46,0.06), 0 4px 16px rgba(26,26,46,0.04);
-  --shadow-hover: 0 4px 12px rgba(26,26,46,0.08), 0 8px 24px rgba(26,26,46,0.04);
+  /* Shadows */
+  --shadow-sm: 0 0 0 1px rgba(48,54,61,0.5), 0 4px 12px rgba(0,0,0,0.25);
+  --shadow-md: 0 0 0 1px rgba(48,54,61,0.5), 0 8px 24px rgba(0,0,0,0.3);
+  --shadow-hover: 0 0 0 1px rgba(72,79,88,0.6), 0 12px 32px rgba(0,0,0,0.4);
+  --shadow-deal: 0 0 20px rgba(16,185,129,0.15);
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -43,38 +47,66 @@
 html, body {
   background: var(--bg-primary);
   color: var(--text-primary);
-  font-family: 'Outfit', sans-serif;
+  font-family: 'DM Sans', sans-serif;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   min-height: 100vh;
 }
 
-/* Subtle warm grain */
-body::before {
-  content: '';
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.015'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 0;
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Sora', sans-serif;
 }
 
 /* Scrollbar */
-::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg-primary); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
 code, .mono { font-family: 'JetBrains Mono', monospace; }
-.serif { font-family: 'Source Serif 4', Georgia, serif; }
 
 a { color: inherit; text-decoration: none; }
 
+/* Hover states via CSS (no JS handlers in server components) */
+.card-hover:hover {
+  background: var(--bg-card-hover) !important;
+  box-shadow: var(--shadow-hover) !important;
+  border-color: var(--border-hover) !important;
+}
+
+.row-hover:hover {
+  background: var(--bg-card-hover) !important;
+}
+
+.link-hover:hover {
+  border-color: var(--border-hover) !important;
+  background: var(--bg-card-hover) !important;
+}
+
+/* Glass effect */
+.glass {
+  backdrop-filter: blur(12px);
+  background: rgba(22, 27, 34, 0.8);
+}
+
 @keyframes fadeInUp {
   from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
+  50%       { opacity: 0.4; }
+}
+
+@keyframes livePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+  50%       { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

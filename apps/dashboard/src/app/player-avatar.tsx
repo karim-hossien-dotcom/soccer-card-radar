@@ -4,8 +4,8 @@
  */
 
 const colors = [
-  "#e53238", "#0d9f4f", "#2563eb", "#7c3aed", "#c77d15",
-  "#dc2626", "#0a4d8c", "#059669", "#7c2d12", "#4338ca",
+  "#10b981", "#f59e0b", "#ef4444", "#a78bfa", "#58a6ff",
+  "#f97316", "#06b6d4", "#ec4899", "#84cc16", "#6366f1",
 ];
 
 function getColor(name: string): string {
@@ -41,9 +41,11 @@ export function PlayerAvatar({ name, size = 40 }: { name: string; size?: number 
         justifyContent: "center",
         flexShrink: 0,
         color: "#fff",
+        fontFamily: "'DM Sans', sans-serif",
         fontWeight: 700,
         fontSize: `${fontSize}px`,
         letterSpacing: "-0.02em",
+        boxShadow: `0 0 0 2px rgba(0,0,0,0.3)`,
       }}
     >
       {initials}

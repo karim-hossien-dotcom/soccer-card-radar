@@ -26,7 +26,6 @@ export default async function BuyPage() {
     .order("priceUSD", { ascending: true })
     .limit(500);
 
-  // Filter and transform for client component
   const cards = (rawListings ?? [])
     .filter((l) => {
       if (!isQualityCard(l.title)) return false;
@@ -62,14 +61,54 @@ export default async function BuyPage() {
       };
     });
 
+  const playerCount = new Set(cards.map((c) => c.playerName)).size;
+
   return (
-    <main style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 1.5rem 3rem", position: "relative", zIndex: 1 }}>
-      <div style={{ marginBottom: "1rem" }}>
-        <h2 style={{ fontSize: "1.1rem", fontWeight: 700, marginBottom: "0.25rem" }}>Buy Deals</h2>
-        <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
-          {cards.length} cards across {new Set(cards.map((c) => c.playerName)).size} players — sorted by your preference
+    <main
+      style={{
+        maxWidth: "1100px",
+        margin: "0 auto",
+        padding: "0 1.5rem 3rem",
+        position: "relative",
+        zIndex: 1,
+      }}
+    >
+      {/* Header */}
+      <div style={{ marginBottom: "1.5rem" }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: "0.75rem", marginBottom: "0.3rem" }}>
+          <h2
+            style={{
+              fontFamily: "'Sora', sans-serif",
+              fontSize: "1.35rem",
+              fontWeight: 700,
+              letterSpacing: "-0.02em",
+              color: "var(--text-primary)",
+            }}
+          >
+            Buy Deals
+          </h2>
+          {cards.length > 0 && (
+            <span
+              className="mono"
+              style={{
+                fontSize: "0.65rem",
+                fontWeight: 600,
+                padding: "3px 8px",
+                borderRadius: "20px",
+                background: "var(--buy-now-glow)",
+                color: "#10b981",
+                border: "1px solid rgba(16,185,129,0.25)",
+              }}
+            >
+              {cards.length}
+            </span>
+          )}
+        </div>
+        <p style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>
+          {cards.length} cards across {playerCount} player{playerCount !== 1 ? "s" : ""} — sorted by your preference
         </p>
       </div>
+
       <CardList cards={cards} />
     </main>
   );
