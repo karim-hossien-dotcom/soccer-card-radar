@@ -119,15 +119,22 @@ export async function GET() {
           continue;
         }
 
-        // Price cap by lane — don't import cards you'd never buy
+        const priceValue = (item.price as Record<string, unknown>)?.value;
+        const priceNum = parseFloat((priceValue as string) ?? "0");
+
+        // Price cap by lane
         const priceCap = action.lane === "legacy" ? 5000 : action.lane === "steal" ? 2000 : 1000;
         if (priceNum > priceCap) {
           skipped++;
           continue;
         }
 
-        const priceValue = (item.price as Record<string, unknown>)?.value;
-        const priceNum = parseFloat((priceValue as string) ?? "0");
+        // Verify player name appears in title — prevents wrong-player results
+        const playerLast = action.player.split(" ").pop()!.toLowerCase();
+        if (playerLast.length >= 4 && !title.toLowerCase().includes(playerLast)) {
+          skipped++;
+          continue;
+        }
         const priceCurrency =
           ((item.price as Record<string, unknown>)?.currency as string) ?? "USD";
         const buyingOptions: string[] = (item.buyingOptions as string[]) ?? [];

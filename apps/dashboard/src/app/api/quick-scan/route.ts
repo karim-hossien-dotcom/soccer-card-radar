@@ -127,6 +127,14 @@ export async function GET() {
           skipped++;
           continue;
         }
+
+        // Verify player name appears in title
+        const playerLast = action.player.split(" ").pop()!.toLowerCase();
+        if (playerLast.length >= 4 && !title.toLowerCase().includes(playerLast)) {
+          skipped++;
+          continue;
+        }
+
         const priceNum = parseFloat((priceValue as string) ?? "0");
         const priceCurrency =
           ((item.price as Record<string, unknown>)?.currency as string) ?? "USD";

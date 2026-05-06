@@ -70,8 +70,13 @@ export default async function Page() {
     if (!r.actionId || !buyIds.has(r.actionId)) continue;
     if (!isQualityCard(r.title)) continue;
 
+    // Verify the player's name actually appears in the card title
+    // Prevents "Ronaldo" search returning "El Motie" cards
     const action = actionMap.get(r.actionId);
     if (!action) continue;
+    const titleLower = r.title.toLowerCase();
+    const lastName = action.player.split(" ").pop()!.toLowerCase();
+    if (lastName.length >= 4 && !titleLower.includes(lastName)) continue;
 
     const cap = priceCap[action.lane] ?? 1000;
     if (r.priceUSD > cap) continue;
