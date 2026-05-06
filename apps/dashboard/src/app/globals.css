@@ -1,112 +1,38 @@
-@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap');
 
 :root {
-  /* Base surfaces */
-  --bg-primary: #0f1117;
-  --bg-card: #161b22;
-  --bg-card-hover: #1c2333;
-  --bg-surface: #21262d;
-  --border: #30363d;
-  --border-hover: #484f58;
-
-  /* Text */
-  --text-primary: #e6edf3;
-  --text-secondary: #8b949e;
-  --text-muted: #484f58;
-
-  /* Action colors */
-  --buy-now: #10b981;
-  --buy-now-glow: #10b98130;
-  --bid: #f59e0b;
-  --bid-glow: #f59e0b30;
-  --sell: #ef4444;
-  --sell-glow: #ef444430;
-  --hold: #a78bfa;
-  --accent: #58a6ff;
-
-  /* Legacy aliases (used by charts / card-list) */
-  --watch: #58a6ff;
-  --watch-bg: #58a6ff10;
-  --skip: #484f58;
-  --skip-bg: #484f5810;
-  --score-hot: #ef4444;
-  --score-high: #10b981;
-  --score-mid: #f59e0b;
-  --score-low: #484f58;
-  --accent-secondary: #ef4444;
-
-  /* Shadows */
-  --shadow-sm: 0 0 0 1px rgba(48,54,61,0.5), 0 4px 12px rgba(0,0,0,0.25);
-  --shadow-md: 0 0 0 1px rgba(48,54,61,0.5), 0 8px 24px rgba(0,0,0,0.3);
-  --shadow-hover: 0 0 0 1px rgba(72,79,88,0.6), 0 12px 32px rgba(0,0,0,0.4);
-  --shadow-deal: 0 0 20px rgba(16,185,129,0.15);
+  --bg: #0c0e14;
+  --surface: #14171f;
+  --surface-2: #1a1e28;
+  --surface-3: #222733;
+  --border: #2a2f3d;
+  --border-light: #363c4e;
+  --text: #e2e4e9;
+  --text-2: #9196a8;
+  --text-3: #5b6178;
+  --green: #22c55e;
+  --amber: #eab308;
+  --red: #ef4444;
+  --purple: #a78bfa;
+  --blue: #3b82f6;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html, body {
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  font-family: 'DM Sans', sans-serif;
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  min-height: 100vh;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Sora', sans-serif;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: var(--bg-primary); }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
-
-code, .mono { font-family: 'JetBrains Mono', monospace; }
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 a { color: inherit; text-decoration: none; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.sora { font-family: 'Sora', sans-serif; }
 
-/* Hover states via CSS (no JS handlers in server components) */
-.card-hover:hover {
-  background: var(--bg-card-hover) !important;
-  box-shadow: var(--shadow-hover) !important;
-  border-color: var(--border-hover) !important;
-}
-
-.row-hover:hover {
-  background: var(--bg-card-hover) !important;
-}
-
-.link-hover:hover {
-  border-color: var(--border-hover) !important;
-  background: var(--bg-card-hover) !important;
-}
-
-/* Glass effect */
-.glass {
-  backdrop-filter: blur(12px);
-  background: rgba(22, 27, 34, 0.8);
-}
-
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.4; }
-}
-
-@keyframes livePulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-  50%       { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    transition-duration: 0.01ms !important;
-  }
-}
+.deal-row { transition: background 0.1s; }
+.deal-row:hover { background: var(--surface-2) !important; }
