@@ -167,12 +167,15 @@ export async function GET() {
           .eq("externalId", itemId)
           .limit(1);
 
+        const nowIso = new Date().toISOString();
+
         if (existing && existing.length > 0) {
           await supabase
             .from("Listing")
             .update({
               priceUSD: priceNum,
-              lastSeenAt: new Date().toISOString(),
+              lastSeenAt: nowIso,
+              soldAt: null,  // back to active — clears any prior stale flag
               actionId: action.id,
               lane: action.lane,
               rawData,
@@ -202,8 +205,10 @@ export async function GET() {
           rawData,
           actionId: action.id,
           lane: action.lane,
-          avgSoldPrice: actionAvgSold,
-          pctBelowMarket: pctBelow,
+          firstSeenAt: nowIso,
+          lastSeenAt: nowIso,
+          avgSoldPrice: null,
+          pctBelowMarket: null,
         });
 
         if (!error) {

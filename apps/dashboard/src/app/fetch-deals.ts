@@ -6,6 +6,11 @@ import type { ResearchAction } from "./research-engine";
 
 const PRICE_CAP: Record<string, number> = { rookie: 1000, steal: 2000, legacy: 5000 };
 
+// Freshness window: a listing must have been re-confirmed by a scan within
+// this many hours, otherwise it's assumed sold/ended. eBay Browse API only
+// returns active listings, so a row that stops appearing is gone.
+const MAX_STALE_HOURS = 48;
+
 export type PlayerDeals = {
   action: ResearchAction;
   deals: DealItem[];
@@ -15,9 +20,13 @@ export async function fetchAllDeals(): Promise<Map<string, PlayerDeals>> {
   const actions = getResearchActions();
   const actionMap = new Map(actions.map((a) => [a.id, a]));
 
+  const freshCutoff = new Date(Date.now() - MAX_STALE_HOURS * 3600_000).toISOString();
+
   const { data: rows } = await supabase
     .from("Listing")
-    .select("id, title, priceUSD, url, rawData, actionId, lane")
+    .select("id, title, priceUSD, url, rawData, actionId, lane, lastSeenAt, soldAt")
+    .is("soldAt", null)
+    .gte("lastSeenAt", freshCutoff)
     .order("priceUSD", { ascending: true })
     .limit(500);
 
