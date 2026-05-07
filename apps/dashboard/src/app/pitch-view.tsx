@@ -3,10 +3,10 @@
 import { useState } from "react";
 import type { PitchPlayerData } from "./helpers";
 
-const TIER_STYLE: Record<"S" | "A" | "B", { border: string; glow: string; badge: string; badgeBg: string }> = {
-  S: { border: "var(--gold)", glow: "var(--gold-glow)", badge: "#fbbf24", badgeBg: "rgba(251,191,36,0.15)" },
-  A: { border: "var(--silver)", glow: "var(--silver-glow)", badge: "#94a3b8", badgeBg: "rgba(148,163,184,0.15)" },
-  B: { border: "var(--bronze)", glow: "var(--bronze-glow)", badge: "#b45309", badgeBg: "rgba(180,83,9,0.15)" },
+const TIER_STYLE: Record<"S" | "A" | "B", { border: string; glow: string; soft: string; badge: string }> = {
+  S: { border: "var(--tier-s)", glow: "var(--tier-s-glow)", soft: "var(--tier-s-soft)", badge: "var(--tier-s)" },
+  A: { border: "var(--tier-a)", glow: "var(--tier-a-glow)", soft: "var(--tier-a-soft)", badge: "var(--tier-a)" },
+  B: { border: "var(--tier-b)", glow: "var(--tier-b-glow)", soft: "var(--tier-b-soft)", badge: "var(--tier-b)" },
 };
 
 function initials(name: string): string {
@@ -26,7 +26,6 @@ function playerImageUrl(name: string): string | null {
     .replace(/\s+/g, "-")
     .replace("eli junior ", "eli-")
     .replace("neymar jr", "neymar-jr");
-  // Check known slugs
   const known = [
     "cristiano-ronaldo", "lionel-messi", "kylian-mbappe", "erling-haaland",
     "jude-bellingham", "vinicius-junior", "lamine-yamal", "cole-palmer",
@@ -41,6 +40,7 @@ function playerImageUrl(name: string): string | null {
 
 export default function PitchView({ players }: { players: PitchPlayerData[] }) {
   const [active, setActive] = useState<string | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   const activePlayer = players.find((p) => p.name === active) ?? null;
 
   return (
@@ -54,7 +54,20 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
         borderRadius: 16,
         overflow: "hidden",
         border: "2px solid #1e4a2a",
+        boxShadow: "0 0 0 1px rgba(218,41,28,0.18), 0 24px 48px -16px rgba(218,41,28,0.18)",
       }}>
+        {/* Red corner glows — Old Trafford ambient */}
+        <div style={{
+          position: "absolute", top: 0, left: 0, width: "40%", height: "40%",
+          background: "radial-gradient(circle at top left, rgba(218,41,28,0.18) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+        <div style={{
+          position: "absolute", bottom: 0, right: 0, width: "40%", height: "40%",
+          background: "radial-gradient(circle at bottom right, rgba(218,41,28,0.18) 0%, transparent 70%)",
+          pointerEvents: "none",
+        }} />
+
         {/* Field SVG lines */}
         <svg
           viewBox="0 0 100 66"
@@ -93,16 +106,22 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
         {players.map((player) => {
           const ts = TIER_STYLE[player.tier];
           const isActive = active === player.name;
+          const isHovered = hovered === player.name;
+          const isElevated = isActive || isHovered;
 
           return (
             <button
               key={player.name}
               onClick={() => setActive(isActive ? null : player.name)}
+              onMouseEnter={() => setHovered(player.name)}
+              onMouseLeave={() => setHovered((h) => (h === player.name ? null : h))}
+              onFocus={() => setHovered(player.name)}
+              onBlur={() => setHovered((h) => (h === player.name ? null : h))}
               style={{
                 position: "absolute",
                 left: `${player.position.x}%`,
                 top: `${player.position.y}%`,
-                transform: "translate(-50%, -50%)",
+                transform: `translate(-50%, -50%) translateY(${isElevated ? -4 : 0}px)`,
                 background: "none",
                 border: "none",
                 cursor: "pointer",
@@ -110,27 +129,99 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                 flexDirection: "column",
                 alignItems: "center",
                 gap: 3,
-                zIndex: isActive ? 10 : 2,
+                zIndex: isActive ? 20 : isHovered ? 15 : 2,
                 padding: 0,
+                transition: "transform 0.18s cubic-bezier(0.34,1.56,0.64,1)",
               }}
             >
+              {/* Hover tooltip — appears above avatar */}
+              {isHovered && !isActive && (
+                <div
+                  style={{
+                    position: "absolute",
+                    bottom: "100%",
+                    left: "50%",
+                    transform: "translate(-50%, -8px)",
+                    background: "rgba(10,7,7,0.96)",
+                    border: `1px solid ${ts.border}`,
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    minWidth: 140,
+                    boxShadow: `0 8px 24px rgba(0,0,0,0.6), 0 0 16px ${ts.glow}`,
+                    pointerEvents: "none",
+                    animation: "tooltipIn 0.16s ease-out forwards",
+                    zIndex: 30,
+                  }}
+                >
+                  <div className="bebas" style={{
+                    fontSize: 14,
+                    color: "var(--text)",
+                    letterSpacing: "0.04em",
+                    lineHeight: 1.1,
+                    marginBottom: 4,
+                    whiteSpace: "nowrap",
+                  }}>
+                    {player.name}
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                    <span className="bebas" style={{
+                      fontSize: 10,
+                      color: ts.badge,
+                      background: ts.soft,
+                      border: `1px solid ${ts.border}`,
+                      padding: "1px 5px",
+                      borderRadius: 4,
+                      letterSpacing: "0.06em",
+                      lineHeight: 1.3,
+                    }}>
+                      {player.tier} TIER
+                    </span>
+                    <span className="mono" style={{ fontSize: 9, color: "var(--text-2)" }}>
+                      {player.prediction}
+                    </span>
+                  </div>
+                  <div className="mono" style={{
+                    fontSize: 9,
+                    color: player.deals.length > 0 ? "var(--green)" : "var(--text-3)",
+                    letterSpacing: "0.04em",
+                  }}>
+                    {player.deals.length} {player.deals.length === 1 ? "deal" : "deals"}
+                    {player.deals.length > 0 && " · click to view"}
+                  </div>
+                  {/* Tooltip arrow */}
+                  <div style={{
+                    position: "absolute",
+                    bottom: -5,
+                    left: "50%",
+                    transform: "translateX(-50%) rotate(45deg)",
+                    width: 8,
+                    height: 8,
+                    background: "rgba(10,7,7,0.96)",
+                    borderRight: `1px solid ${ts.border}`,
+                    borderBottom: `1px solid ${ts.border}`,
+                  }} />
+                </div>
+              )}
+
               {/* Player avatar — photo if available, initials fallback */}
               {(() => {
                 const imgUrl = playerImageUrl(player.name);
-                const size = isActive ? 64 : 52;
+                const size = isActive ? 64 : isHovered ? 60 : 52;
                 return (
                   <div style={{
                     width: size, height: size, borderRadius: "50%",
                     border: `2.5px solid ${ts.border}`,
                     overflow: "hidden",
-                    background: imgUrl ? "#0d1a12" : (isActive
+                    background: imgUrl ? "#0d1a12" : (isElevated
                       ? `radial-gradient(circle at 35% 35%, ${ts.border}33, #0d1f14)`
                       : "radial-gradient(circle at 35% 35%, #1a3a22, #0d1a12)"),
                     display: "flex", alignItems: "center", justifyContent: "center",
                     boxShadow: isActive
-                      ? `0 0 24px ${ts.glow}, 0 4px 16px rgba(0,0,0,0.5)`
+                      ? `0 0 28px ${ts.glow}, 0 6px 18px rgba(0,0,0,0.5)`
+                      : isHovered
+                      ? `0 0 20px ${ts.glow}, 0 4px 14px rgba(0,0,0,0.5)`
                       : "0 2px 8px rgba(0,0,0,0.45)",
-                    transition: "all 0.2s ease",
+                    transition: "width 0.18s, height 0.18s, box-shadow 0.18s, background 0.18s",
                   }}>
                     {imgUrl ? (
                       <img
@@ -140,14 +231,14 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                           width: "100%", height: "100%",
                           objectFit: "cover",
                           objectPosition: "top center",
-                          filter: isActive ? "none" : "brightness(0.85)",
-                          transition: "filter 0.2s",
+                          filter: isElevated ? "none" : "brightness(0.85)",
+                          transition: "filter 0.18s",
                         }}
                       />
                     ) : (
                       <span style={{
                         fontSize: 15, fontWeight: 700,
-                        color: isActive ? ts.border : "var(--text)",
+                        color: isElevated ? ts.border : "var(--text)",
                         fontFamily: "'Bebas Neue', sans-serif",
                         letterSpacing: "0.04em",
                       }}>
@@ -163,10 +254,11 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                 fontFamily: "'Bebas Neue', sans-serif",
                 fontSize: 11,
                 letterSpacing: "0.06em",
-                color: isActive ? ts.border : "rgba(232,239,232,0.92)",
+                color: isElevated ? ts.border : "rgba(244,236,236,0.92)",
                 textShadow: "0 1px 4px rgba(0,0,0,0.9)",
                 whiteSpace: "nowrap",
                 lineHeight: 1,
+                transition: "color 0.18s",
               }}>
                 {lastName(player.name)}
               </span>
@@ -177,8 +269,8 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                 fontSize: 9,
                 letterSpacing: "0.04em",
                 color: ts.badge,
-                background: ts.badgeBg,
-                border: `1px solid ${ts.badge}40`,
+                background: ts.soft,
+                border: `1px solid ${ts.border}`,
                 padding: "1px 5px",
                 borderRadius: 4,
                 lineHeight: 1.4,
@@ -190,7 +282,7 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
               <span style={{
                 fontFamily: "'JetBrains Mono', monospace",
                 fontSize: 8,
-                color: "rgba(143,168,152,0.75)",
+                color: "rgba(176,154,154,0.75)",
                 textShadow: "0 1px 3px rgba(0,0,0,0.8)",
                 whiteSpace: "nowrap",
                 lineHeight: 1,
@@ -207,10 +299,11 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
         <div style={{
           marginTop: 12,
           background: "var(--surface)",
-          border: `1px solid ${TIER_STYLE[activePlayer.tier].border}30`,
+          border: `1px solid ${TIER_STYLE[activePlayer.tier].border}`,
           borderRadius: 14,
           overflow: "hidden",
           animation: "slideIn 0.18s ease-out",
+          boxShadow: `0 0 24px ${TIER_STYLE[activePlayer.tier].glow}`,
         }}>
           {/* Header */}
           <div style={{
@@ -233,8 +326,8 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                 fontSize: 13,
                 letterSpacing: "0.06em",
                 color: TIER_STYLE[activePlayer.tier].badge,
-                background: TIER_STYLE[activePlayer.tier].badgeBg,
-                border: `1px solid ${TIER_STYLE[activePlayer.tier].badge}40`,
+                background: TIER_STYLE[activePlayer.tier].soft,
+                border: `1px solid ${TIER_STYLE[activePlayer.tier].border}`,
                 padding: "2px 8px",
                 borderRadius: 6,
               }}>

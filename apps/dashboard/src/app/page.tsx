@@ -2,6 +2,7 @@ import { getResearchActions } from "./research-engine";
 import { fetchAllDeals, predict } from "./fetch-deals";
 import { assignTier, type PitchPlayerData } from "./helpers";
 import PitchView from "./pitch-view";
+import AvoidSection from "./avoid-section";
 
 export const dynamic = "force-dynamic";
 
@@ -16,8 +17,6 @@ const POSITIONS = [
 export default async function RookiesPage() {
   const actions = getResearchActions();
   const dealsByPlayer = await fetchAllDeals();
-
-  const sellActions = actions.filter((a) => a.signal === "SELL");
 
   // Filter: rookie BUY players, ranked by deal count
   const rookieActions = actions.filter((a) => a.lane === "rookie" && (a.signal === "BUY" || a.signal === "HOLD"));
@@ -57,43 +56,7 @@ export default async function RookiesPage() {
 
       <PitchView players={players} />
 
-      {/* AVOID section */}
-      {sellActions.length > 0 && (
-        <section style={{ marginTop: 28, marginBottom: 24 }}>
-          <h2
-            className="bebas"
-            style={{ fontSize: 13, letterSpacing: "0.1em", color: "var(--red)", marginBottom: 10 }}
-          >
-            AVOID
-          </h2>
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid rgba(239,68,68,0.2)",
-            borderRadius: 12,
-            padding: "12px 16px",
-          }}>
-            {sellActions.map((a) => (
-              <div
-                key={a.id}
-                style={{ display: "flex", alignItems: "baseline", gap: 8, padding: "5px 0" }}
-              >
-                <span style={{
-                  fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 100,
-                  background: "rgba(239,68,68,0.15)", color: "var(--red)",
-                  fontFamily: "'JetBrains Mono', monospace",
-                  whiteSpace: "nowrap",
-                }}>
-                  SELL
-                </span>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>{a.player}</span>
-                <span style={{ fontSize: 11, color: "var(--text-3)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {a.reasoning.slice(0, 55)}…
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
+      <AvoidSection actions={actions} lane="rookie" />
 
       {/* Market notes */}
       <details style={{ marginTop: 8 }}>
