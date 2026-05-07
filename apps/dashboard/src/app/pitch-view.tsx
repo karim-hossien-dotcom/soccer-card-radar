@@ -108,6 +108,9 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
           const isActive = active === player.name;
           const isHovered = hovered === player.name;
           const isElevated = isActive || isHovered;
+          // Top-row players (y < 25%) would have the tooltip clipped by the
+          // pitch's overflow:hidden — flip it to appear below the label stack.
+          const tooltipBelow = player.position.y < 25;
 
           return (
             <button
@@ -134,14 +137,14 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                 transition: "transform 0.18s cubic-bezier(0.34,1.56,0.64,1)",
               }}
             >
-              {/* Hover tooltip — appears above avatar */}
+              {/* Hover tooltip — flips above/below based on player position */}
               {isHovered && !isActive && (
                 <div
                   style={{
                     position: "absolute",
-                    bottom: "100%",
+                    ...(tooltipBelow ? { top: "100%" } : { bottom: "100%" }),
                     left: "50%",
-                    transform: "translate(-50%, -8px)",
+                    transform: tooltipBelow ? "translate(-50%, 8px)" : "translate(-50%, -8px)",
                     background: "rgba(10,7,7,0.96)",
                     border: `1px solid ${ts.border}`,
                     borderRadius: 8,
@@ -149,7 +152,9 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                     minWidth: 140,
                     boxShadow: `0 8px 24px rgba(0,0,0,0.6), 0 0 16px ${ts.glow}`,
                     pointerEvents: "none",
-                    animation: "tooltipIn 0.16s ease-out forwards",
+                    animation: tooltipBelow
+                      ? "tooltipDown 0.16s ease-out forwards"
+                      : "tooltipUp 0.16s ease-out forwards",
                     zIndex: 30,
                   }}
                 >
@@ -188,17 +193,18 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                     {player.deals.length} {player.deals.length === 1 ? "deal" : "deals"}
                     {player.deals.length > 0 && " · click to view"}
                   </div>
-                  {/* Tooltip arrow */}
+                  {/* Tooltip arrow — points back at the avatar */}
                   <div style={{
                     position: "absolute",
-                    bottom: -5,
+                    ...(tooltipBelow ? { top: -5 } : { bottom: -5 }),
                     left: "50%",
                     transform: "translateX(-50%) rotate(45deg)",
                     width: 8,
                     height: 8,
                     background: "rgba(10,7,7,0.96)",
-                    borderRight: `1px solid ${ts.border}`,
-                    borderBottom: `1px solid ${ts.border}`,
+                    ...(tooltipBelow
+                      ? { borderLeft: `1px solid ${ts.border}`, borderTop: `1px solid ${ts.border}` }
+                      : { borderRight: `1px solid ${ts.border}`, borderBottom: `1px solid ${ts.border}` }),
                   }} />
                 </div>
               )}

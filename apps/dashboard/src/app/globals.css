@@ -93,9 +93,14 @@ a { color: inherit; text-decoration: none; }
   to { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes tooltipIn {
+@keyframes tooltipUp {
   from { opacity: 0; transform: translate(-50%, -4px); }
   to { opacity: 1; transform: translate(-50%, -8px); }
+}
+
+@keyframes tooltipDown {
+  from { opacity: 0; transform: translate(-50%, 4px); }
+  to { opacity: 1; transform: translate(-50%, 8px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
