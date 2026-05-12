@@ -83,4 +83,51 @@ export type PitchPlayerData = {
   prediction: string;
   position: { x: number; y: number };
   deals: DealItem[];
+  // Real sold-comp stats from PlayerSoldStats. Null until first sold-scan runs
+  // for this action, or if eBay blocked the scrape.
+  stats: {
+    sample_size: number;
+    median: number | null;
+    last_5_avg: number | null;
+    trend_7d_pct: number | null;
+    trend_30d_pct: number | null;
+    fair_value_mid: number | null;
+    scraped_at: string;
+  } | null;
 };
+
+/**
+ * Build a short label for the pitch view from real sold-comp stats, falling
+ * back to the heuristic `predict()` when we have no data yet.
+ *
+ * Examples (data path):
+ *   - "$1,575 med · 7d ↓5%"    (median + recent trend)
+ *   - "$2,400 fair · 30d ↑12%"  (fair-value mid + 30-day trend)
+ *   - "$500 med · 12 sold"      (low sample, show count instead of trend)
+ */
+export function statsLabel(
+  stats: PitchPlayerData["stats"],
+  fallbackLane: string,
+  fallbackCatalyst: string,
+): string {
+  if (!stats || stats.sample_size === 0) {
+    return predict(fallbackLane, fallbackCatalyst);
+  }
+
+  const headline = stats.fair_value_mid ?? stats.median;
+  if (headline === null) return predict(fallbackLane, fallbackCatalyst);
+
+  const dollars = headline >= 1000
+    ? `$${(headline / 1000).toFixed(1)}k`
+    : `$${Math.round(headline)}`;
+  const tag = stats.fair_value_mid !== null ? "fair" : "med";
+
+  const trend = stats.trend_7d_pct ?? stats.trend_30d_pct;
+  if (trend === null || stats.sample_size < 3) {
+    return `${dollars} ${tag} · ${stats.sample_size} sold`;
+  }
+
+  const window = stats.trend_7d_pct !== null ? "7d" : "30d";
+  const arrow = trend >= 0 ? "↑" : "↓";
+  return `${dollars} ${tag} · ${window} ${arrow}${Math.abs(trend).toFixed(0)}%`;
+}

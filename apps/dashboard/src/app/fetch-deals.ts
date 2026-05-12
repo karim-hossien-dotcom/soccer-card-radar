@@ -11,9 +11,21 @@ const PRICE_CAP: Record<string, number> = { rookie: 1000, steal: 2000, legacy: 5
 // returns active listings, so a row that stops appearing is gone.
 const MAX_STALE_HOURS = 48;
 
+export type SoldStats = {
+  sample_size: number;
+  median: number | null;
+  last_5_avg: number | null;
+  trend_7d_pct: number | null;
+  trend_30d_pct: number | null;
+  fair_value_mid: number | null;
+  scraped_at: string;
+  source_status: string;
+};
+
 export type PlayerDeals = {
   action: ResearchAction;
   deals: DealItem[];
+  stats: SoldStats | null;
 };
 
 export async function fetchAllDeals(): Promise<Map<string, PlayerDeals>> {
@@ -22,13 +34,35 @@ export async function fetchAllDeals(): Promise<Map<string, PlayerDeals>> {
 
   const freshCutoff = new Date(Date.now() - MAX_STALE_HOURS * 3600_000).toISOString();
 
-  const { data: rows } = await supabase
-    .from("Listing")
-    .select("id, title, priceUSD, url, rawData, actionId, lane, lastSeenAt, soldAt")
-    .is("soldAt", null)
-    .gte("lastSeenAt", freshCutoff)
-    .order("priceUSD", { ascending: true })
-    .limit(500);
+  // Pull active listings AND the per-player sold-comp stats in parallel.
+  const [listingsRes, statsRes] = await Promise.all([
+    supabase
+      .from("Listing")
+      .select("id, title, priceUSD, url, rawData, actionId, lane, lastSeenAt, soldAt")
+      .is("soldAt", null)
+      .gte("lastSeenAt", freshCutoff)
+      .order("priceUSD", { ascending: true })
+      .limit(500),
+    supabase
+      .from("PlayerSoldStats")
+      .select(
+        "actionId, sampleSize, median, last5Avg, trend7dPct, trend30dPct, fairValueMid, scrapedAt, sourceStatus",
+      ),
+  ]);
+  const rows = listingsRes.data;
+  const statsByAction = new Map<string, SoldStats>();
+  for (const s of statsRes.data ?? []) {
+    statsByAction.set(s.actionId, {
+      sample_size: s.sampleSize,
+      median: s.median,
+      last_5_avg: s.last5Avg,
+      trend_7d_pct: s.trend7dPct,
+      trend_30d_pct: s.trend30dPct,
+      fair_value_mid: s.fairValueMid,
+      scraped_at: s.scrapedAt,
+      source_status: s.sourceStatus,
+    });
+  }
 
   const dealsByPlayer = new Map<string, PlayerDeals>();
 
@@ -84,7 +118,11 @@ export async function fetchAllDeals(): Promise<Map<string, PlayerDeals>> {
     };
 
     if (!dealsByPlayer.has(action.player)) {
-      dealsByPlayer.set(action.player, { action, deals: [] });
+      dealsByPlayer.set(action.player, {
+        action,
+        deals: [],
+        stats: statsByAction.get(action.id) ?? null,
+      });
     }
     dealsByPlayer.get(action.player)!.deals.push(deal);
   }

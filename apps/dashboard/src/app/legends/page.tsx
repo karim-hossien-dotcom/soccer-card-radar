@@ -1,6 +1,6 @@
 import { getResearchActions } from "../research-engine";
 import { fetchAllDeals, predict } from "../fetch-deals";
-import { assignTier, type PitchPlayerData } from "../helpers";
+import { assignTier, statsLabel, type PitchPlayerData } from "../helpers";
 import PitchView from "../pitch-view";
 import AvoidSection from "../avoid-section";
 
@@ -30,12 +30,24 @@ export default async function LegendsPage() {
 
   const players: PitchPlayerData[] = all.map((action, i) => {
     const pd = dealsByPlayer.get(action.player);
+    const stats = pd?.stats
+      ? {
+          sample_size: pd.stats.sample_size,
+          median: pd.stats.median,
+          last_5_avg: pd.stats.last_5_avg,
+          trend_7d_pct: pd.stats.trend_7d_pct,
+          trend_30d_pct: pd.stats.trend_30d_pct,
+          fair_value_mid: pd.stats.fair_value_mid,
+          scraped_at: pd.stats.scraped_at,
+        }
+      : null;
     return {
       name: action.player,
       tier: assignTier(action.signal, action.lane, action.catalyst, "legends"),
-      prediction: predict(action.lane, action.catalyst),
+      prediction: statsLabel(stats, action.lane, action.catalyst),
       position: POSITIONS[i] ?? { x: 50, y: 50 },
       deals: pd?.deals ?? [],
+      stats,
     };
   });
 

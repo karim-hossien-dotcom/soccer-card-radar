@@ -9,6 +9,11 @@ const TIER_STYLE: Record<"S" | "A" | "B", { border: string; glow: string; soft: 
   B: { border: "var(--tier-b)", glow: "var(--tier-b-glow)", soft: "var(--tier-b-soft)", badge: "var(--tier-b)" },
 };
 
+function formatMoney(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}k`;
+  return Math.round(n).toString();
+}
+
 function initials(name: string): string {
   const parts = name.split(" ").filter(Boolean);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
@@ -193,6 +198,30 @@ export default function PitchView({ players }: { players: PitchPlayerData[] }) {
                     {player.deals.length} {player.deals.length === 1 ? "deal" : "deals"}
                     {player.deals.length > 0 && " · click to view"}
                   </div>
+                  {/* Real sold-comp data — shows when /api/sold-scan has populated PlayerSoldStats */}
+                  {player.stats && player.stats.sample_size > 0 && (
+                    <div className="mono" style={{
+                      fontSize: 9,
+                      color: "var(--text-2)",
+                      marginTop: 4,
+                      paddingTop: 4,
+                      borderTop: `1px dashed ${ts.border}40`,
+                      letterSpacing: "0.04em",
+                    }}>
+                      {player.stats.fair_value_mid !== null && (
+                        <div>fair: <span style={{ color: ts.badge, fontWeight: 600 }}>${formatMoney(player.stats.fair_value_mid)}</span></div>
+                      )}
+                      {player.stats.last_5_avg !== null && (
+                        <div style={{ marginTop: 1 }}>last 5: ${formatMoney(player.stats.last_5_avg)}</div>
+                      )}
+                      <div style={{ marginTop: 1, opacity: 0.85 }}>
+                        {player.stats.sample_size} sold · 30d
+                        {player.stats.trend_7d_pct !== null && (
+                          <> · 7d {player.stats.trend_7d_pct >= 0 ? "↑" : "↓"}{Math.abs(player.stats.trend_7d_pct).toFixed(0)}%</>
+                        )}
+                      </div>
+                    </div>
+                  )}
                   {/* Tooltip arrow — points back at the avatar */}
                   <div style={{
                     position: "absolute",

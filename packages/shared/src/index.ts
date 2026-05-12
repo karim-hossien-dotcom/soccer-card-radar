@@ -9,3 +9,6 @@ export type {
   ScraperSearchParams,
   NormalizedListing,
 } from "./types";
+
+export type { SoldSale, SoldStats, FairValue } from "./fair-value";
+export { computeFairValue, computeSoldStats } from "./fair-value";

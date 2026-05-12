@@ -97,6 +97,48 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["PriceHistory"]["Insert"]>;
         Relationships: [];
       };
+      PlayerSoldStats: {
+        Row: {
+          actionId: string;
+          player: string;
+          lane: string;
+          sampleSize: number;
+          median: number | null;
+          mean: number | null;
+          low: number | null;
+          high: number | null;
+          last5Avg: number | null;
+          trend7dPct: number | null;
+          trend30dPct: number | null;
+          fairValueLow: number | null;
+          fairValueMid: number | null;
+          fairValueHigh: number | null;
+          sourceStatus: string;
+          scrapedAt: string;
+          errorMessage: string | null;
+        };
+        Insert: {
+          actionId: string;
+          player: string;
+          lane: string;
+          sampleSize?: number;
+          median?: number | null;
+          mean?: number | null;
+          low?: number | null;
+          high?: number | null;
+          last5Avg?: number | null;
+          trend7dPct?: number | null;
+          trend30dPct?: number | null;
+          fairValueLow?: number | null;
+          fairValueMid?: number | null;
+          fairValueHigh?: number | null;
+          sourceStatus?: string;
+          scrapedAt?: string;
+          errorMessage?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["PlayerSoldStats"]["Insert"]>;
+        Relationships: [];
+      };
       MatchScore: {
         Row: {
           id: string;
