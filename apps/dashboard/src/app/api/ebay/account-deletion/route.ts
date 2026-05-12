@@ -50,6 +50,24 @@ export async function GET(req: NextRequest) {
     .update(endpointUrl)
     .digest("hex");
 
+  // Diagnostic mode — append ?diag=1 to see exactly what's being hashed.
+  // Remove this block once eBay verification succeeds.
+  if (req.nextUrl.searchParams.get("diag") === "1") {
+    return NextResponse.json({
+      challengeResponse: hash,
+      _debug: {
+        endpoint_url_used: endpointUrl,
+        token_length: VERIFICATION_TOKEN.length,
+        token_first8: VERIFICATION_TOKEN.slice(0, 8),
+        token_last4: VERIFICATION_TOKEN.slice(-4),
+        env_endpoint_set: Boolean(process.env.EBAY_DELETION_ENDPOINT_URL),
+        env_token_set: Boolean(process.env.EBAY_DELETION_TOKEN),
+        request_origin: req.nextUrl.origin,
+        request_pathname: req.nextUrl.pathname,
+      },
+    });
+  }
+
   return NextResponse.json({ challengeResponse: hash });
 }
 
