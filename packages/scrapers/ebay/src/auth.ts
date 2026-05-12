@@ -56,7 +56,7 @@ export async function getAppToken(): Promise<string> {
     throw new Error(`eBay app token failed (${res.status}): ${text}`);
   }
 
-  const data: TokenResponse = await res.json();
+  const data = (await res.json()) as TokenResponse;
 
   appTokenCache = {
     token: data.access_token,

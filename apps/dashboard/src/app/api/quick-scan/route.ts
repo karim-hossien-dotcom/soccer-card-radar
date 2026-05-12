@@ -45,7 +45,7 @@ async function getEbayAppToken(): Promise<string> {
     throw new Error(`eBay app token failed (${res.status}): ${text}`);
   }
 
-  const data = await res.json();
+  const data = (await res.json()) as { access_token: string; expires_in: number };
 
   appTokenCache = {
     token: data.access_token,
@@ -73,7 +73,7 @@ async function searchEbay(query: string, limit = 10): Promise<unknown[]> {
   });
 
   if (!res.ok) return [];
-  const data = await res.json();
+  const data = (await res.json()) as { itemSummaries?: unknown[] };
   return data.itemSummaries ?? [];
 }
 

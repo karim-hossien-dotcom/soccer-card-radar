@@ -9,7 +9,7 @@ export default function ScanBtn() {
     setS("go"); setMsg("");
     try {
       const r = await fetch("/api/quick-scan");
-      const d = await r.json();
+      const d = (await r.json()) as { imported?: number; updated?: number };
       setS("done");
       setMsg(`${d.imported ?? 0} new · ${d.updated ?? 0} updated`);
       setTimeout(() => { setS("idle"); setMsg(""); }, 4000);

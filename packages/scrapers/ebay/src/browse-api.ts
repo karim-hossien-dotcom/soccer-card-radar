@@ -109,7 +109,7 @@ export async function searchListings(
     throw new Error(`eBay Browse API error (${res.status}): ${text}`);
   }
 
-  const data: BrowseSearchResponse = await res.json();
+  const data = (await res.json()) as BrowseSearchResponse;
 
   if (!data.itemSummaries || data.itemSummaries.length === 0) {
     return [];
