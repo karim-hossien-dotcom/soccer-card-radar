@@ -7,6 +7,7 @@ const tabs = [
   { label: "ROOKIES", href: "/" },
   { label: "STARS", href: "/stars" },
   { label: "LEGENDS", href: "/legends" },
+  { label: "DIPS", href: "/dips" },
 ];
 
 export default function NavBar() {

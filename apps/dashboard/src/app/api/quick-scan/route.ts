@@ -4,7 +4,7 @@ import { getResearchActions } from "../../research-engine";
 import { isQualityCard, isVintageLegend } from "../../card-filter";
 
 export const dynamic = "force-dynamic";
-export const maxDuration = 120;
+export const maxDuration = 180;
 
 // ─── eBay OAuth (inlined from packages/scrapers/ebay/src/auth.ts) ─────────────
 
@@ -86,15 +86,16 @@ function delay(ms: number): Promise<void> {
 // ─── Quick scan endpoint ──────────────────────────────────────────────────────
 
 /**
- * GET /api/quick-scan — fast scan of the top 5 BUY-signal research actions.
- * Same logic as /api/scan but limited to first 5 actions and 25 API calls.
- * Designed to complete in <20 seconds via the dashboard "Scan Now" button.
+ * GET /api/quick-scan — full sweep across every research action.
+ *
+ * Used by the dashboard "Scan Now" button. Previously this only refreshed
+ * the first 5 actions (rookies only) so stars + legends data went stale.
+ * Now scans all ~25 actions; takes ~90-120s, well under our maxDuration=180.
  */
 export async function GET() {
   const startTime = Date.now();
 
-  // Only the first 5 actions (highest-urgency BUY signals)
-  const actions = getResearchActions().slice(0, 5);
+  const actions = getResearchActions();
 
   let apiCalls = 0;
   let imported = 0;

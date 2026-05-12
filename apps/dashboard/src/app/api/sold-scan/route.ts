@@ -159,32 +159,66 @@ function classifySourceStatus(
   return "empty";
 }
 
+/**
+ * Returns the ISO date string (YYYY-MM-DD) for the Monday of the week
+ * containing the given date. Used as the snapshotWeek key in SoldStatsHistory
+ * so multiple scans within the same week overwrite each other (latest wins),
+ * keeping history compact while preserving weekly granularity.
+ */
+function isoMondayOfWeek(d: Date): string {
+  const utc = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const day = utc.getUTCDay(); // 0=Sun..6=Sat
+  const offset = day === 0 ? -6 : 1 - day;
+  utc.setUTCDate(utc.getUTCDate() + offset);
+  return utc.toISOString().slice(0, 10);
+}
+
 async function upsertStats(action: ResearchAction, result: ScrapeResult): Promise<void> {
   const stats = computeSoldStats(result.sales);
   const fv = computeFairValue(result.sales, 30);
   const sourceStatus = classifySourceStatus(result);
+  const now = new Date();
+  const scrapedAt = now.toISOString();
+  const snapshotWeek = isoMondayOfWeek(now);
 
+  const statsRow = {
+    sampleSize: stats.count,
+    median: stats.count > 0 ? stats.median : null,
+    mean: stats.count > 0 ? stats.mean : null,
+    low: stats.count > 0 ? stats.low : null,
+    high: stats.count > 0 ? stats.high : null,
+    last5Avg: stats.last_5_avg,
+    trend7dPct: stats.trend_7d_pct,
+    trend30dPct: stats.trend_30d_pct,
+    fairValueLow: fv.sample_size > 0 ? fv.low : null,
+    fairValueMid: fv.sample_size > 0 ? fv.mid : null,
+    fairValueHigh: fv.sample_size > 0 ? fv.high : null,
+    sourceStatus,
+    scrapedAt,
+  };
+
+  // Latest stats (one row per action — gets overwritten by next scan).
   await supabase
     .from("PlayerSoldStats")
     .upsert({
       actionId: action.id,
       player: action.player,
       lane: action.lane,
-      sampleSize: stats.count,
-      median: stats.count > 0 ? stats.median : null,
-      mean: stats.count > 0 ? stats.mean : null,
-      low: stats.count > 0 ? stats.low : null,
-      high: stats.count > 0 ? stats.high : null,
-      last5Avg: stats.last_5_avg,
-      trend7dPct: stats.trend_7d_pct,
-      trend30dPct: stats.trend_30d_pct,
-      fairValueLow: fv.sample_size > 0 ? fv.low : null,
-      fairValueMid: fv.sample_size > 0 ? fv.mid : null,
-      fairValueHigh: fv.sample_size > 0 ? fv.high : null,
-      sourceStatus,
-      scrapedAt: new Date().toISOString(),
+      ...statsRow,
       errorMessage: result.error ?? null,
     }, { onConflict: "actionId" });
+
+  // Weekly history (compounded over time — enables long-term dip detection).
+  // Multiple scans in the same week overwrite each other; the latest wins.
+  await supabase
+    .from("SoldStatsHistory")
+    .upsert({
+      actionId: action.id,
+      snapshotWeek,
+      player: action.player,
+      lane: action.lane,
+      ...statsRow,
+    }, { onConflict: "actionId,snapshotWeek" });
 }
 
 function delay(ms: number): Promise<void> {
