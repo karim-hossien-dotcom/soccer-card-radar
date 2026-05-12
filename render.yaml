@@ -1,0 +1,55 @@
+# Render blueprint for soccer-card-radar.
+#
+# How this deploys:
+#   1. Render watches the connected GitHub repo for pushes to `main`.
+#   2. On push, runs the build command — installs pnpm via corepack, installs
+#      all workspace deps frozen-lockfile, then `turbo build` produces the
+#      dashboard's .next output.
+#   3. Starts the Next.js server bound to whatever PORT Render assigns.
+#
+# Python scraper (/api/sold-scan) NOTE:
+#   The Browse API + eBay account-deletion + UI all work on Node alone.
+#   `/api/sold-scan` spawns python3 + curl-cffi as a subprocess — that needs
+#   Python installed on the container. Render's default Node runtime does
+#   NOT include Python. If sold-scan must run in production, switch this
+#   service from `runtime: node` to `runtime: docker` and use a custom
+#   Dockerfile (template in `infra/Dockerfile`). For now, scraper runs
+#   locally only; the production endpoint will return a clean "scraper
+#   unavailable" error if invoked.
+
+services:
+  - type: web
+    name: soccer-card-radar
+    runtime: node
+    region: oregon
+    plan: free            # Free tier is fine for the eBay webhook receiver.
+    branch: main
+    rootDir: .
+    buildCommand: |
+      corepack enable
+      corepack prepare pnpm@10.33.2 --activate
+      pnpm install --frozen-lockfile
+      pnpm build
+    # `next start` reads PORT from env automatically — Render sets PORT.
+    startCommand: cd apps/dashboard && pnpm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false        # paste value in Render dashboard (don't commit it)
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: EBAY_APP_ID
+        sync: false
+      - key: EBAY_CERT_ID
+        sync: false
+      - key: EBAY_DEV_ID
+        sync: false
+      - key: EBAY_USER_TOKEN
+        sync: false
+      # Optional — enables Apify paid fallback in /api/sold-scan when present.
+      # Without it, sold-scan runs free-scraper-only (no-op in production
+      # until the service is moved to a Docker runtime with Python installed).
+      - key: APIFY_API_TOKEN
+        sync: false
