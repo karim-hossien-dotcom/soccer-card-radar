@@ -27,16 +27,45 @@ const SCRIPT_PATH = join(
 const PYTHON = process.env.CARD_MCP_PYTHON ?? "python3";
 const DELAY_BETWEEN_ACTIONS_MS = 10_000; // 10s — well under eBay's soft-ban threshold
 
+const APIFY_TOKEN = process.env.APIFY_API_TOKEN ?? null;
+const APIFY_ACTOR = process.env.APIFY_ACTOR_SLUG ?? "caffein.dev~ebay-sold-listings";
+
 interface ScrapeResult {
   sales: SoldSale[];
   error?: string;
   ebay_http_status?: number;
+  source?: "scraper" | "apify";
 }
 
 async function scrapeOneAction(action: ResearchAction): Promise<ScrapeResult> {
   // Use the first searchQuery as the canonical scrape query for this action.
   const query = action.searchQueries[0] ?? action.player;
 
+  // 1. Free path: curl-cffi via Python subprocess. Works ~70% per fresh IP-hour.
+  const scraperResult = await runCurlCffi(query);
+  if (scraperResult.sales.length > 0) {
+    return { ...scraperResult, source: "scraper" };
+  }
+
+  // 2. Paid fallback: Apify hosted actor. Only fires when scraper got 0 sales
+  //    AND APIFY_API_TOKEN is configured. Apify rotates residential proxies
+  //    internally so it bypasses eBay's soft-ban on our IP.
+  if (APIFY_TOKEN) {
+    const apifyResult = await runApify(query);
+    if (apifyResult.sales.length > 0) {
+      return { ...apifyResult, source: "apify" };
+    }
+    return {
+      sales: [],
+      error: `scraper: ${scraperResult.error ?? "0 sales"}; apify: ${apifyResult.error ?? "0 sales"}`,
+    };
+  }
+
+  // 3. No fallback configured — return the scraper's error
+  return scraperResult;
+}
+
+function runCurlCffi(query: string): Promise<ScrapeResult> {
   return new Promise(resolve => {
     const child = spawn(PYTHON, [SCRIPT_PATH], {
       stdio: ["pipe", "pipe", "pipe"],
@@ -76,8 +105,55 @@ async function scrapeOneAction(action: ResearchAction): Promise<ScrapeResult> {
   });
 }
 
-function classifySourceStatus(result: ScrapeResult): "ok" | "empty" | "blocked" | "error" {
-  if (result.sales.length > 0) return "ok";
+interface ApifyResp {
+  itemId?: string;
+  title?: string;
+  soldPrice?: number;
+  endDate?: string;
+}
+
+async function runApify(query: string): Promise<ScrapeResult> {
+  if (!APIFY_TOKEN) {
+    return { sales: [], error: "APIFY_API_TOKEN not configured" };
+  }
+  const url = new URL(
+    `https://api.apify.com/v2/acts/${APIFY_ACTOR}/run-sync-get-dataset-items`,
+  );
+  url.searchParams.set("token", APIFY_TOKEN);
+  try {
+    const resp = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        keywords: [query],
+        daysToScrape: 90,
+        count: 60,
+        ebaySite: "ebay.com",
+        sortOrder: "endedRecently",
+      }),
+    });
+    if (!resp.ok) {
+      return { sales: [], error: `apify HTTP ${resp.status}` };
+    }
+    const items = (await resp.json()) as ApifyResp[];
+    const sales: SoldSale[] = items
+      .filter(i => typeof i.soldPrice === "number" && i.endDate)
+      .map(i => ({
+        sold_price: i.soldPrice as number,
+        sold_date: (i.endDate as string).slice(0, 10),
+      }));
+    return { sales };
+  } catch (err) {
+    return { sales: [], error: `apify fetch failed: ${(err as Error).message}` };
+  }
+}
+
+function classifySourceStatus(
+  result: ScrapeResult,
+): "ok" | "ok-apify" | "empty" | "blocked" | "error" {
+  if (result.sales.length > 0) {
+    return result.source === "apify" ? "ok-apify" : "ok";
+  }
   if (result.error?.includes("blocked")) return "blocked";
   if (result.error) return "error";
   return "empty";
