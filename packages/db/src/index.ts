@@ -1,10 +1,43 @@
-import { createClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "./database.types";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+/**
+ * Lazily-instantiated Supabase client.
+ *
+ * The previous version called `createClient(...)` at module import time. That
+ * works locally where `.env.local` is loaded before any code runs, but breaks
+ * Next.js's `next build` step on Render: route modules are imported during
+ * "Collecting page data" before runtime env vars are available, and the
+ * createClient call throws "supabaseKey is required".
+ *
+ * Pattern: a Proxy that defers client creation to the first property access.
+ * Consumers keep the same `supabase.from(...)`, `supabase.rpc(...)` API.
+ */
 
-export const supabase = createClient<Database>(supabaseUrl, supabaseServiceKey);
+type DBClient = SupabaseClient<Database>;
+
+let cached: DBClient | null = null;
+
+function getClient(): DBClient {
+  if (cached) return cached;
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) {
+    throw new Error(
+      "Supabase env vars missing: set NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY",
+    );
+  }
+  cached = createClient<Database>(url, key);
+  return cached;
+}
+
+export const supabase = new Proxy({} as DBClient, {
+  get(_target, prop) {
+    const client = getClient();
+    const value = Reflect.get(client, prop);
+    return typeof value === "function" ? value.bind(client) : value;
+  },
+});
 
 export type { Database } from "./database.types";
 export { createClient } from "@supabase/supabase-js";
