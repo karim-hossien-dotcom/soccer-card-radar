@@ -16,7 +16,7 @@ Order: A -> B -> C -> D. Each epic ships something visible. Status: **approved**
 ## Epic B: Collection section
 | ID | Ticket | Scope | Acceptance criteria | Size |
 |---|---|---|---|---|
-| B1 | /collection page | New nav tab COLLECTION; grid with photos, hover zoom, filters, sort (value, gain, date added), PSA 10/9/8 scenario toggle (port vault v2 UI) | Matches vault behaviour on desktop + 390px; Lighthouse no layout shift on hover | M |
+| B1 ✅ ready for prod | /collection page | New nav tab COLLECTION; grid with photos, hover zoom, filters, sort (value, gain, date added), PSA 10/9/8 scenario toggle (port vault v2 UI) | Matches vault behaviour on desktop + 390px; Lighthouse no layout shift on hover | M |
 | B2 | Card detail | Drawer: comps by grade with dates, grade decision, cost ledger lines, notes | Every number traceable to a CardComp or LedgerEntry row | S |
 | B3 | PSA submissions | Submissions view: cards at PSA, fees, expected value (engine), P&L once grades entered | Orders 26913695 (52) and 26913701 (2) shown; entering grades updates P&L | S |
 | B4 | Export | Download xlsx/CSV of collection | Export opens in Excel, totals match page | S |
@@ -48,3 +48,4 @@ Multi-user auth, billing, mobile app, sold-data scraping, Offer API integration 
 
 ## QA notes
 - A3 (2026-10-16): 16/16 unit tests pass (`pnpm --filter @soccer-card-radar/shared test`): 12 workbook fixtures (incl. Salah Roman Numeral, Bellingham Black Lazer, Mainoo Blue Mosaic, Haaland Starball /10), max bid, bands, non-gradeable lots. Full-collection check: engine vs workbook on all 170 cards, 0 mismatches; raw PSA 10/9 totals $12,287.12 / $5,194.05, at-PSA $9,621.20 / $3,569.51 (= workbook Summary). tsc clean (shared, dashboard).
+- B1 (2026-10-16): /collection (nav tab VAULT). next build OK. UAT on local dev server with fixture (test/fixtures/collection.json = same rows as Supabase): 170 tiles; totals Now $16,802 cost / $22,626 value / +$5,545; PSA 10 at-PSA $9,621 (= workbook); Raw PSA 10 $12,718 = workbook $12,287 + Topps Now lot $400 + sealed box $31 at current value; date sort, search, drawer (Salah Roman Numeral: Grade beats raw at PSA 9, +$331), hover zoom stays in viewport, no horizontal scroll at 390px; /, /stars, /legends, /dips return 200. Screenshots: docs/backlog/uat/B1/. Not verified: live Supabase read (sandbox can't reach DB) - check on the Render preview/after deploy.

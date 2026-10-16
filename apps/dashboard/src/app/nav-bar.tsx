@@ -8,6 +8,7 @@ const tabs = [
   { label: "STARS", href: "/stars" },
   { label: "LEGENDS", href: "/legends" },
   { label: "DIPS", href: "/dips" },
+  { label: "VAULT", href: "/collection" },
 ];
 
 export default function NavBar() {
@@ -36,7 +37,8 @@ export default function NavBar() {
               textAlign: "center",
               padding: "7px 0",
               borderRadius: 7,
-              fontSize: 15,
+              fontSize: "clamp(10px, 2.9vw, 15px)",
+              minWidth: 0,
               letterSpacing: "0.06em",
               transition: "all 0.15s",
               color: isActive ? "var(--manu-gold)" : "var(--text-3)",
