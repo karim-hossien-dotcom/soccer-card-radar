@@ -1,6 +1,32 @@
 export interface Database {
   public: {
     Tables: {
+      CardValueSnapshot: {
+        Row: {
+          cardId: string;
+          week: string;
+          status: string;
+          valueNow: number | null;
+          psa10: number | null;
+          psa9: number | null;
+          psa8: number | null;
+          cost: number | null;
+          createdAt: string;
+        };
+        Insert: {
+          cardId: string;
+          week: string;
+          status: string;
+          valueNow?: number | null;
+          psa10?: number | null;
+          psa9?: number | null;
+          psa8?: number | null;
+          cost?: number | null;
+          createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["CardValueSnapshot"]["Insert"]>;
+        Relationships: [];
+      };
       Submission: {
         Row: {
           id: string;

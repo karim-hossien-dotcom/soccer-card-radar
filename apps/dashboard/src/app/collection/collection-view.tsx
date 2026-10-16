@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { CollectionCard } from "./load";
+import type { CollectionCard, CollectionData } from "./load";
+import Tracker from "./tracker";
 import s from "./collection.module.css";
 
 type Scenario = "now" | "10" | "9" | "8";
@@ -24,7 +25,7 @@ const gain = (c: CollectionCard, sc: Scenario) => {
   return v === null || c.cost === null ? null : v - c.cost;
 };
 
-export default function CollectionView({ cards }: { cards: CollectionCard[] }) {
+export default function CollectionView({ cards, weeks, trends }: CollectionData) {
   const [scen, setScen] = useState<Scenario>("now");
   const [stat, setStat] = useState<StatusFilter>("all");
   const [player, setPlayer] = useState("");
@@ -78,8 +79,14 @@ export default function CollectionView({ cards }: { cards: CollectionCard[] }) {
     return () => window.removeEventListener("scroll", close);
   }, []);
 
+  const movers = useMemo(
+    () => cards.flatMap((c) => { const w = trends[c.id]?.wow; return w ? [{ card: c, wow: w }] : []; }),
+    [cards, trends],
+  );
+
   return (
     <div className={s.wrap}>
+      <Tracker weeks={weeks} movers={movers} />
       <section className={s.kpis} aria-label="Collection totals">
         <div><span>Cards</span><b>{list.length}</b></div>
         <div><span>Cost basis</span><b>{usd(totals.cost)}</b></div>
@@ -132,6 +139,7 @@ export default function CollectionView({ cards }: { cards: CollectionCard[] }) {
                   <span className={s.val}>{usd(v)}{est && <small> est.</small>}</span>
                   <span className={tone(g)}>{signed(g)}</span>
                 </div>
+                {trends[c.id]?.wow ? <div className={`${s.sub} ${tone(trends[c.id].wow)}`}>{signed(trends[c.id].wow)} this week</div> : null}
                 {sort === "date" && <div className={s.sub}>Added {c.dateAdded ?? "date unknown"}</div>}
                 {c.status === "raw" && c.decision && <div className={s.sub}>{c.decision}</div>}
               </div>
@@ -142,7 +150,7 @@ export default function CollectionView({ cards }: { cards: CollectionCard[] }) {
       </main>
 
       {zoom && <Zoom {...zoom} />}
-      {open && <Drawer card={open} onClose={() => setOpen(null)} />}
+      {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={() => setOpen(null)} />}
     </div>
   );
 }
@@ -171,7 +179,7 @@ function Zoom({ src, x, y }: { src: string; x: number; y: number }) {
   );
 }
 
-function Drawer({ card: c, onClose }: { card: CollectionCard; onClose: () => void }) {
+function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { week: string; value: number }[]; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [zoomed, setZoomed] = useState(false);
   useEffect(() => {
@@ -200,6 +208,7 @@ function Drawer({ card: c, onClose }: { card: CollectionCard; onClose: () => voi
           <tr><td>Value now</td><td>{usd(c.valueNow, 2)}</td></tr>
           <tr><td>Gain / loss now</td><td className={tone(c.valueNow !== null && c.cost !== null ? c.valueNow - c.cost : null)}>{c.valueNow !== null && c.cost !== null ? signed(c.valueNow - c.cost) : "—"}</td></tr>
         </tbody></table>
+        {series.length >= 2 && <Spark series={series} />}
         {showScen && (
           <table className={s.tbl}>
             <thead><tr><th>If graded</th><th>Value</th><th>Net vs cost{c.status === "raw" ? " + fee" : ""}</th></tr></thead>
@@ -226,5 +235,22 @@ function Drawer({ card: c, onClose }: { card: CollectionCard; onClose: () => voi
         {c.notes && <p className={s.note}>{c.notes}</p>}
       </div>
     </div>
+  );
+}
+
+function Spark({ series }: { series: { week: string; value: number }[] }) {
+  const W = 300, H = 56, P = 6;
+  const vals = series.map((p) => p.value);
+  const lo = Math.min(...vals), hi = Math.max(...vals), span = hi - lo || 1;
+  const pts = series.map((p, i) => [P + (i * (W - 2 * P)) / (series.length - 1), H - P - ((p.value - lo) * (H - 2 * P)) / span]);
+  const first = vals[0], last = vals[vals.length - 1];
+  return (
+    <figure className={s.spark}>
+      <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} role="img" aria-label={`Value over ${series.length} weeks: ${usd(first)} to ${usd(last)}`}>
+        <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--manu-gold)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="4" fill="var(--manu-gold)" stroke="var(--bg)" strokeWidth="2" />
+      </svg>
+      <figcaption className={s.muted}>{series.length} weeks: {usd(first)} → {usd(last)} ({signed(last - first)})</figcaption>
+    </figure>
   );
 }

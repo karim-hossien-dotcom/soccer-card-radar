@@ -1,5 +1,6 @@
 import { supabase } from "@soccer-card-radar/db";
 import { valueCard, configFromAssumptions, maxBid, type CardStatus, type Decision } from "@soccer-card-radar/shared";
+import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
 
 export type CompRow = { grade: string; price: number; method: string; source: string; asOf: string };
 
@@ -42,26 +43,49 @@ export type RawRows = {
   comps: ({ cardId: string } & CompRow)[];
   ledger: { cardId: string | null; kind: string; amount: number; occurredOn: string | null; source: string | null }[];
   assumptions: { key: string; value: number }[];
+  snapshots: SnapshotRow[];
 };
+
+export type CollectionData = { cards: CollectionCard[]; weeks: WeekTotal[]; trends: Record<string, CardTrend>; thisWeek: string };
+
+const fixtureMode = () => !!process.env.COLLECTION_FIXTURE && process.env.NODE_ENV !== "production";
 
 async function fetchRows(): Promise<RawRows> {
   // Local UAT without database access: COLLECTION_FIXTURE=path/to/collection.json (ignored in production).
-  if (process.env.COLLECTION_FIXTURE && process.env.NODE_ENV !== "production") {
+  if (fixtureMode()) {
     const { readFile } = await import("node:fs/promises");
-    return JSON.parse(await readFile(process.env.COLLECTION_FIXTURE, "utf8")) as RawRows;
+    const rows = JSON.parse(await readFile(process.env.COLLECTION_FIXTURE!, "utf8")) as RawRows;
+    return { ...rows, snapshots: rows.snapshots ?? [] };
   }
-  const [cards, comps, ledger, assumptions] = await Promise.all([
+  const since = new Date(Date.now() - 13 * 7 * 86400_000).toISOString().slice(0, 10);
+  const [cards, comps, ledger, assumptions, snapshots] = await Promise.all([
     supabase.from("Card").select("*"),
     supabase.from("CardComp").select('"cardId", grade, price, method, source, "asOf"'),
     supabase.from("LedgerEntry").select('"cardId", kind, amount, "occurredOn", source'),
     supabase.from("Assumption").select("key, value"),
+    supabase.from("CardValueSnapshot").select('"cardId", week, status, "valueNow", psa10, psa9, psa8, cost').gte("week", since),
   ]);
-  for (const r of [cards, comps, ledger, assumptions]) if (r.error) throw new Error(r.error.message);
-  return { cards: cards.data ?? [], comps: comps.data ?? [], ledger: ledger.data ?? [], assumptions: assumptions.data ?? [] } as RawRows;
+  for (const r of [cards, comps, ledger, assumptions, snapshots]) if (r.error) throw new Error(r.error.message);
+  const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+  return {
+    cards: cards.data ?? [], comps: comps.data ?? [], ledger: ledger.data ?? [], assumptions: assumptions.data ?? [],
+    snapshots: (snapshots.data ?? []).map((r) => ({ ...r, valueNow: num(r.valueNow), psa10: num(r.psa10), psa9: num(r.psa9), psa8: num(r.psa8), cost: num(r.cost) })),
+  } as RawRows;
 }
 
-export async function loadCollection(): Promise<CollectionCard[]> {
-  return buildCollection(await fetchRows());
+/** Loads the collection and records this week's value snapshot (A5): only changed rows are written. */
+export async function loadCollection(now: Date = new Date()): Promise<CollectionData> {
+  const rows = await fetchRows();
+  const cards = buildCollection(rows);
+  const thisWeek = weekOf(now);
+  const current = toSnapshotRows(cards, thisWeek);
+  const changed = changedRows(current, rows.snapshots.filter((r) => r.week === thisWeek));
+  if (changed.length && !fixtureMode()) {
+    const { error } = await supabase.from("CardValueSnapshot").upsert(changed, { onConflict: "cardId,week" });
+    if (error) console.error("snapshot upsert failed:", error.message);
+  }
+  const all = [...rows.snapshots.filter((r) => r.week !== thisWeek), ...current];
+  return { cards, weeks: weeklyTotals(all), trends: cardTrends(all), thisWeek };
 }
 
 export function buildCollection(rows: RawRows): CollectionCard[] {

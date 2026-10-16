@@ -63,3 +63,17 @@
   .kpis > div:nth-child(2) { border-right: 0; }
   .kpis > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
 }
+
+.tracker { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+.trackHead { display: flex; justify-content: space-between; align-items: end; gap: 8px; flex-wrap: wrap; }
+.trackHead > div { display: grid; gap: 2px; }
+.trackVal { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; }
+.trackVal small { font-size: 12px; }
+.chart { width: 100%; min-width: 0; }
+.movers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.movers ol { list-style: none; display: grid; gap: 4px; margin-top: 4px; }
+.movers li { display: flex; justify-content: space-between; gap: 8px; font-size: 12px; }
+.movers li b { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.moverName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
+.spark { display: grid; gap: 4px; }
+@media (max-width: 560px) { .movers { grid-template-columns: 1fr; } }
