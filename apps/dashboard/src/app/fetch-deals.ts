@@ -1,4 +1,4 @@
-import { supabase } from "@soccer-card-radar/db";
+import { dealRows } from "./deal-rows";
 import { getResearchActions } from "./research-engine";
 import { isQualityCard } from "./card-filter";
 import { parseCard, getProductTier, timeLeft, predict, type DealItem } from "./helpers";
@@ -35,23 +35,9 @@ export async function fetchAllDeals(): Promise<Map<string, PlayerDeals>> {
   const freshCutoff = new Date(Date.now() - MAX_STALE_HOURS * 3600_000).toISOString();
 
   // Pull active listings AND the per-player sold-comp stats in parallel.
-  const [listingsRes, statsRes] = await Promise.all([
-    supabase
-      .from("Listing")
-      .select("id, title, priceUSD, url, rawData, actionId, lane, lastSeenAt, soldAt")
-      .is("soldAt", null)
-      .gte("lastSeenAt", freshCutoff)
-      .order("priceUSD", { ascending: true })
-      .limit(500),
-    supabase
-      .from("PlayerSoldStats")
-      .select(
-        "actionId, sampleSize, median, last5Avg, trend7dPct, trend30dPct, fairValueMid, scrapedAt, sourceStatus",
-      ),
-  ]);
-  const rows = listingsRes.data;
+  const { listings: rows, stats: statRows } = await dealRows(freshCutoff);
   const statsByAction = new Map<string, SoldStats>();
-  for (const s of statsRes.data ?? []) {
+  for (const s of statRows) {
     statsByAction.set(s.actionId, {
       sample_size: s.sampleSize,
       median: s.median,

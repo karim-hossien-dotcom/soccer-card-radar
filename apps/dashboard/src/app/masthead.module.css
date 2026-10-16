@@ -1,0 +1,14 @@
+.band { background: var(--pitch); color: var(--chalk); }
+.top { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-top: 18px; }
+.mark { font-size: 26px; font-weight: 820; font-stretch: 125%; letter-spacing: -0.01em; text-decoration: none; line-height: 1; }
+.nav { display: flex; gap: 22px; margin-top: 18px; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.tab { padding: 8px 0 10px; text-decoration: none; font-weight: 600; font-size: var(--t-md); color: rgba(244, 241, 234, 0.72); border-bottom: 3px solid transparent; white-space: nowrap; }
+.tab:hover { color: var(--chalk); }
+.tab[aria-current="page"] { color: var(--chalk); border-bottom-color: var(--gold); }
+.tab:focus-visible, .scan:focus-visible { outline-color: var(--gold); }
+.scanWrap { display: flex; align-items: center; gap: 10px; font-size: var(--t-xs); color: rgba(244, 241, 234, 0.8); }
+.scan { background: transparent; color: var(--chalk); border: 1px solid rgba(244, 241, 234, 0.6); border-radius: 4px; padding: 5px 12px; font-size: var(--t-sm); font-weight: 600; cursor: pointer; }
+.scan:hover { border-color: var(--chalk); }
+.scan:disabled { cursor: wait; opacity: .7; }
+@media (max-width: 480px) { .mark { font-size: 22px; } .nav { gap: 18px; } }

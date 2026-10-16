@@ -13,11 +13,11 @@ const RAPH = '025d7e43'; // aged raw card in the A4 fixture
   out.kpisBefore = await kpis();
   out.step = 'banner'; out.banner = (await p.textContent('[aria-label="Comps"] span')).trim();
   await p.click('button:has-text("Stale (")'); await p.waitForTimeout(300);
-  out.staleTiles = await p.$$eval('main button', (e) => e.length);
+  out.staleTiles = await p.$$eval('section[aria-label="Cards"] button', (e) => e.length);
   await p.screenshot({ path: `${SHOTS}/a4_stale.png` });
   // drawer: PSA pop row on a graded card
   await p.click('button:has-text("All")'); await p.fill('input[type=search]', 'Haaland'); await p.waitForTimeout(300);
-  const tiles = await p.$$('main button'); let pop = null;
+  const tiles = await p.$$('section[aria-label="Cards"] button'); let pop = null;
   for (const t of tiles) { await t.click(); await p.waitForTimeout(200); const tx = await p.textContent('[role=dialog]'); const m = tx.match(/PSA pop.{0,60}/); if (m) { pop = m[0]; await p.screenshot({ path: `${SHOTS}/a4_pop.png` }); break; } await p.keyboard.press('Escape'); }
   out.step = 'popRow'; out.popRow = pop; await p.keyboard.press('Escape'); await p.fill('input[type=search]', '');
   // comps panel
@@ -39,7 +39,7 @@ const RAPH = '025d7e43'; // aged raw card in the A4 fixture
   out.bannerAfter = (await p.textContent('[aria-label="Comps"] span')).trim();
   out.kpisAfter = await kpis();
   await p.fill('input[type=search]', 'MANGA #8 RAPHINHA'); await p.waitForTimeout(300);
-  await p.click('main button'); await p.waitForTimeout(300);
+  await p.click('section[aria-label="Cards"] button'); await p.waitForTimeout(300);
   out.step = 'raphDrawer'; out.raphDrawer = (await p.textContent('[role=dialog]')).replace(/\s+/g, ' ').match(/Value now.{0,120}/)[0];
   await p.screenshot({ path: `${SHOTS}/a4_after.png` });
   out.tokenRemembered = await p.evaluate(() => localStorage.getItem('scr.adminToken'));

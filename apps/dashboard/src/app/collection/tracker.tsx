@@ -23,41 +23,41 @@ export default function Tracker({ weeks, movers }: { weeks: WeekTotal[]; movers:
   return (
     <section className={s.tracker} aria-label="Value tracker">
       <div className={s.trackHead}>
-        <div>
-          <span className={s.lbl}>Week on week</span>
+        <h2>
+          Form{" "}
           {delta === null ? (
-            <b className={s.trackVal}>Baseline</b>
+            <span className={`${s.trackVal} ${s.base}`}>Baseline week</span>
           ) : (
-            <b className={`${s.trackVal} ${delta >= 0 ? s.pos : s.neg}`}>{signed(delta)}{pct !== null && <small> ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)</small>}</b>
+            <span className={`${s.trackVal} ${delta >= 0 ? s.pos : s.neg}`}>{signed(delta)} this week{pct !== null && <small> ({pct >= 0 ? "+" : ""}{pct.toFixed(1)}%)</small>}</span>
           )}
-        </div>
-        {last && <span className={s.muted}>Week of {short(last.week)} · graded {usd(last.graded)} · raw {usd(last.raw)} · at PSA {usd(last.atGrader)}</span>}
+        </h2>
+        {last && <span className={s.note}>Week of {short(last.week)}: graded {usd(last.graded)}, raw {usd(last.raw)}, at PSA {usd(last.atGrader)}</span>}
       </div>
 
       {weeks.length >= 2 ? (
         <div className={s.chart} role="img" aria-label={`Collection value over the last ${data.length} weeks, from ${usd(data[0].total)} to ${usd(data[data.length - 1].total)}`}>
           <ResponsiveContainer width="100%" height={160}>
             <LineChart data={data} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-              <CartesianGrid stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="week" tick={{ fill: "var(--text-3)", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: "var(--text-3)", fontSize: 11 }} axisLine={false} tickLine={false} width={56} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} tickCount={4} domain={["auto", "auto"]} />
+              <CartesianGrid stroke="var(--rule)" vertical={false} />
+              <XAxis dataKey="week" tick={{ fill: "var(--ink-3)", fontSize: 12 }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: "var(--ink-3)", fontSize: 12 }} axisLine={false} tickLine={false} width={56} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} tickCount={4} domain={["auto", "auto"]} />
               <Tooltip
-                cursor={{ stroke: "var(--text-3)", strokeDasharray: "3 3" }}
-                contentStyle={{ background: "var(--surface-2)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text)", fontSize: 12 }}
+                cursor={{ stroke: "var(--ink-3)", strokeDasharray: "3 3" }}
+                contentStyle={{ background: "var(--chalk)", border: "1px solid var(--ink)", borderRadius: 4, color: "var(--ink)", fontSize: 13 }}
                 formatter={(v) => [usd(Number(v)), "Value"]}
               />
-              <Line type="monotone" dataKey="total" stroke="var(--manu-gold)" strokeWidth={2} dot={{ r: 4, fill: "var(--manu-gold)", stroke: "var(--bg)", strokeWidth: 2 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="total" stroke="var(--pitch)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--pitch)", stroke: "var(--chalk)", strokeWidth: 2 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       ) : (
-        <p className={s.note}>First snapshot saved for the week of {last ? short(last.week) : "this week"}. Week-on-week changes and the trend chart start once next week&apos;s prices are in.</p>
+        <p className={s.note}>This is the first saved week. The chart and week-on-week changes start once next week&apos;s prices are in.</p>
       )}
 
       {(risers.length > 0 || fallers.length > 0) && (
         <div className={s.movers}>
-          <MoverList title="Top risers" items={risers} />
-          <MoverList title="Top fallers" items={fallers} />
+          <MoverList title="Rising" items={risers} />
+          <MoverList title="Falling" items={fallers} />
         </div>
       )}
     </section>
@@ -67,11 +67,11 @@ export default function Tracker({ weeks, movers }: { weeks: WeekTotal[]; movers:
 function MoverList({ title, items }: { title: string; items: Mover[] }) {
   return (
     <div>
-      <span className={s.lbl}>{title}</span>
+      <h3>{title}</h3>
       {items.length === 0 ? <p className={s.muted}>None this week</p> : (
         <ol>
           {items.map((m) => (
-            <li key={m.card.id}><span className={s.moverName}>{m.card.player} · {m.card.gradeLabel}</span><b className={m.wow >= 0 ? s.pos : s.neg}>{signed(m.wow)}</b></li>
+            <li key={m.card.id}><span className={s.moverName}>{m.card.player}, {m.card.gradeLabel}</span><b className={m.wow >= 0 ? s.pos : s.neg}>{signed(m.wow)}</b></li>
           ))}
         </ol>
       )}

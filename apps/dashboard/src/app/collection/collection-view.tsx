@@ -90,20 +90,17 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
 
   return (
     <div className={s.wrap}>
+      <header className="page-head" style={{ marginBottom: 0 }}>
+        <h1>Vault</h1>
+        <p>{cards.length} cards, valued from the latest comps. Raw cards can also be priced as if graded.</p>
+      </header>
       <Tracker weeks={weeks} movers={movers} />
       <div className={s.due} role="region" aria-label="Comps">
         <span>{staleCount ? `${staleCount} cards have comps older than 14 days.` : "All comps are current."}</span>
         <button className={s.btn} onClick={() => setCompsOpen(true)}>Update comps</button>
       </div>
-      <section className={s.kpis} aria-label="Collection totals">
-        <div><span>Cards</span><b>{list.length}</b></div>
-        <div><span>Cost basis</span><b>{usd(totals.cost)}</b></div>
-        <div><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b>{usd(totals.value)}</b></div>
-        <div><span>Gain / loss</span><b className={tone(totals.gain)}>{signed(totals.gain)}</b></div>
-      </section>
-
       <div className={s.controls}>
-        <Seg label="Scenario" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
+        <Seg label="Price as" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
         <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`]]} />
         <div className={s.row}>
           <select aria-label="Player" value={player} onChange={(e) => setPlayer(e.target.value)}>
@@ -112,7 +109,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
           </select>
           <select aria-label="Sort" value={sort} onChange={(e) => setSort(e.target.value as SortKey)}>
             <option value="value">Value</option>
-            <option value="gain">Gain / loss</option>
+            <option value="gain">Gain or loss</option>
             <option value="upside">Upside vs now</option>
             <option value="cost">Cost</option>
             <option value="date">Date added (newest)</option>
@@ -122,7 +119,14 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
         </div>
       </div>
 
-      <main className={s.grid}>
+      <section className={s.kpis} aria-label="Collection totals">
+        <div><span>Cards</span><b>{list.length}</b></div>
+        <div><span>Cost</span><b>{usd(totals.cost)}</b></div>
+        <div><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b>{usd(totals.value)}</b></div>
+        <div><span>Gain or loss</span><b className={tone(totals.gain)}>{signed(totals.gain)}</b></div>
+      </section>
+
+      <section className={s.grid} aria-label="Cards">
         {list.map((c) => {
           const v = scenarioValue(c, scen);
           const g = gain(c, scen);
@@ -154,8 +158,8 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
             </button>
           );
         })}
-        {list.length === 0 && <div className={s.empty}>No cards match these filters.</div>}
-      </main>
+        {list.length === 0 && <div className={s.empty}>No cards match these filters. Clear the search or pick All.</div>}
+      </section>
 
       {zoom && <Zoom {...zoom} />}
       {compsOpen && <CompsPanel cards={cards} inView={list} onClose={() => setCompsOpen(false)} />}
@@ -209,15 +213,18 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
         )}
         <h2>{c.player}</h2>
         <p className={s.full}>{c.item}</p>
-        <p className={s.mono}>{c.gradeLabel}{c.cert ? ` · cert ${c.cert}` : ""}{c.qty > 1 ? ` · qty ${c.qty}` : ""}{c.submissionId ? ` · PSA order ${c.submissionId}` : ""}</p>
         <table className={s.tbl}><tbody>
+          <tr><td>Grade</td><td>{c.gradeLabel}</td></tr>
+          {c.cert && <tr><td>Cert</td><td>{c.cert}</td></tr>}
+          {c.qty > 1 && <tr><td>Quantity</td><td>{c.qty}</td></tr>}
+          {c.submissionId && <tr><td>PSA order</td><td>{c.submissionId}</td></tr>}
           <tr><td>Status</td><td>{STATUS_LABEL[c.status]}</td></tr>
           <tr><td>Date added</td><td>{c.dateAdded ?? "—"}</td></tr>
           <tr><td>Cost basis</td><td>{usd(c.cost, 2)}</td></tr>
           <tr><td>Value now</td><td>{usd(c.valueNow, 2)}</td></tr>
           <tr><td>Priced</td><td className={c.stale ? s.warn : undefined}>{c.compAsOf ? `${c.compGrade} comp, ${c.compAsOf}${c.stale ? " (stale)" : ""}` : "no comp yet"}</td></tr>
-          {c.pop && <tr><td>PSA pop</td><td>{c.pop.total ?? "—"} graded · {c.pop.gem10 ?? "—"} PSA 10{c.pop.gemRate !== null ? ` (${Math.round(c.pop.gemRate * 100)}% gem)` : ""}</td></tr>}
-          <tr><td>Gain / loss now</td><td className={tone(c.valueNow !== null && c.cost !== null ? c.valueNow - c.cost : null)}>{c.valueNow !== null && c.cost !== null ? signed(c.valueNow - c.cost) : "—"}</td></tr>
+          {c.pop && <tr><td>PSA pop</td><td>{c.pop.gem10 ?? "—"} PSA 10 of {c.pop.total ?? "—"} graded{c.pop.gemRate !== null ? ` (${Math.round(c.pop.gemRate * 100)}% gem)` : ""}</td></tr>}
+          <tr><td>Gain or loss now</td><td className={tone(c.valueNow !== null && c.cost !== null ? c.valueNow - c.cost : null)}>{c.valueNow !== null && c.cost !== null ? signed(c.valueNow - c.cost) : "—"}</td></tr>
         </tbody></table>
         {series.length >= 2 && <Spark series={series} />}
         {showScen && (
@@ -235,12 +242,12 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
         {c.maxBid !== null && showScen && <p className={s.note}>Snipe max bid for another copy: {usd(c.maxBid)}</p>}
         <h3>Price records</h3>
         <table className={s.tbl}><tbody>
-          {c.comps.map((p, i) => <tr key={i}><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{p.method === "value_used" ? "current value" : p.method} · {p.asOf}</td></tr>)}
+          {c.comps.map((p, i) => <tr key={i}><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{p.method === "value_used" ? "current value" : p.method}</td><td className={s.muted}>{p.asOf}</td></tr>)}
         </tbody></table>
         {c.ledger.length > 0 && (<>
           <h3>Ledger</h3>
           <table className={s.tbl}><tbody>
-            {c.ledger.map((l, i) => <tr key={i}><td>{l.kind.replace("_", " ")}</td><td>{usd(l.amount, 2)}</td><td className={s.muted}>{l.source}{l.occurredOn ? ` · ${l.occurredOn}` : ""}</td></tr>)}
+            {c.ledger.map((l, i) => <tr key={i}><td>{l.kind.replace("_", " ")}</td><td>{usd(l.amount, 2)}</td><td className={s.muted}>{l.source}</td><td className={s.muted}>{l.occurredOn ?? ""}</td></tr>)}
           </tbody></table>
         </>)}
         {c.notes && <p className={s.note}>{c.notes}</p>}
@@ -258,8 +265,8 @@ function Spark({ series }: { series: { week: string; value: number }[] }) {
   return (
     <figure className={s.spark}>
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" width="100%" height={H} role="img" aria-label={`Value over ${series.length} weeks: ${usd(first)} to ${usd(last)}`}>
-        <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--manu-gold)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-        <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="4" fill="var(--manu-gold)" stroke="var(--bg)" strokeWidth="2" />
+        <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="var(--pitch)" strokeWidth="2" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <circle cx={pts[pts.length - 1][0]} cy={pts[pts.length - 1][1]} r="4" fill="var(--pitch)" stroke="var(--chalk)" strokeWidth="2" />
       </svg>
       <figcaption className={s.muted}>{series.length} weeks: {usd(first)} → {usd(last)} ({signed(last - first)})</figcaption>
     </figure>

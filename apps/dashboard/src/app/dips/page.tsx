@@ -1,4 +1,4 @@
-import { supabase } from "@soccer-card-radar/db";
+import { dealRows } from "../deal-rows";
 import { getResearchActions } from "../research-engine";
 
 export const dynamic = "force-dynamic";
@@ -39,23 +39,13 @@ async function loadDips(): Promise<{ rows: DipRow[]; soldDataMissing: boolean; w
   const actions = getResearchActions();
   const freshCutoff = new Date(Date.now() - MAX_STALE_HOURS * 3600_000).toISOString();
 
-  const [listingsRes, statsRes] = await Promise.all([
-    supabase
-      .from("Listing")
-      .select("priceUSD, actionId, lane")
-      .is("soldAt", null)
-      .gte("lastSeenAt", freshCutoff),
-    supabase
-      .from("PlayerSoldStats")
-      .select("actionId, median, fairValueMid, sampleSize, trend7dPct, trend30dPct, scrapedAt, sourceStatus"),
-  ]);
+  const { listings, stats: statRows } = await dealRows(freshCutoff);
 
-  const stats = new Map<string, NonNullable<typeof statsRes.data>[number]>();
-  for (const s of statsRes.data ?? []) stats.set(s.actionId, s);
+  const stats = new Map(statRows.map((s) => [s.actionId, s]));
 
   // Group listings by actionId
   const listingsByAction = new Map<string, number[]>();
-  for (const l of listingsRes.data ?? []) {
+  for (const l of listings) {
     if (!l.actionId) continue;
     const cap = PRICE_CAP[l.lane ?? "rookie"] ?? 1000;
     if (l.priceUSD > cap) continue;
@@ -110,86 +100,60 @@ function fmtMoney(n: number): string {
   return `$${Math.round(n)}`;
 }
 
-function laneColor(lane: string): string {
-  if (lane === "rookie") return "var(--green)";
-  if (lane === "steal") return "#3b82f6";
-  return "var(--gold)";
-}
+const LANE: Record<string, string> = { rookie: "Rookie", steal: "Star", legacy: "Legend" };
+const trend = (t: number | null) => (t === null ? <span className="muted">—</span> : <span className={t < 0 ? "loss" : "gain"}>{t >= 0 ? "+" : "−"}{Math.abs(t).toFixed(0)}%</span>);
 
 export default async function DipsPage() {
   const { rows, warning } = await loadDips();
 
   return (
     <>
-      <div style={{ marginBottom: 16 }}>
-        <h2 className="bebas" style={{ fontSize: 13, letterSpacing: "0.1em", color: "var(--manu-red)", marginBottom: 4 }}>
-          DIP RADAR
-        </h2>
-        <p className="mono" style={{ fontSize: 11, color: "var(--text-3)" }}>
-          Players where active asking prices are above recent sold medians — sellers haven&apos;t lowered yet
-        </p>
-      </div>
+      <header className="page-head">
+        <h1>Dips</h1>
+        <p>Players whose asking prices sit above what their cards actually sold for. Sellers haven&apos;t caught up yet, so offers below ask tend to land.</p>
+      </header>
 
-      {warning && (
-        <div style={{
-          padding: 16,
-          background: "var(--surface)",
-          border: "1px dashed var(--border)",
-          borderRadius: 12,
-          color: "var(--text-2)",
-          fontSize: 12,
-          marginBottom: 16,
-        }}>
-          <i className="fas fa-info-circle" style={{ marginRight: 6, color: "var(--manu-gold)" }} />
-          {warning}
-        </div>
-      )}
+      {warning && <p className="notice">{warning}</p>}
 
       {rows.length > 0 && (
-        <div style={{ overflowX: "auto", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12 }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+        <div className="sheet-wrap">
+          <table className="sheet">
             <thead>
-              <tr style={{ background: "var(--surface-2)", color: "var(--text-3)", textTransform: "uppercase", fontSize: 10, letterSpacing: "0.06em" }}>
-                <th style={{ textAlign: "left",  padding: "10px 12px" }}>Player</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Sold mid</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Active mid</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Gap</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>30d</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>7d</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Sold #</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Active #</th>
-                <th style={{ textAlign: "right", padding: "10px 12px" }}>Cheapest</th>
+              <tr>
+                <th className="rank">#</th>
+                <th>Player</th>
+                <th className="num">Sold mid</th>
+                <th className="num">Asking mid</th>
+                <th className="num">Gap</th>
+                <th className="num">30 days</th>
+                <th className="num">7 days</th>
+                <th className="num">Sales</th>
+                <th className="num">Listings</th>
+                <th className="num">Cheapest</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {rows.map((r, i) => {
                 const conv = conviction(r.gapPct, r.trend30d);
-                const convColor = conv === "high" ? "var(--manu-red)" : conv === "medium" ? "var(--manu-gold)" : "var(--text-3)";
                 return (
-                  <tr key={r.actionId} style={{ borderTop: "1px solid var(--border)" }}>
-                    <td style={{ padding: "8px 12px" }}>
-                      <div style={{ fontWeight: 600, color: "var(--text)" }}>{r.player}</div>
-                      <div style={{ fontSize: 9, color: laneColor(r.lane), letterSpacing: "0.06em", textTransform: "uppercase" }}>
-                        {r.lane}
-                        {r.signal === "SELL" && (
-                          <span style={{ color: "var(--manu-red)", marginLeft: 6 }}>· SELL TARGET</span>
-                        )}
+                  <tr key={r.actionId}>
+                    <td className="rank">{i + 1}</td>
+                    <td>
+                      <div style={{ fontWeight: 650 }}>{r.player}</div>
+                      <div className="muted" style={{ fontSize: 12 }}>
+                        {LANE[r.lane]}{r.signal === "SELL" && <span className="loss"> sell target</span>}
                       </div>
                     </td>
-                    <td style={{ padding: "8px 12px", textAlign: "right" }} className="mono">{fmtMoney(r.soldMedian)}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right" }} className="mono">{fmtMoney(r.activeMedian)}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: convColor, fontWeight: 600 }} className="mono">
+                    <td className="num">{fmtMoney(r.soldMedian)}</td>
+                    <td className="num">{fmtMoney(r.activeMedian)}</td>
+                    <td className={`num ${conv === "high" ? "loss" : ""}`} style={{ fontWeight: conv === "low" ? 400 : 700 }}>
                       {r.gapPct >= 0 ? "+" : ""}{r.gapPct}%
                     </td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: (r.trend30d ?? 0) < 0 ? "var(--manu-red)" : "var(--green)" }} className="mono">
-                      {r.trend30d === null ? "—" : `${r.trend30d >= 0 ? "↑" : "↓"}${Math.abs(r.trend30d).toFixed(0)}%`}
-                    </td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: (r.trend7d ?? 0) < 0 ? "var(--manu-red)" : "var(--green)" }} className="mono">
-                      {r.trend7d === null ? "—" : `${r.trend7d >= 0 ? "↑" : "↓"}${Math.abs(r.trend7d).toFixed(0)}%`}
-                    </td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }} className="mono">{r.sampleSize}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--text-3)" }} className="mono">{r.listingsCount}</td>
-                    <td style={{ padding: "8px 12px", textAlign: "right", color: "var(--green)" }} className="mono">{fmtMoney(r.cheapest)}</td>
+                    <td className="num">{trend(r.trend30d)}</td>
+                    <td className="num">{trend(r.trend7d)}</td>
+                    <td className="num muted">{r.sampleSize}</td>
+                    <td className="num muted">{r.listingsCount}</td>
+                    <td className="num">{fmtMoney(r.cheapest)}</td>
                   </tr>
                 );
               })}
@@ -198,19 +162,13 @@ export default async function DipsPage() {
         </div>
       )}
 
-      <details style={{ marginTop: 16 }}>
-        <summary className="bebas" style={{ fontSize: 13, color: "var(--text-3)", cursor: "pointer", letterSpacing: "0.08em" }}>
-          HOW THIS RANKING WORKS
-        </summary>
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 12, padding: 14, marginTop: 8, fontSize: 11, color: "var(--text-2)", lineHeight: 1.7 }}>
-          <p><strong style={{ color: "var(--manu-gold)" }}>Gap</strong> = (active median − sold mid) / sold mid. Positive means sellers haven&apos;t lowered listings to match the most recent sold prices.</p>
-          <p><strong style={{ color: "var(--manu-gold)" }}>30d / 7d trend</strong> from sold transactions only. Red ↓ = market actively softening.</p>
-          <p><strong style={{ color: "var(--manu-red)" }}>High conviction (red %)</strong> = gap ≥ 15% AND 30d trend ≤ −5%.</p>
-          <p><strong style={{ color: "var(--manu-gold)" }}>Medium</strong> = gap ≥ 10%, market not yet recovered.</p>
-          <p style={{ marginTop: 8, color: "var(--text-3)" }}>
-            <i className="fas fa-info-circle mr-1"></i>
-            For long-term &quot;Nov 2025 vs now&quot; comparisons we need accumulated weekly history. Started this week — sparkline view comes after ~12 weeks of snapshots.
-          </p>
+      <details className="notes">
+        <summary>How this ranking works</summary>
+        <div>
+          <p><strong>Gap</strong> is the asking median minus the sold mid, as a share of the sold mid. Positive means sellers haven&apos;t lowered listings to match recent sales.</p>
+          <p><strong>30 and 7 days</strong> trends use sold transactions only. A red fall means the market is softening.</p>
+          <p><strong>Red bold gap</strong>: high conviction, a gap of 15% or more and a 30-day trend of −5% or worse. <strong>Bold gap</strong>: medium, a gap of 10% or more.</p>
+          <p>Long-run comparisons need accumulated weekly history; a trend view follows after about 12 weeks of snapshots.</p>
         </div>
       </details>
     </>

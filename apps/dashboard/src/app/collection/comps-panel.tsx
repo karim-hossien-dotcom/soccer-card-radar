@@ -105,7 +105,7 @@ export default function CompsPanel({ cards, inView, onClose }: { cards: Collecti
                     const chg = was ? (r.price - was) / was : null;
                     return (
                       <tr key={r.line}>
-                        <td><div className={s.cell}>{c.player} · {r.grade}</div><div className={`${s.cell} ${s.muted}`}>{c.item}</div></td>
+                        <td><div className={s.cell}>{c.player}, {r.grade}</div><div className={`${s.cell} ${s.muted}`}>{c.item}</div></td>
                         <td>{usd(r.price)}{r.sampleSize > 1 ? <span className={s.muted}> n={r.sampleSize}</span> : null}</td>
                         <td className={chg !== null && Math.abs(chg) >= 0.5 ? s.warn : s.muted}>{was !== null ? `${usd(was)} (${chg! >= 0 ? "+" : ""}${Math.round(chg! * 100)}%)` : "first comp"}</td>
                       </tr>

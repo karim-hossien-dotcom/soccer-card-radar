@@ -124,10 +124,9 @@ export function statsLabel(
 
   const trend = stats.trend_7d_pct ?? stats.trend_30d_pct;
   if (trend === null || stats.sample_size < 3) {
-    return `${dollars} ${tag} · ${stats.sample_size} sold`;
+    return `${dollars} ${tag}, ${stats.sample_size} sold`;
   }
 
   const window = stats.trend_7d_pct !== null ? "7d" : "30d";
-  const arrow = trend >= 0 ? "↑" : "↓";
-  return `${dollars} ${tag} · ${window} ${arrow}${Math.abs(trend).toFixed(0)}%`;
+  return `${dollars} ${tag}, ${trend >= 0 ? "+" : "−"}${Math.abs(trend).toFixed(0)}% ${window}`;
 }
