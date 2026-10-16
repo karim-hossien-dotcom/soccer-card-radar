@@ -29,10 +29,19 @@ export type CollectionCard = {
   band: string | null;
   maxBid: number | null;
   comps: CompRow[];
+  compGrade: string; // grade the current value is priced at ("raw" for raw / at PSA)
+  compAsOf: string | null; // date of the comp behind valueNow
+  stale: boolean; // compAsOf older than STALE_DAYS (or no comp)
+  pop: PopRow | null; // latest PSA population for this card's spec
   ledger: { kind: string; amount: number; occurredOn: string | null; source: string | null }[];
 };
 
-const latest = (rows: CompRow[]) => [...rows].sort((a, b) => b.asOf.localeCompare(a.asOf))[0];
+export const STALE_DAYS = 14;
+export type PopRow = { asOf: string; total: number | null; gem10: number | null; pop9: number | null; gemRate: number | null };
+
+/** Newest comp wins; on the same date the workbook's chosen value ("value_used") wins. */
+const byRecency = (a: CompRow, b: CompRow) => b.asOf.localeCompare(a.asOf) || Number(b.method === "value_used") - Number(a.method === "value_used");
+const latest = (rows: CompRow[]) => [...rows].sort(byRecency)[0];
 
 type CardRow = {
   id: string; status: CardStatus; item: string; player: string | null; grader: string | null; grade: string | null;
@@ -44,31 +53,34 @@ export type RawRows = {
   ledger: { cardId: string | null; kind: string; amount: number; occurredOn: string | null; source: string | null }[];
   assumptions: { key: string; value: number }[];
   snapshots: SnapshotRow[];
+  pops?: ({ cardId: string } & PopRow)[];
 };
 
 export type CollectionData = { cards: CollectionCard[]; weeks: WeekTotal[]; trends: Record<string, CardTrend>; thisWeek: string };
 
-const fixtureMode = () => !!process.env.COLLECTION_FIXTURE && process.env.NODE_ENV !== "production";
+export const fixtureMode = () => !!process.env.COLLECTION_FIXTURE && process.env.NODE_ENV !== "production";
 
 async function fetchRows(): Promise<RawRows> {
   // Local UAT without database access: COLLECTION_FIXTURE=path/to/collection.json (ignored in production).
   if (fixtureMode()) {
     const { readFile } = await import("node:fs/promises");
     const rows = JSON.parse(await readFile(process.env.COLLECTION_FIXTURE!, "utf8")) as RawRows;
-    return { ...rows, snapshots: rows.snapshots ?? [] };
+    return { ...rows, snapshots: rows.snapshots ?? [], pops: rows.pops ?? [] };
   }
   const since = new Date(Date.now() - 13 * 7 * 86400_000).toISOString().slice(0, 10);
-  const [cards, comps, ledger, assumptions, snapshots] = await Promise.all([
+  const [cards, comps, ledger, assumptions, snapshots, pops] = await Promise.all([
     supabase.from("Card").select("*"),
     supabase.from("CardComp").select('"cardId", grade, price, method, source, "asOf"'),
     supabase.from("LedgerEntry").select('"cardId", kind, amount, "occurredOn", source'),
     supabase.from("Assumption").select("key, value"),
     supabase.from("CardValueSnapshot").select('"cardId", week, status, "valueNow", psa10, psa9, psa8, cost').gte("week", since),
+    supabase.from("CardPop").select('"cardId", "asOf", total, gem10, pop9, "gemRate"'),
   ]);
-  for (const r of [cards, comps, ledger, assumptions, snapshots]) if (r.error) throw new Error(r.error.message);
+  for (const r of [cards, comps, ledger, assumptions, snapshots, pops]) if (r.error) throw new Error(r.error.message);
   const num = (v: unknown) => (v === null || v === undefined ? null : Number(v));
   return {
     cards: cards.data ?? [], comps: comps.data ?? [], ledger: ledger.data ?? [], assumptions: assumptions.data ?? [],
+    pops: (pops.data ?? []).map((r) => ({ ...r, gemRate: num(r.gemRate) })),
     snapshots: (snapshots.data ?? []).map((r) => ({ ...r, valueNow: num(r.valueNow), psa10: num(r.psa10), psa9: num(r.psa9), psa8: num(r.psa8), cost: num(r.cost) })),
   } as RawRows;
 }
@@ -76,7 +88,7 @@ async function fetchRows(): Promise<RawRows> {
 /** Loads the collection and records this week's value snapshot (A5): only changed rows are written. */
 export async function loadCollection(now: Date = new Date()): Promise<CollectionData> {
   const rows = await fetchRows();
-  const cards = buildCollection(rows);
+  const cards = buildCollection(rows, now);
   const thisWeek = weekOf(now);
   const current = toSnapshotRows(cards, thisWeek);
   const changed = changedRows(current, rows.snapshots.filter((r) => r.week === thisWeek));
@@ -88,7 +100,10 @@ export async function loadCollection(now: Date = new Date()): Promise<Collection
   return { cards, weeks: weeklyTotals(all), trends: cardTrends(all), thisWeek };
 }
 
-export function buildCollection(rows: RawRows): CollectionCard[] {
+export function buildCollection(rows: RawRows, now: Date = new Date()): CollectionCard[] {
+  const staleBefore = new Date(now.getTime() - STALE_DAYS * 86400_000).toISOString().slice(0, 10);
+  const popBy = new Map<string, PopRow>();
+  for (const { cardId, ...p } of rows.pops ?? []) if (!popBy.has(cardId) || popBy.get(cardId)!.asOf < p.asOf) popBy.set(cardId, p);
   const cfg = configFromAssumptions(Object.fromEntries(rows.assumptions.map((a) => [a.key, Number(a.value)])));
 
   const compsBy = new Map<string, CompRow[]>();
@@ -112,7 +127,9 @@ export function buildCollection(rows: RawRows): CollectionCard[] {
     const curGrade = card.grader && card.grade ? `${card.grader} ${card.grade}` : "raw";
     const at = (grade: string, pred: (c: CompRow) => boolean = () => true) => latest(comps.filter((c) => c.grade === grade && pred(c)))?.price ?? null;
 
-    const valueNow = at(curGrade, (c) => c.method === "value_used") ?? at(curGrade);
+    const nowComp = latest(comps.filter((c) => c.grade === curGrade));
+    const valueNow = nowComp?.price ?? null;
+    const compAsOf = nowComp?.asOf ?? null;
     const cost = ledger.length ? ledger.reduce((s, l) => s + l.amount, 0) : null;
     const v = valueCard(
       {
@@ -146,8 +163,32 @@ export function buildCollection(rows: RawRows): CollectionCard[] {
       valueNow,
       ...v,
       maxBid: maxBid(v.psa9, v.psa10),
-      comps: [...comps].sort((a, b) => b.asOf.localeCompare(a.asOf)),
+      comps: [...comps].sort(byRecency),
+      compGrade: curGrade,
+      compAsOf,
+      stale: card.status !== "sealed" && (!compAsOf || compAsOf < staleBefore),
+      pop: popBy.get(card.id) ?? null,
       ledger,
     };
   });
+}
+
+export type NewComp = { cardId: string; grade: string; price: number; sampleSize: number; asOf: string };
+
+/** A4: manual Card Ladder entry. Idempotent per (card, grade, source, date): re-saving the same day overwrites. */
+export async function saveComps(rows: NewComp[]): Promise<number> {
+  const recs = rows.map((r) => ({ ...r, method: "median", source: "cardladder_manual" }));
+  if (fixtureMode()) {
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const f = process.env.COLLECTION_FIXTURE!;
+    const data = JSON.parse(await readFile(f, "utf8")) as RawRows;
+    const key = (c: { cardId: string; grade: string; source: string; asOf: string }) => `${c.cardId}|${c.grade}|${c.source}|${c.asOf}`;
+    const keys = new Set(recs.map(key));
+    data.comps = [...data.comps.filter((c) => !keys.has(key(c))), ...recs];
+    await writeFile(f, JSON.stringify(data));
+    return recs.length;
+  }
+  const { error } = await supabase.from("CardComp").upsert(recs, { onConflict: "cardId,grade,source,asOf" });
+  if (error) throw new Error(error.message);
+  return recs.length;
 }

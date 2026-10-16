@@ -3,10 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { CollectionCard, CollectionData } from "./load";
 import Tracker from "./tracker";
+import CompsPanel from "./comps-panel";
 import s from "./collection.module.css";
 
 type Scenario = "now" | "10" | "9" | "8";
-type StatusFilter = "all" | "graded" | "raw" | "at_grader";
+type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale";
 type SortKey = "value" | "gain" | "upside" | "cost" | "date" | "name";
 
 const STATUS_LABEL: Record<string, string> = { graded: "Graded", raw: "Raw", at_grader: "At PSA", sealed: "Sealed", sold: "Sold" };
@@ -32,6 +33,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
   const [sort, setSort] = useState<SortKey>("value");
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<CollectionCard | null>(null);
+  const [compsOpen, setCompsOpen] = useState(false);
   const [zoom, setZoom] = useState<{ src: string; x: number; y: number } | null>(null);
 
   const players = useMemo(() => {
@@ -44,7 +46,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
     const needle = q.trim().toLowerCase();
     const L = cards.filter(
       (c) =>
-        (stat === "all" || c.status === stat || (stat === "raw" && c.status === "sealed")) &&
+        (stat === "all" || c.status === stat || (stat === "raw" && c.status === "sealed") || (stat === "stale" && c.stale)) &&
         (!player || c.player === player) &&
         (!needle || `${c.item} ${c.cert ?? ""} ${c.player}`.toLowerCase().includes(needle)),
     );
@@ -84,9 +86,15 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
     [cards, trends],
   );
 
+  const staleCount = useMemo(() => cards.filter((c) => c.stale).length, [cards]);
+
   return (
     <div className={s.wrap}>
       <Tracker weeks={weeks} movers={movers} />
+      <div className={s.due} role="region" aria-label="Comps">
+        <span>{staleCount ? `${staleCount} cards have comps older than 14 days.` : "All comps are current."}</span>
+        <button className={s.btn} onClick={() => setCompsOpen(true)}>Update comps</button>
+      </div>
       <section className={s.kpis} aria-label="Collection totals">
         <div><span>Cards</span><b>{list.length}</b></div>
         <div><span>Cost basis</span><b>{usd(totals.cost)}</b></div>
@@ -96,7 +104,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
 
       <div className={s.controls}>
         <Seg label="Scenario" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
-        <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"]]} />
+        <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`]]} />
         <div className={s.row}>
           <select aria-label="Player" value={player} onChange={(e) => setPlayer(e.target.value)}>
             <option value="">All players</option>
@@ -131,7 +139,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
               >
                 {c.imagePath ? <img src={c.imagePath} alt="" loading="lazy" /> : <div className={s.ph}><span>{c.player}</span></div>}
               </div>
-              <div className={s.tag} data-status={c.status}>{c.status === "graded" ? c.gradeLabel : STATUS_LABEL[c.status]}</div>
+              <div className={s.tag} data-status={c.status}>{c.status === "graded" ? c.gradeLabel : STATUS_LABEL[c.status]}{c.stale && <span className={s.staleTag}>stale</span>}</div>
               <div className={s.meta}>
                 <div className={s.pl}>{c.player}</div>
                 <div className={s.it}>{c.item}</div>
@@ -150,6 +158,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
       </main>
 
       {zoom && <Zoom {...zoom} />}
+      {compsOpen && <CompsPanel cards={cards} inView={list} onClose={() => setCompsOpen(false)} />}
       {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={() => setOpen(null)} />}
     </div>
   );
@@ -206,6 +215,8 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
           <tr><td>Date added</td><td>{c.dateAdded ?? "—"}</td></tr>
           <tr><td>Cost basis</td><td>{usd(c.cost, 2)}</td></tr>
           <tr><td>Value now</td><td>{usd(c.valueNow, 2)}</td></tr>
+          <tr><td>Priced</td><td className={c.stale ? s.warn : undefined}>{c.compAsOf ? `${c.compGrade} comp, ${c.compAsOf}${c.stale ? " (stale)" : ""}` : "no comp yet"}</td></tr>
+          {c.pop && <tr><td>PSA pop</td><td>{c.pop.total ?? "—"} graded · {c.pop.gem10 ?? "—"} PSA 10{c.pop.gemRate !== null ? ` (${Math.round(c.pop.gemRate * 100)}% gem)` : ""}</td></tr>}
           <tr><td>Gain / loss now</td><td className={tone(c.valueNow !== null && c.cost !== null ? c.valueNow - c.cost : null)}>{c.valueNow !== null && c.cost !== null ? signed(c.valueNow - c.cost) : "—"}</td></tr>
         </tbody></table>
         {series.length >= 2 && <Spark series={series} />}

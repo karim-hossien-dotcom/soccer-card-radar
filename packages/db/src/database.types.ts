@@ -71,6 +71,7 @@ export interface Database {
           submissionId: string | null;
           dateAdded: string | null;
           imagePath: string | null;
+          psaSpecId: number | null;
           notes: string | null;
           createdAt: string;
           updatedAt: string;
@@ -92,6 +93,7 @@ export interface Database {
           submissionId?: string | null;
           dateAdded?: string | null;
           imagePath?: string | null;
+          psaSpecId?: number | null;
           notes?: string | null;
           createdAt?: string;
           updatedAt?: string;

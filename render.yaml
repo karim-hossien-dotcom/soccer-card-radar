@@ -53,3 +53,9 @@ services:
       # until the service is moved to a Docker runtime with Python installed).
       - key: APIFY_API_TOKEN
         sync: false
+      # A4: guards the write routes (/api/comps, /api/psa-refresh). The app has no login; pick a long random value.
+      - key: ADMIN_TOKEN
+        sync: false
+      # A4: PSA Public API bearer token (psacard.com/publicapi). Never logged.
+      - key: PSA_API_TOKEN
+        sync: false

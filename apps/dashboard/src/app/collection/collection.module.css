@@ -77,3 +77,20 @@
 .moverName { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-2); }
 .spark { display: grid; gap: 4px; }
 @media (max-width: 560px) { .movers { grid-template-columns: 1fr; } }
+
+/* A4: comps entry */
+.due { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--text-2); }
+.btn { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn:focus-visible, .paste:focus-visible { outline: 2px solid var(--manu-gold); outline-offset: 2px; }
+.primary { background: var(--manu-red); border-color: var(--manu-red); color: #fff; justify-self: start; }
+.wide { width: min(640px, 100%); }
+.paste { width: 100%; background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 8px; font-family: 'JetBrains Mono', monospace; font-size: 12px; resize: vertical; }
+.tok { display: grid; gap: 4px; font-size: 12px; color: var(--text-2); }
+.tok input { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-radius: 7px; padding: 7px 9px; font: inherit; }
+.cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 300px; }
+.warn { color: var(--manu-gold); }
+.errs { font-size: 12px; color: var(--manu-red); display: grid; gap: 2px; padding-left: 16px; }
+.okMsg { font-size: 13px; color: var(--green); }
+.errMsg { font-size: 13px; color: var(--manu-red); }
+.staleTag { margin-left: 6px; color: var(--manu-gold); }
