@@ -56,7 +56,15 @@ export async function POST(req: Request) {
   const max = Math.min(Math.max(Number(new URL(req.url).searchParams.get("max")) || 200, 1), 300);
   const started = Date.now();
   try {
-    const r = await runScan(getResearchActions(), {
+    // C1: snipe targets first, so the exact cards on the board get live auctions even when the call cap bites.
+    const actions = getResearchActions();
+    const byId = new Map(actions.map((a) => [a.id, a]));
+    const { data: targets } = await supabase.from("SnipeTarget").select('"actionId", query').eq("active", true);
+    const targetActions = (targets ?? []).flatMap((t) => {
+      const a = byId.get(t.actionId);
+      return a ? [{ ...a, searchQueries: [t.query] }] : [];
+    });
+    const r = await runScan([...targetActions, ...actions], {
       search,
       save,
       keep: (t) => isQualityCard(t) || isVintageLegend(t),

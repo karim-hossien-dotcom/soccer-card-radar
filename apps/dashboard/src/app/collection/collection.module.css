@@ -92,6 +92,7 @@
 .wide { width: min(680px, 100%); }
 .paste { width: 100%; background: #fbfaf6; border: 1px solid var(--rule); border-radius: 4px; padding: 8px 10px; font-size: var(--t-sm); resize: vertical; line-height: 1.5; }
 .tok { display: grid; gap: 4px; font-size: var(--t-sm); color: var(--ink-2); }
+.tok select { background: #fbfaf6; border: 1px solid var(--rule); border-radius: 4px; padding: 7px 10px; }
 .tok input { background: #fbfaf6; border: 1px solid var(--rule); border-radius: 4px; padding: 7px 10px; }
 .cell { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 320px; }
 .warn { color: var(--loss); }

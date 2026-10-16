@@ -1,6 +1,108 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+
 export interface Database {
   public: {
     Tables: {
+      SnipeTarget: {
+        Row: {
+          id: string;
+          actionId: string;
+          card: string;
+          query: string;
+          mustInclude: string[];
+          exclude: string[];
+          raw: number | null;
+          psa9: number | null;
+          psa10: number | null;
+          popTotal: number | null;
+          pop9: number | null;
+          pop10: number | null;
+          printRun: number | null;
+          ssp: boolean;
+          compsAsOf: string | null;
+          confidence: string | null;
+          notes: string | null;
+          active: boolean;
+          psaSpecId: number | null;
+          popAsOf: string | null;
+          psaCert: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          actionId: string;
+          card: string;
+          query: string;
+          mustInclude?: string[];
+          exclude?: string[];
+          raw?: number | null;
+          psa9?: number | null;
+          psa10?: number | null;
+          popTotal?: number | null;
+          pop9?: number | null;
+          pop10?: number | null;
+          printRun?: number | null;
+          ssp?: boolean;
+          compsAsOf?: string | null;
+          confidence?: string | null;
+          notes?: string | null;
+          active?: boolean;
+          psaSpecId?: number | null;
+          popAsOf?: string | null;
+          psaCert?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["SnipeTarget"]["Insert"]>;
+        Relationships: [];
+      };
+      PlayerForm: {
+        Row: {
+          actionId: string;
+          asOf: string;
+          season: string | null;
+          club: string | null;
+          league: string | null;
+          scope: string | null;
+          age: number | null;
+          apps: number | null;
+          minutes: number | null;
+          goals: number | null;
+          assists: number | null;
+          avgRating: number | null;
+          ratingSource: string | null;
+          prior: Json | null;
+          note: string | null;
+          sources: string[];
+          approved: boolean;
+          approvedAt: string | null;
+          createdAt: string;
+        };
+        Insert: {
+          actionId: string;
+          asOf: string;
+          season?: string | null;
+          club?: string | null;
+          league?: string | null;
+          scope?: string | null;
+          age?: number | null;
+          apps?: number | null;
+          minutes?: number | null;
+          goals?: number | null;
+          assists?: number | null;
+          avgRating?: number | null;
+          ratingSource?: string | null;
+          prior?: Json | null;
+          note?: string | null;
+          sources?: string[];
+          approved?: boolean;
+          approvedAt?: string | null;
+          createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["PlayerForm"]["Insert"]>;
+        Relationships: [];
+      };
       CardValueSnapshot: {
         Row: {
           cardId: string;

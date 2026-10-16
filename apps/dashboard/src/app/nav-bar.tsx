@@ -9,6 +9,7 @@ const tabs = [
   { label: "Stars", href: "/stars" },
   { label: "Legends", href: "/legends" },
   { label: "Dips", href: "/dips" },
+  { label: "Snipe", href: "/snipe" },
   { label: "Vault", href: "/collection" },
 ];
 
