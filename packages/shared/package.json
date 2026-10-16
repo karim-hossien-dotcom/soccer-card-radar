@@ -7,7 +7,8 @@
   "types": "./src/index.ts",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "test": "node --test src/*.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.7.0"

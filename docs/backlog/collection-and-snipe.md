@@ -9,7 +9,7 @@ Order: A -> B -> C -> D. Each epic ships something visible. Status: **approved**
 |---|---|---|---|---|
 | A1 ✅ shipped (applied 2026-10-16) | Collection schema | packages/db migration + types: Card, CardComp (grade, price, n, source, as_of), Submission, LedgerEntry (purchase/grading/fee/sale), Assumption (fees, band multiples) | Migration applies on Supabase; types regenerate; build green | S |
 | A2 ✅ shipped (2026-10-16) | Import current collection | Script: card_collection_master.xlsx + vault cards.json -> tables; photos -> apps/dashboard/public/cards/<cardId>.webp (141) | 170 cards, totals match workbook Summary (cost $16,802, value $22,626 +/- $1); photos load | S-M |
-| A3 | Value engine | packages/shared/value-engine.ts: raw vs PSA 10/9/8 comps, gem rate, fees, band multiples fallback -> grade-or-sell call, net, max bid | Unit tests reproduce workbook for 10 sample cards (Salah Roman Numeral, Bellingham Black Lazer, Mainoo Blue Mosaic, etc.) | M |
+| A3 ✅ ready for prod | Value engine | packages/shared/value-engine.ts: raw vs PSA 10/9/8 comps, gem rate, fees, band multiples fallback -> grade-or-sell call, net, max bid | Unit tests reproduce workbook for 10 sample cards (Salah Roman Numeral, Bellingham Black Lazer, Mainoo Blue Mosaic, etc.) | M |
 | A4 | Comp feed (free) | PSA Public API pop/images -> CardPop + images; manual Card Ladder entry form (bulk paste) -> CardComp with as_of; weekly reminder; stale (>14d) badge. Paid feeds (SportsCardsPro) deferred | Weekly entry updates values; stale cards flagged; PSA pop refreshes for graded certs | M |
 | A5 | Weekly value snapshots | Table CardValueSnapshot (card_id, week, raw/PSA10/9/8 values, value_used, source); written by the A4 weekly job, append-only; reuse SoldStatsHistory snapshot pattern | One row per card per week; re-running the same week is idempotent; history survives comp corrections | S |
 
@@ -45,3 +45,6 @@ Order: A -> B -> C -> D. Each epic ships something visible. Status: **approved**
 
 ## Not in scope (YAGNI until the success metric is hit)
 Multi-user auth, billing, mobile app, sold-data scraping, Offer API integration (revisit if eBay approves buy.offer.auction).
+
+## QA notes
+- A3 (2026-10-16): 16/16 unit tests pass (`pnpm --filter @soccer-card-radar/shared test`): 12 workbook fixtures (incl. Salah Roman Numeral, Bellingham Black Lazer, Mainoo Blue Mosaic, Haaland Starball /10), max bid, bands, non-gradeable lots. Full-collection check: engine vs workbook on all 170 cards, 0 mismatches; raw PSA 10/9 totals $12,287.12 / $5,194.05, at-PSA $9,621.20 / $3,569.51 (= workbook Summary). tsc clean (shared, dashboard).

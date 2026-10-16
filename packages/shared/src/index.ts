@@ -12,3 +12,4 @@ export type {
 
 export type { SoldSale, SoldStats, FairValue } from "./fair-value";
 export { computeFairValue, computeSoldStats } from "./fair-value";
+export * from "./value-engine";
