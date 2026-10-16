@@ -7,7 +7,7 @@ Order: A -> B -> C -> D. Each epic ships something visible. Status: **approved**
 ## Epic A: Value engine (shared by Collection + Snipe)
 | ID | Ticket | Scope | Acceptance criteria | Size |
 |---|---|---|---|---|
-| A1 ✅ ready for QA | Collection schema | packages/db migration + types: Card, CardComp (grade, price, n, source, as_of), Submission, LedgerEntry (purchase/grading/fee/sale), Assumption (fees, band multiples) | Migration applies on Supabase; types regenerate; build green | S |
+| A1 ✅ shipped (applied 2026-10-16) | Collection schema | packages/db migration + types: Card, CardComp (grade, price, n, source, as_of), Submission, LedgerEntry (purchase/grading/fee/sale), Assumption (fees, band multiples) | Migration applies on Supabase; types regenerate; build green | S |
 | A2 | Import current collection | Script: card_collection_master.xlsx + vault cards.json -> tables; photos -> Supabase Storage | 170 cards, totals match workbook Summary (cost $16,802, value $22,626 +/- $1); photos load | S-M |
 | A3 | Value engine | packages/shared/value-engine.ts: raw vs PSA 10/9/8 comps, gem rate, fees, band multiples fallback -> grade-or-sell call, net, max bid | Unit tests reproduce workbook for 10 sample cards (Salah Roman Numeral, Bellingham Black Lazer, Mainoo Blue Mosaic, etc.) | M |
 | A4 | Comp feed (free) | PSA Public API pop/images -> CardPop + images; manual Card Ladder entry form (bulk paste) -> CardComp with as_of; weekly reminder; stale (>14d) badge. Paid feeds (SportsCardsPro) deferred | Weekly entry updates values; stale cards flagged; PSA pop refreshes for graded certs | M |

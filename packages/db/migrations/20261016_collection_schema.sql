@@ -1,5 +1,5 @@
 -- A1: Collection schema (value engine + Collection section).
--- Apply in Supabase SQL editor. Idempotent.
+-- Applied to Supabase project SOS (zsubyu…) via MCP on 2026-10-16. Idempotent.
 
 create table if not exists "Submission" (
   "id"            text primary key,            -- PSA order number, e.g. 26913695
@@ -85,3 +85,11 @@ create table if not exists "Assumption" (
   "note"          text,
   "updatedAt"     timestamptz not null default now()
 );
+
+-- RLS on, no policies: only the server (service role) can read/write, matching existing tables.
+alter table "Submission"  enable row level security;
+alter table "Card"        enable row level security;
+alter table "CardComp"    enable row level security;
+alter table "CardPop"     enable row level security;
+alter table "LedgerEntry" enable row level security;
+alter table "Assumption"  enable row level security;
