@@ -1,0 +1,44 @@
+# Install: mkdir -p .github/workflows && git mv docs/ops/scan.yml .github/workflows/scan.yml
+# S1: daily eBay listing refresh. Calls POST /api/scan on the Render app.
+# Repo secrets (Settings > Secrets and variables > Actions):
+#   SCAN_URL     base URL of the app, e.g. https://soccer-card-radar.onrender.com
+#   ADMIN_TOKEN  same value as ADMIN_TOKEN on Render
+# Note: GitHub disables scheduled workflows after 60 days without repo activity;
+# the "listings checked" stamp on each page shows when that has happened.
+name: Daily eBay scan
+
+on:
+  schedule:
+    - cron: "47 11 * * *" # 11:47 UTC daily
+  workflow_dispatch: {}
+
+concurrency:
+  group: ebay-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wake the Render app (free plan sleeps)
+        env:
+          SCAN_URL: ${{ secrets.SCAN_URL }}
+        run: |
+          for i in $(seq 1 12); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$SCAN_URL/api/health" || true)
+            echo "health attempt $i: $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 15
+          done
+          echo "App did not wake up" && exit 1
+      - name: Run full scan
+        env:
+          SCAN_URL: ${{ secrets.SCAN_URL }}
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          curl -sS --fail-with-body --max-time 600 -X POST \
+            -H "x-admin-token: $ADMIN_TOKEN" \
+            "$SCAN_URL/api/scan?max=200" | tee scan.json
+          echo
+          grep -q '"status":"done"' scan.json

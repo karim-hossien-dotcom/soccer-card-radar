@@ -24,5 +24,20 @@ export async function dealRows(freshCutoff: string) {
   return { listings: (listingsRes.data ?? []) as Listing[], stats: (statsRes.data ?? []) as Stat[] };
 }
 
+/** When listings and sold stats were last refreshed (S1 freshness stamp). */
+export async function scanStatus(): Promise<{ listingsAt: string | null; soldAt: string | null }> {
+  if (process.env.DEALS_FIXTURE && process.env.NODE_ENV !== "production") {
+    const { readFile } = await import("node:fs/promises");
+    const d = JSON.parse(await readFile(process.env.DEALS_FIXTURE, "utf8")) as { listings: Listing[]; stats: Stat[] };
+    const max = (xs: string[]) => xs.sort().pop() ?? null;
+    return { listingsAt: max(d.listings.map((l) => l.lastSeenAt)), soldAt: max(d.stats.map((s) => s.scrapedAt)) };
+  }
+  const [l, s] = await Promise.all([
+    supabase.from("Listing").select('"lastSeenAt"').order("lastSeenAt", { ascending: false }).limit(1),
+    supabase.from("PlayerSoldStats").select('"scrapedAt"').order("scrapedAt", { ascending: false }).limit(1),
+  ]);
+  return { listingsAt: l.data?.[0]?.lastSeenAt ?? null, soldAt: s.data?.[0]?.scrapedAt ?? null };
+}
+
 type Listing = { id: string; title: string; priceUSD: number; url: string; rawData: unknown; actionId: string | null; lane: string | null; lastSeenAt: string; soldAt: string | null };
 type Stat = { actionId: string; sampleSize: number; median: number | null; last5Avg: number | null; trend7dPct: number | null; trend30dPct: number | null; fairValueMid: number | null; scrapedAt: string; sourceStatus: string };

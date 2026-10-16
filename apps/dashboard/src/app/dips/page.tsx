@@ -1,4 +1,5 @@
-import { dealRows } from "../deal-rows";
+import { dealRows, scanStatus } from "../deal-rows";
+import Freshness, { isFresh } from "../freshness";
 import { getResearchActions } from "../research-engine";
 
 export const dynamic = "force-dynamic";
@@ -89,7 +90,7 @@ async function loadDips(): Promise<{ rows: DipRow[]; soldDataMissing: boolean; w
   rows.sort((a, b) => b.gapPct - a.gapPct);
   const out: { rows: DipRow[]; soldDataMissing: boolean; warning?: string } = { rows, soldDataMissing: soldDataMissing && rows.length === 0 };
   if (rows.length === 0) {
-    out.warning = "No sold-comp data yet. Run /api/sold-scan to populate PlayerSoldStats.";
+    out.warning = "No player has both live listings and sold prices yet. Run the sold scan on your computer to add sold prices.";
   }
   return out;
 }
@@ -104,7 +105,7 @@ const LANE: Record<string, string> = { rookie: "Rookie", steal: "Star", legacy: 
 const trend = (t: number | null) => (t === null ? <span className="muted">—</span> : <span className={t < 0 ? "loss" : "gain"}>{t >= 0 ? "+" : "−"}{Math.abs(t).toFixed(0)}%</span>);
 
 export default async function DipsPage() {
-  const { rows, warning } = await loadDips();
+  const [{ rows, warning }, status] = await Promise.all([loadDips(), scanStatus()]);
 
   return (
     <>
@@ -113,7 +114,8 @@ export default async function DipsPage() {
         <p>Players whose asking prices sit above what their cards actually sold for. Sellers haven&apos;t caught up yet, so offers below ask tend to land.</p>
       </header>
 
-      {warning && <p className="notice">{warning}</p>}
+      <Freshness listingsAt={status.listingsAt} soldAt={status.soldAt} />
+      {warning && isFresh(status.listingsAt) && <p className="notice">{warning}</p>}
 
       {rows.length > 0 && (
         <div className="sheet-wrap">
