@@ -1,15 +1,6 @@
-import ScoutPage from "./scout-page";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default function RookiesPage() {
-  return (
-    <ScoutPage
-      title="Rookies"
-      intro="Early entries. Buy before the market catches on."
-      pick={(a) => a.lane === "rookie" && (a.signal === "BUY" || a.signal === "HOLD")}
-      tierFor="rookie"
-      avoidLane="rookie"
-    />
-  );
+// Rookies/Stars/Legends pages were retired (2026-10-16): their research was out of date. Snipe is home.
+export default function Home() {
+  redirect("/snipe");
 }

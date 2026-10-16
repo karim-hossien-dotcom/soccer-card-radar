@@ -3,7 +3,7 @@
 const { chromium } = require('playwright');
 const SHOTS = process.env.SHOTS || '/tmp/uat/shots/ui1';
 const tag = process.argv[2] || 'after';
-const ROUTES = [['rookies', '/'], ['stars', '/stars'], ['legends', '/legends'], ['dips', '/dips'], ['vault', '/collection']];
+const ROUTES = [['snipe', '/snipe'], ['dips', '/dips'], ['vault', '/collection']];
 (async () => {
   const b = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
   const out = { errors: [], pages: {} };
@@ -19,7 +19,7 @@ const ROUTES = [['rookies', '/'], ['stars', '/stars'], ['legends', '/legends'], 
         caps: await p.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => getComputedStyle(e).textTransform === 'uppercase' && e.textContent.trim()).length),
       };
       await p.screenshot({ path: `${SHOTS}/${tag}_${name}_${dev}.png`, fullPage: dev === 'd' && name !== 'vault' });
-      if (dev === 'd' && name === 'rookies') {
+      if (false) { // pitch pages retired 2026-10-16
         const tok = await p.$('[aria-expanded]');
         if (tok) { await tok.hover(); await p.waitForTimeout(250); await p.screenshot({ path: `${SHOTS}/${tag}_rookies_tip.png` }); await tok.click(); await p.waitForTimeout(300); r.dealRows = await p.$$eval('section[aria-label$="deals"] tr', (e) => e.length).catch(() => 0); await p.screenshot({ path: `${SHOTS}/${tag}_rookies_deals.png`, fullPage: true }); }
       }

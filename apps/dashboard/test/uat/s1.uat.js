@@ -6,7 +6,7 @@ const tag = process.argv[2] || 'fresh';
   const b = await chromium.launch(process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {});
   const p = await b.newPage({ viewport: { width: 1280, height: 900 } }); const out = { errors: [] };
   p.on('pageerror', (e) => out.errors.push(e.message));
-  for (const [name, path] of [['rookies', '/'], ['dips', '/dips']]) {
+  for (const [name, path] of [['snipe', '/snipe'], ['dips', '/dips']]) {
     await p.goto('http://localhost:3100' + path, { waitUntil: 'networkidle' }); await p.waitForTimeout(500);
     out[name] = (await p.textContent('main')).match(/eBay listings[^.]*\.( Deals[^.]*\.| Sold prices as of [A-Za-z]+ \d+\.)?/)?.[0];
     await p.screenshot({ path: `${SHOTS}/${tag}_${name}.png` });

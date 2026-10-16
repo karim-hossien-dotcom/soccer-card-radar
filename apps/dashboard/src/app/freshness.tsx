@@ -1,4 +1,4 @@
-const STALE_HOURS = 48; // matches the deal freshness window in fetch-deals / dips
+const STALE_HOURS = 48; // matches the listing freshness window used by Dips and Snipe
 
 // Listing.lastSeenAt is "timestamp without time zone" written in UTC; read it as UTC whatever the server's TZ.
 const toDate = (s: string) => new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(s) ? s : s + "Z");
