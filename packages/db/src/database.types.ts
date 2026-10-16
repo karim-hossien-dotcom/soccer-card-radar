@@ -1,6 +1,168 @@
 export interface Database {
   public: {
     Tables: {
+      Submission: {
+        Row: {
+          id: string;
+          subNumber: string | null;
+          grader: string;
+          serviceLevel: string | null;
+          feePerCard: number | null;
+          status: string | null;
+          arrivedOn: string | null;
+          estComplete: string | null;
+          createdAt: string;
+        };
+        Insert: {
+          id: string;
+          subNumber?: string | null;
+          grader?: string;
+          serviceLevel?: string | null;
+          feePerCard?: number | null;
+          status?: string | null;
+          arrivedOn?: string | null;
+          estComplete?: string | null;
+          createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["Submission"]["Insert"]>;
+        Relationships: [];
+      };
+      Card: {
+        Row: {
+          id: string;
+          status: "graded" | "raw" | "at_grader" | "sold" | "sealed";
+          item: string;
+          player: string | null;
+          year: string | null;
+          setName: string | null;
+          cardNumber: string | null;
+          parallel: string | null;
+          printRun: number | null;
+          grader: string | null;
+          grade: string | null;
+          cert: string | null;
+          qty: number;
+          submissionId: string | null;
+          dateAdded: string | null;
+          imagePath: string | null;
+          notes: string | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          status: "graded" | "raw" | "at_grader" | "sold" | "sealed";
+          item: string;
+          player?: string | null;
+          year?: string | null;
+          setName?: string | null;
+          cardNumber?: string | null;
+          parallel?: string | null;
+          printRun?: number | null;
+          grader?: string | null;
+          grade?: string | null;
+          cert?: string | null;
+          qty?: number;
+          submissionId?: string | null;
+          dateAdded?: string | null;
+          imagePath?: string | null;
+          notes?: string | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["Card"]["Insert"]>;
+        Relationships: [];
+      };
+      CardComp: {
+        Row: {
+          id: number;
+          cardId: string;
+          grade: string;
+          price: number;
+          sampleSize: number;
+          method: string;
+          source: string;
+          asOf: string;
+          createdAt: string;
+        };
+        Insert: {
+          id?: number;
+          cardId: string;
+          grade: string;
+          price: number;
+          sampleSize?: number;
+          method?: string;
+          source: string;
+          asOf: string;
+          createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["CardComp"]["Insert"]>;
+        Relationships: [];
+      };
+      CardPop: {
+        Row: {
+          cardId: string;
+          asOf: string;
+          total: number | null;
+          gem10: number | null;
+          pop9: number | null;
+          gemRate: number | null;
+          source: string;
+        };
+        Insert: {
+          cardId: string;
+          asOf: string;
+          total?: number | null;
+          gem10?: number | null;
+          pop9?: number | null;
+          gemRate?: number | null;
+          source?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["CardPop"]["Insert"]>;
+        Relationships: [];
+      };
+      LedgerEntry: {
+        Row: {
+          id: number;
+          cardId: string | null;
+          submissionId: string | null;
+          kind: "purchase" | "grading_fee" | "upcharge" | "shipping" | "other_fee" | "sale";
+          amount: number;
+          occurredOn: string | null;
+          source: string | null;
+          ref: string | null;
+          createdAt: string;
+        };
+        Insert: {
+          id?: number;
+          cardId?: string | null;
+          submissionId?: string | null;
+          kind: "purchase" | "grading_fee" | "upcharge" | "shipping" | "other_fee" | "sale";
+          amount: number;
+          occurredOn?: string | null;
+          source?: string | null;
+          ref?: string | null;
+          createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["LedgerEntry"]["Insert"]>;
+        Relationships: [];
+      };
+      Assumption: {
+        Row: {
+          key: string;
+          value: number;
+          note: string | null;
+          updatedAt: string;
+        };
+        Insert: {
+          key: string;
+          value: number;
+          note?: string | null;
+          updatedAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["Assumption"]["Insert"]>;
+        Relationships: [];
+      };
       TrackedEntity: {
         Row: {
           id: string;
