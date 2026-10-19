@@ -14,7 +14,7 @@ export async function GET() {
     ok: true,
     service: "soccer-card-radar",
     region: process.env.RENDER_REGION ?? null,
-    commit: process.env.RENDER_GIT_COMMIT?.slice(0, 7) ?? null,
+    commit: (process.env.VERCEL_GIT_COMMIT_SHA ?? process.env.RENDER_GIT_COMMIT)?.slice(0, 7) ?? null,
     now: new Date().toISOString(),
   });
 }

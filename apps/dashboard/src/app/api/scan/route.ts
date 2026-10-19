@@ -47,13 +47,25 @@ async function save(rows: ListingRow[]): Promise<number> {
 }
 
 /**
+ * GET /api/scan — daily Vercel cron (vercel.json). Vercel sends `Authorization: Bearer $CRON_SECRET`.
+ */
+export async function GET(req: Request) {
+  const want = process.env.CRON_SECRET;
+  if (!want || req.headers.get("authorization") !== `Bearer ${want}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  return scan(200);
+}
+
+/**
  * POST /api/scan?max=N — refresh active eBay listings for every research action (S1).
- * Called daily by .github/workflows/scan.yml and by the masthead Scan button (max=25). ADMIN_TOKEN required.
+ * Called by the masthead Scan button (max=25). ADMIN_TOKEN required.
  */
 export async function POST(req: Request) {
   const denied = requireAdmin(req);
   if (denied) return denied;
-  const max = Math.min(Math.max(Number(new URL(req.url).searchParams.get("max")) || 200, 1), 300);
+  return scan(Math.min(Math.max(Number(new URL(req.url).searchParams.get("max")) || 200, 1), 300));
+}
+
+async function scan(max: number) {
   const started = Date.now();
   try {
     // C1: snipe targets first, so the exact cards on the board get live auctions even when the call cap bites.
