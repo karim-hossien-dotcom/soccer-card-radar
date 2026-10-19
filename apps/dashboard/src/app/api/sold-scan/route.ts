@@ -181,6 +181,28 @@ async function upsertStats(action: ResearchAction, result: ScrapeResult): Promis
   const scrapedAt = now.toISOString();
   const snapshotWeek = isoMondayOfWeek(now);
 
+  // If this scrape failed (blocked/empty/error) but we already have real
+  // samples on file, only update sourceStatus + scrapedAt. Never let a
+  // blocked-result null out valid historical stats.
+  if (stats.count === 0) {
+    const existing = await supabase
+      .from("PlayerSoldStats")
+      .select("sampleSize")
+      .eq("actionId", action.id)
+      .maybeSingle();
+    if (existing.data && existing.data.sampleSize > 0) {
+      await supabase
+        .from("PlayerSoldStats")
+        .update({
+          sourceStatus,
+          errorMessage: result.error ?? null,
+          scrapedAt,
+        })
+        .eq("actionId", action.id);
+      return;
+    }
+  }
+
   const statsRow = {
     sampleSize: stats.count,
     median: stats.count > 0 ? stats.median : null,

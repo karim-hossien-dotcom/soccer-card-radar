@@ -1,4 +1,4 @@
-# Install: mkdir -p .github/workflows && git mv docs/ops/scan.yml .github/workflows/scan.yml
+# S1 workflow (moved from docs/ops).
 # S1: daily eBay listing refresh. Calls POST /api/scan on the Render app.
 # Repo secrets (Settings > Secrets and variables > Actions):
 #   SCAN_URL     base URL of the app, e.g. https://soccer-card-radar.onrender.com
