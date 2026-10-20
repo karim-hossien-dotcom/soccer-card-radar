@@ -26,11 +26,17 @@ async function ebayToken(): Promise<string> {
   return d.access_token;
 }
 
-async function search(query: string): Promise<EbayItem[]> {
+/** auction=true: C2 pass, auctions ending in the next 24h, soonest first (as eBay support recommended). */
+async function search(query: string, auction = false): Promise<EbayItem[]> {
   const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
   url.searchParams.set("q", query);
   url.searchParams.set("category_ids", "212");
-  url.searchParams.set("limit", "10");
+  url.searchParams.set("limit", auction ? "50" : "10");
+  if (auction) {
+    const now = new Date(), end = new Date(now.getTime() + 24 * 3600_000);
+    url.searchParams.set("filter", `buyingOptions:{AUCTION},itemEndDate:[${now.toISOString()}..${end.toISOString()}]`);
+    url.searchParams.set("sort", "endingSoonest");
+  }
   url.searchParams.set("fieldgroups", "MATCHING_ITEMS,EXTENDED");
   const res = await fetch(url, { headers: { Authorization: `Bearer ${await ebayToken()}`, "X-EBAY-C-MARKETPLACE-ID": "EBAY_US" } });
   if (!res.ok) return [];
@@ -76,13 +82,16 @@ async function scan(max: number) {
       const a = byId.get(t.actionId);
       return a ? [{ ...a, searchQueries: [t.query] }] : [];
     });
-    const r = await runScan([...targetActions, ...actions], {
-      search,
+    const deps = {
+      search: (q: string) => search(q),
       save,
-      keep: (t) => isQualityCard(t) || isVintageLegend(t),
-      pause: () => new Promise((ok) => setTimeout(ok, 150)),
-    }, max);
-    return NextResponse.json({ status: "done", seconds: Math.round((Date.now() - started) / 1000), ...r });
+      keep: (t: string) => isQualityCard(t) || isVintageLegend(t),
+      pause: () => new Promise<void>((ok) => setTimeout(ok, 150)),
+    };
+    // C2: auction pass for the snipe targets first, then the general sweep with what is left of the cap.
+    const auctions = await runScan(targetActions, { ...deps, search: (q) => search(q, true) }, max);
+    const r = await runScan([...targetActions, ...actions], deps, Math.max(max - auctions.apiCalls, 0));
+    return NextResponse.json({ status: "done", seconds: Math.round((Date.now() - started) / 1000), auctions, ...r });
   } catch (e) {
     return NextResponse.json({ status: "failed", error: (e as Error).message }, { status: 502 });
   }

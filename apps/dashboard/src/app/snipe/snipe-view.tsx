@@ -9,6 +9,8 @@ import s from "./snipe.module.css";
 const TOKEN_KEY = "scr.adminToken";
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
 const token = () => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } };
+/** C2: a live price above the engine's max bid is shown but greyed out. */
+const over = (price: number | null, max: number | null) => price !== null && max !== null && price > max;
 const endsIn = (iso: string | null) => {
   if (!iso) return "";
   const m = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
@@ -63,8 +65,8 @@ export default function SnipeView({ rows, players, actions, gemHaircut, psa9Hair
                   <td className="num">
                     {r.live.length ? (
                       <>
-                        {usd(r.livePrice)}
-                        <span className={s.small}>{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
+                        <span className={over(r.livePrice, r.result.maxBid) ? "muted" : undefined}>{usd(r.livePrice)}</span>
+                        <span className={s.small}>{over(r.livePrice, r.result.maxBid) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
                       </>
                     ) : <span className="muted">none live</span>}
                   </td>
@@ -123,8 +125,8 @@ function Detail({ row: r, onEdit }: { row: BoardRow; onEdit: () => void }) {
             {r.live.length ? (
               <ul className={s.live}>
                 {r.live.slice(0, 6).map((l, i) => (
-                  <li key={i}>
-                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}
+                  <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
+                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
                   </li>
                 ))}

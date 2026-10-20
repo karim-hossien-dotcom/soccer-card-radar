@@ -33,12 +33,14 @@ const PRICE_CAP: Record<string, number> = { rookie: 1000, steal: 2000, legacy: 5
 export function toListing(item: EbayItem, action: ResearchAction, now: string, keep: ScanDeps["keep"]): ListingRow | null {
   const title = (item.title as string) ?? "";
   if (!keep(title)) return null;
-  const price = item.price as { value?: string; currency?: string } | undefined;
+  const options = (item.buyingOptions as string[]) ?? [];
+  // Auctions carry the live bid in currentBidPrice; price can be missing (C2).
+  type Money = { value?: string; currency?: string } | undefined;
+  const price = ((options.includes("AUCTION") ? item.currentBidPrice : undefined) ?? item.price) as Money;
   const priceUSD = parseFloat(price?.value ?? "0");
   if (!(priceUSD > 0) || priceUSD > (PRICE_CAP[action.lane] ?? 1000)) return null;
   const last = action.player.split(" ").pop()!.toLowerCase();
   if (last.length >= 4 && !title.toLowerCase().includes(last)) return null;
-  const options = (item.buyingOptions as string[]) ?? [];
   const seller = item.seller as Record<string, unknown> | null;
   const ship = (item.shippingOptions as { shippingCost?: { value?: string } }[] | undefined)?.[0]?.shippingCost?.value ?? null;
   return {
@@ -58,6 +60,7 @@ export function toListing(item: EbayItem, action: ResearchAction, now: string, k
       isAuction: options.includes("AUCTION"),
       acceptsOffers: options.includes("BEST_OFFER"),
       itemEndDate: (item.itemEndDate as string) ?? null,
+      bidCount: (item.bidCount as number) ?? null,
       shippingCost: ship,
     },
     actionId: action.id,

@@ -36,3 +36,14 @@ test("runScan: call cap, dedupe within a page, new vs updated counts", async () 
   assert.deepEqual(r, { apiCalls: 2, queries: 3, imported: 1, updated: 1, skipped: 1, capped: true });
   assert.deepEqual(saved.map((b) => b.map((x) => x.externalId)), [["1", "2"]]);
 });
+
+test("toListing: auctions use currentBidPrice and keep bid count (C2)", () => {
+  const a = action("cr", "Cristiano Ronaldo", "legacy", []);
+  const auc = { itemId: "7", title: "2014 Panini Prizm World Cup Cristiano Ronaldo #161", buyingOptions: ["AUCTION"], currentBidPrice: { value: "18.50", currency: "USD" }, bidCount: 4, itemEndDate: "2026-10-21T01:00:00.000Z", itemWebUrl: "u" };
+  const row = toListing(auc, a, "", keep)!;
+  assert.equal(row.priceUSD, 18.5, "no price field on auction-only listings");
+  assert.deepEqual([row.rawData.isAuction, row.rawData.bidCount, row.rawData.itemEndDate], [true, 4, "2026-10-21T01:00:00.000Z"]);
+  const both = toListing({ ...auc, buyingOptions: ["AUCTION", "FIXED_PRICE"], price: { value: "40" } }, a, "", keep)!;
+  assert.equal(both.priceUSD, 18.5, "auction + Buy It Now: judge the bid");
+  assert.equal(toListing({ ...auc, currentBidPrice: undefined }, a, "", keep), null, "no bid or price");
+});

@@ -17,7 +17,7 @@ export type FormRow = FormStats & {
 type ListingRow = { title: string; priceUSD: number; url: string; rawData: Record<string, unknown> | null; actionId: string | null; lastSeenAt: string; soldAt: string | null };
 type Rows = { targets: Target[]; forms: FormRow[]; listings: ListingRow[]; assumptions: { key: string; value: number }[]; ownSubs: { grade: string | null }[] };
 
-export type LiveListing = { title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null };
+export type LiveListing = { title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null };
 export type BoardRow = {
   target: Target; player: string; signal: ResearchAction["signal"]; tier: "S" | "A" | "B"; legend: boolean;
   form: FormRow | null; result: SnipeResult; live: LiveListing[]; livePrice: number | null;
@@ -83,7 +83,7 @@ export function liveFor(t: Target, listings: ListingRow[], now = Date.now()): Li
     .map((l) => {
       const raw = l.rawData ?? {};
       const endsAt = (raw.itemEndDate as string) ?? null;
-      return { title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt } as LiveListing;
+      return { title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null } as LiveListing;
     })
     .filter((l) => l.kind === "buy" || !l.endsAt || new Date(l.endsAt).getTime() > now)
     .sort((a, b) => (a.kind === b.kind ? (a.kind === "auction" ? (a.endsAt ?? "").localeCompare(b.endsAt ?? "") : a.price - b.price) : a.kind === "auction" ? -1 : 1));
