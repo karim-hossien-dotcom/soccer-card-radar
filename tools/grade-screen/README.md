@@ -23,3 +23,8 @@ file,card,submitted,grade
 mainoo-merlin-auto-01.jpg,2022-23 Merlin Chrome Mainoo Auto,2026-10-25,
 ```
 Photo rules: front only, no sleeve, dark plain background, straight above, card filling most of the frame, no glare.
+
+## Results (2026-10-20)
+- PSA submission 26913695/26913701 (54 raw scans, cropped at the cut edge): predictions recorded in `baseline-psa-26913695.csv` before grades. 37 no visible issue, 9 warn, 8 cant_measure. Fill `psa_grade` when the order returns. Pass bar: no PSA 10 among `warn`/`reject` beyond chance, and warn cards grade lower on average.
+- eBay listings (`screen_listings.py`, 121 target listings): NOT usable yet. Spot check of 4 photos: 1 valid. Failures: slabs without a grade in the title, cards in magnetic holders/toploaders, several items in one photo, angled shots on stands; the outline found is the holder, not the card. Results were cleared from Listing and are not shown on the board.
+- Next for eBay: a photo gate before centering (raw card, no holder, single card, fills the frame). That is a classification job for a vision model (D2), not edge detection.

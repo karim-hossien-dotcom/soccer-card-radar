@@ -72,10 +72,17 @@ def assess(path, border_mm=3.0):
     img = cv2.imread(path)
     if img is None:
         return {"file": path, "result": "cant_measure", "why": "unreadable"}
-    q = find_card(img)
-    if q is None:
-        return {"file": path, "result": "cant_measure", "why": "card outline not found"}
-    d, conf = lr_offset_mm(flatten(img, q))
+    h, w = img.shape[:2]
+    if abs(w / h - 63 / 88) < 0.025:
+        # Already cropped to the cut edge (scans, tight eBay crops): use as-is. Detecting here would lock
+        # onto an inner printed frame and make the card look centred.
+        card = cv2.resize(img, (W, H))
+    else:
+        q = find_card(img)
+        if q is None:
+            return {"file": path, "result": "cant_measure", "why": "card outline not found"}
+        card = flatten(img, q)
+    d, conf = lr_offset_mm(card)
     left = (border_mm + d) / (2 * border_mm)
     left = min(max(left, 0.0), 1.0)
     worse = max(left, 1 - left)
