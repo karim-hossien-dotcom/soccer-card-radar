@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { SnipeData, BoardRow, Target, LiveListing, Decision } from "./load";
 import type { Budget } from "@/lib/budget";
@@ -18,8 +18,18 @@ const endsIn = (iso: string | null) => {
   return m < 60 ? `${m}m` : m < 2880 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d`;
 };
 
-export default function SnipeView({ budget, decisions, rows, players, actions, gemHaircut, psa9Haircut, own }: SnipeData) {
+export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, own }: SnipeData) {
   const [open, setOpen] = useState<string | null>(null);
+  // C3: apply a decision on screen as soon as the server accepts it; the next server render replaces this.
+  const [local, setLocal] = useState<{ decisions: Record<string, Decision>; spent: number }>({ decisions: {}, spent: 0 });
+  useEffect(() => setLocal({ decisions: {}, spent: 0 }), [serverBudget.left, serverDecisions]);
+  const decisions = { ...serverDecisions, ...local.decisions };
+  const budget = { ...serverBudget, left: Math.round((serverBudget.left - local.spent) * 100) / 100 };
+  const onDecided = (id: string, d: Decision) => {
+    const prev = decisions[id];
+    const delta = (d.status === "approved" ? d.maxBid : 0) - (prev?.status === "approved" ? prev.maxBid : 0);
+    setLocal((x) => ({ decisions: { ...x.decisions, [id]: d }, spent: x.spent + delta }));
+  };
   const [editing, setEditing] = useState<Target | "new" | null>(null);
 
   return (
@@ -83,7 +93,7 @@ export default function SnipeView({ budget, decisions, rows, players, actions, g
                     <span className={s.small}>{r.legend ? "Legend: stats ignored" : r.form ? `Rating ${r.form.avgRating ?? "—"}, ${r.form.goals ?? "—"}G ${r.form.assists ?? "—"}A` : "Stats pending your review"}</span>
                   </td>
                 </tr>
-                {open === r.target.id && <Detail row={r} budget={budget} decisions={decisions} onEdit={() => setEditing(r.target)} />}
+                {open === r.target.id && <Detail row={r} budget={budget} decisions={decisions} onDecided={onDecided} onEdit={() => setEditing(r.target)} />}
               </Fragment>
             ))}
             {rows.length === 0 && <tr><td colSpan={7} className="serif">No targets yet. Add the first card you want to snipe.</td></tr>}
@@ -98,7 +108,7 @@ export default function SnipeView({ budget, decisions, rows, players, actions, g
   );
 }
 
-function Detail({ row: r, budget, decisions, onEdit }: { row: BoardRow; budget: Budget; decisions: Record<string, Decision>; onEdit: () => void }) {
+function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRow; budget: Budget; decisions: Record<string, Decision>; onDecided: (id: string, d: Decision) => void; onEdit: () => void }) {
   const t = r.target;
   return (
     <tr className={s.detail}>
@@ -132,7 +142,7 @@ function Detail({ row: r, budget, decisions, onEdit }: { row: BoardRow; budget: 
                   <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
                     <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
-                    {l.kind === "auction" && <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} />}
+                    {l.kind === "auction" && <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} />}
                   </li>
                 ))}
               </ul>
@@ -206,7 +216,7 @@ function FormReview({ players }: { players: SnipeData["players"] }) {
 }
 
 /** C3: approve (with a max), skip, or cancel one auction. Records the decision only; nothing bids on eBay. */
-function BidControls({ listing: l, row: r, left, decision }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision }) {
+function BidControls({ listing: l, row: r, left, decision, onDecided }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision; onDecided: (id: string, d: Decision) => void }) {
   const router = useRouter();
   const suggested = Math.max(0, Math.min(r.result.maxBid ?? 0, left + (decision?.status === "approved" ? decision.maxBid : 0)));
   const [max, setMax] = useState(String(Math.floor(suggested)));
@@ -225,6 +235,7 @@ function BidControls({ listing: l, row: r, left, decision }: { listing: LiveList
     setBusy(false);
     const d = res ? await res.json().catch(() => ({})) : {};
     if (!res || !res.ok) { setMsg(d.error ?? "Couldn't save"); return; }
+    onDecided(l.externalId, { status: action === "approve" ? "approved" : action === "skip" ? "skipped" : "cancelled", maxBid: action === "approve" ? Number(max) : 0 });
     router.refresh();
   };
 

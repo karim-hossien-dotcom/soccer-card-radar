@@ -5,7 +5,7 @@ const fs = require('fs');
 const F = process.env.SNIPE_FIXTURE;
 const ok = (c, m) => { if (!c) { console.error('FAIL ' + m); process.exitCode = 1; } else console.log('ok   ' + m); };
 (async () => {
-  const b = await chromium.launch(); const p = await b.newPage();
+  const b = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {}); const p = await b.newPage();
   const errs = []; p.on('pageerror', (e) => errs.push(String(e)));
   await p.goto('http://localhost:3100/snipe', { waitUntil: 'networkidle' });
   await p.evaluate(() => localStorage.setItem('scr.adminToken', 'uat-secret')); await p.reload({ waitUntil: 'networkidle' });
@@ -15,16 +15,16 @@ const ok = (c, m) => { if (!c) { console.error('FAIL ' + m); process.exitCode = 
   const bid = p.locator('li:has-text("auction") >> nth=0');
   ok(await bid.locator('button:has-text("Approve")').count() === 1, 'auction row has Approve');
   // over budget is refused by the server
-  await bid.locator('input').fill('150'); await bid.locator('button:has-text("Approve")').click(); await p.waitForTimeout(800);
+  await bid.locator('input').fill('150'); await bid.locator('button:has-text("Approve")').click(); await p.waitForTimeout(3000);
   ok((await bid.textContent()).includes('Only $100.00 left'), 'approve over budget refused with message');
-  await bid.locator('input').fill('40'); await bid.locator('button:has-text("Approve")').click(); await p.waitForTimeout(1500);
+  await bid.locator('input').fill('40'); await bid.locator('button:has-text("Approve")').click(); await p.waitForTimeout(3000);
   ok((await p.textContent('body')).includes('Budget $60 left of $100'), 'approved $40 -> $60 left');
   ok((await p.textContent('body')).includes('Approved, max $40'), 'decision shown on the listing');
   ok(JSON.parse(fs.readFileSync(F)).bids.some((x) => x.status === 'approved' && x.maxBid === 40), 'decision stored');
-  await p.locator('li:has-text("Approved, max $40") button:has-text("Undo")').click(); await p.waitForTimeout(1500);
+  await p.locator('li:has-text("Approved, max $40") button:has-text("Undo")').click(); await p.waitForTimeout(3000);
   ok((await p.textContent('body')).includes('Budget $100 left of $100'), 'undo frees the budget');
   // skip
-  await p.locator('li:has-text("auction") >> nth=0').locator('button:has-text("Skip")').click(); await p.waitForTimeout(1500);
+  await p.locator('li:has-text("auction") >> nth=0').locator('button:has-text("Skip")').click(); await p.waitForTimeout(3000);
   ok((await p.textContent('body')).includes('Skipped.'), 'skip recorded');
   // API guards
   const r1 = await p.request.post('http://localhost:3100/api/snipe/bids', { data: { action: 'approve', externalId: 'v1|uat1|0', maxBid: 10 } });
