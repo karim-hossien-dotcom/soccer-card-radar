@@ -3,6 +3,7 @@ import { snipeScore, DEFAULT_CONFIG, type SnipeConfig, type SnipeResult, type Pl
 import { getResearchActions, type ResearchAction } from "../research-engine";
 import { assignTier } from "../helpers";
 import { matchesTarget } from "@/lib/match-title";
+import { budgetLeft, type Bid, type Budget } from "@/lib/budget";
 
 export type Target = {
   id: string; actionId: string; card: string; query: string; mustInclude: string[]; exclude: string[];
@@ -14,10 +15,10 @@ export type FormRow = FormStats & {
   actionId: string; asOf: string; season: string | null; club: string | null; league: string | null; scope: string | null;
   ratingSource: string | null; prior: Record<string, number | null> | null; note: string | null; sources: string[]; approved: boolean;
 };
-type ListingRow = { title: string; priceUSD: number; url: string; rawData: Record<string, unknown> | null; actionId: string | null; lastSeenAt: string; soldAt: string | null };
-type Rows = { targets: Target[]; forms: FormRow[]; listings: ListingRow[]; assumptions: { key: string; value: number }[]; ownSubs: { grade: string | null }[] };
+type ListingRow = { externalId?: string; title: string; priceUSD: number; url: string; rawData: Record<string, unknown> | null; actionId: string | null; lastSeenAt: string; soldAt: string | null };
+type Rows = { targets: Target[]; forms: FormRow[]; listings: ListingRow[]; assumptions: { key: string; value: number }[]; ownSubs: { grade: string | null }[]; bids?: Bid[] };
 
-export type LiveListing = { title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null };
+export type LiveListing = { externalId: string; title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null };
 export type BoardRow = {
   target: Target; player: string; signal: ResearchAction["signal"]; tier: "S" | "A" | "B"; legend: boolean;
   form: FormRow | null; result: SnipeResult; live: LiveListing[]; livePrice: number | null;
@@ -28,7 +29,8 @@ export type BoardRow = {
 export type PlayerRow = { action: ResearchAction; latest: FormRow | null; legend: boolean };
 /** Karim's own PSA results on cards he bought raw and submitted: the evidence for the gem haircut. */
 export type OwnRate = { graded: number; psa10: number };
-export type SnipeData = { rows: BoardRow[]; players: PlayerRow[]; actions: { id: string; player: string }[]; gemHaircut: number; psa9Haircut: number; own: OwnRate };
+export type Decision = { status: Bid["status"]; maxBid: number };
+export type SnipeData = { budget: Budget; decisions: Record<string, Decision>; rows: BoardRow[]; players: PlayerRow[]; actions: { id: string; player: string }[]; gemHaircut: number; psa9Haircut: number; own: OwnRate };
 
 const FRESH_HOURS = 48;
 const STALE_COMP_DAYS = 14;
@@ -50,7 +52,7 @@ async function fetchRows(): Promise<Rows> {
   for (const r of [t, f, a, o]) if (r.error) throw new Error(r.error.message);
   const ids = [...new Set((t.data ?? []).map((x) => x.actionId))];
   const l = ids.length
-    ? await supabase.from("Listing").select('title, "priceUSD", url, "rawData", "actionId", "lastSeenAt", "soldAt"').in("actionId", ids).is("soldAt", null).gte("lastSeenAt", cutoff)
+    ? await supabase.from("Listing").select('"externalId", title, "priceUSD", url, "rawData", "actionId", "lastSeenAt", "soldAt"').in("actionId", ids).is("soldAt", null).gte("lastSeenAt", cutoff)
     : { data: [], error: null };
   if (l.error) throw new Error(l.error.message);
   return {
@@ -59,6 +61,28 @@ async function fetchRows(): Promise<Rows> {
     listings: (l.data ?? []) as ListingRow[],
     assumptions: (a.data ?? []).map((x) => ({ key: x.key, value: Number(x.value) })),
     ownSubs: o.data ?? [],
+    bids: (await loadBids()).bids,
+  };
+}
+
+const budgetOf = (assumptions: Rows["assumptions"]) => assumptions.find((a) => a.key === "snipe_budget")?.value ?? 500;
+
+/** C3: decisions from the last 60 days (enough for the current 14-day cycle) and the cycle budget. */
+export async function loadBids(): Promise<{ bids: Bid[]; budget: number }> {
+  if (fixtureMode()) {
+    const { readFile } = await import("node:fs/promises");
+    const rows = JSON.parse(await readFile(process.env.SNIPE_FIXTURE!, "utf8")) as Rows;
+    return { bids: rows.bids ?? [], budget: budgetOf(rows.assumptions) };
+  }
+  const since = new Date(Date.now() - 60 * 86400_000).toISOString();
+  const [b, a] = await Promise.all([
+    supabase.from("SnipeBid").select('"externalId", "maxBid", status, "wonPrice", "createdAt"').gte("createdAt", since),
+    supabase.from("Assumption").select("key, value").eq("key", "snipe_budget"),
+  ]);
+  if (b.error) throw new Error(b.error.message);
+  return {
+    bids: (b.data ?? []).map((x) => ({ ...x, maxBid: Number(x.maxBid), wonPrice: x.wonPrice === null ? null : Number(x.wonPrice) })) as Bid[],
+    budget: Number(a.data?.[0]?.value ?? 500),
   };
 }
 
@@ -83,7 +107,7 @@ export function liveFor(t: Target, listings: ListingRow[], now = Date.now()): Li
     .map((l) => {
       const raw = l.rawData ?? {};
       const endsAt = (raw.itemEndDate as string) ?? null;
-      return { title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null } as LiveListing;
+      return { externalId: l.externalId ?? "", title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null } as LiveListing;
     })
     .filter((l) => l.kind === "buy" || !l.endsAt || new Date(l.endsAt).getTime() > now)
     .sort((a, b) => (a.kind === b.kind ? (a.kind === "auction" ? (a.endsAt ?? "").localeCompare(b.endsAt ?? "") : a.price - b.price) : a.kind === "auction" ? -1 : 1));
@@ -120,7 +144,9 @@ export function buildBoard(rows: Rows, now = new Date()): SnipeData {
 
   const players: PlayerRow[] = actions.map((a) => ({ action: a, latest: latest(a.id, false), legend: a.lane === "legacy" }));
   const own = { graded: (rows.ownSubs ?? []).length, psa10: (rows.ownSubs ?? []).filter((c) => c.grade === "10").length };
-  return { rows: board, players, actions: actions.map((a) => ({ id: a.id, player: a.player })), gemHaircut: cfg.gemHaircut, psa9Haircut: cfg.psa9Haircut, own };
+  const bids = rows.bids ?? [];
+  const decisions = Object.fromEntries(bids.map((b) => [b.externalId, { status: b.status, maxBid: b.maxBid }]));
+  return { budget: budgetLeft(bids, budgetOf(rows.assumptions), now), decisions, rows: board, players, actions: actions.map((a) => ({ id: a.id, player: a.player })), gemHaircut: cfg.gemHaircut, psa9Haircut: cfg.psa9Haircut, own };
 }
 
 export async function loadSnipe(): Promise<SnipeData> {

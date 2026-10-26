@@ -18,7 +18,8 @@ const targets = [
   T('t8', 'lamine-yamal', '2023-24 Topps Chrome UCC #64 Lamine Yamal Refractor RC', '2023-24 Topps Chrome UCC Lamine Yamal 64 Refractor', ['2023', 'chrome', 'yamal', '64', 'refractor'], [...graded, 'red', 'blue', 'green', 'orange', 'gold', 'purple', 'pink', 'black', 'sapphire', 'auto'], 345, 335, 1800, null, null, null, 'Low'),
 ];
 const now = Date.now(), h = (n) => new Date(now + n * 3600e3).toISOString(), seen = new Date().toISOString();
-const L = (actionId, title, priceUSD, auctionEndsInH) => ({ title, priceUSD, url: 'https://www.ebay.com/itm/' + Math.floor(Math.random() * 1e12), actionId, lastSeenAt: seen, soldAt: null,
+let seq = 0;
+const L = (actionId, title, priceUSD, auctionEndsInH) => ({ externalId: 'v1|uat' + (++seq) + '|0', title, priceUSD, url: 'https://www.ebay.com/itm/' + (100000 + seq), actionId, lastSeenAt: seen, soldAt: null,
   rawData: auctionEndsInH ? { isAuction: true, isBIN: false, itemEndDate: h(auctionEndsInH) } : { isAuction: false, isBIN: true, acceptsOffers: true } });
 const listings = [
   L('cristiano-ronaldo', '2014 Panini Prizm World Cup #161 Cristiano Ronaldo Portugal', 31, 5),
@@ -33,5 +34,5 @@ const listings = [
 ];
 for (const f of forms) { f.asOf = '2026-10-16'; f.approved = ['lamine-yamal', 'erling-haaland', 'kylian-mbappe'].includes(f.actionId); }
 const ownSubs = [...Array(3).fill({ grade: '10' }), { grade: '9' }, ...Array(6).fill({ grade: '8' })];
-const assumptions = [{ key: 'fee_to_grade_a_raw_in_hand_card', value: 32.99 }, { key: 'snipe_gem_haircut', value: 0.6 }];
-fs.writeFileSync(process.argv[2], JSON.stringify({ targets, forms, listings, assumptions, ownSubs }));
+const assumptions = [{ key: 'fee_to_grade_a_raw_in_hand_card', value: 32.99 }, { key: 'snipe_gem_haircut', value: 0.6 }, { key: 'snipe_budget', value: 100 }];
+fs.writeFileSync(process.argv[2], JSON.stringify({ targets, forms, listings, assumptions, ownSubs, bids: [] }));

@@ -3,6 +3,48 @@ export type Json = string | number | boolean | null | { [key: string]: Json | un
 export interface Database {
   public: {
     Tables: {
+      SnipeBid: {
+        Row: {
+          id: string;
+          externalId: string;
+          targetId: string | null;
+          title: string | null;
+          url: string | null;
+          endsAt: string | null;
+          maxBid: number;
+          status: string;
+          wonPrice: number | null;
+          createdAt: string;
+          updatedAt: string;
+        };
+        Insert: {
+          id?: string;
+          externalId: string;
+          targetId?: string | null;
+          title?: string | null;
+          url?: string | null;
+          endsAt?: string | null;
+          maxBid: number;
+          status: string;
+          wonPrice?: number | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Update: {
+          id?: string;
+          externalId?: string;
+          targetId?: string | null;
+          title?: string | null;
+          url?: string | null;
+          endsAt?: string | null;
+          maxBid?: number;
+          status?: string;
+          wonPrice?: number | null;
+          createdAt?: string;
+          updatedAt?: string;
+        };
+        Relationships: [];
+      };
       SnipeTarget: {
         Row: {
           id: string;

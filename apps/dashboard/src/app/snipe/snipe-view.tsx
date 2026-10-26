@@ -2,7 +2,8 @@
 
 import { Fragment, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { SnipeData, BoardRow, Target } from "./load";
+import type { SnipeData, BoardRow, Target, LiveListing, Decision } from "./load";
+import type { Budget } from "@/lib/budget";
 import TargetPanel from "./target-panel";
 import s from "./snipe.module.css";
 
@@ -17,12 +18,15 @@ const endsIn = (iso: string | null) => {
   return m < 60 ? `${m}m` : m < 2880 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d`;
 };
 
-export default function SnipeView({ rows, players, actions, gemHaircut, psa9Haircut, own }: SnipeData) {
+export default function SnipeView({ budget, decisions, rows, players, actions, gemHaircut, psa9Haircut, own }: SnipeData) {
   const [open, setOpen] = useState<string | null>(null);
   const [editing, setEditing] = useState<Target | "new" | null>(null);
 
   return (
     <>
+      <p className={s.budget}>
+        Budget {usd(budget.left)} left of {usd(budget.budget)} for {budget.start} to {budget.end}. Approved bids count at their max until the auction ends. Approving records your max; it does not bid.
+      </p>
       <div className={s.toolbar}>
         <p className={s.basis}>
           Grading odds come from the PSA population report for each card (PSA 10s and 9s ÷ total graded). Pop only counts cards people chose to submit, so a raw buy gets {Math.round(gemHaircut * 100)}% of the PSA 10 rate and {Math.round(psa9Haircut * 100)}% of the PSA 9 rate; the rest is valued at raw.
@@ -79,7 +83,7 @@ export default function SnipeView({ rows, players, actions, gemHaircut, psa9Hair
                     <span className={s.small}>{r.legend ? "Legend: stats ignored" : r.form ? `Rating ${r.form.avgRating ?? "—"}, ${r.form.goals ?? "—"}G ${r.form.assists ?? "—"}A` : "Stats pending your review"}</span>
                   </td>
                 </tr>
-                {open === r.target.id && <Detail row={r} onEdit={() => setEditing(r.target)} />}
+                {open === r.target.id && <Detail row={r} budget={budget} decisions={decisions} onEdit={() => setEditing(r.target)} />}
               </Fragment>
             ))}
             {rows.length === 0 && <tr><td colSpan={7} className="serif">No targets yet. Add the first card you want to snipe.</td></tr>}
@@ -94,7 +98,7 @@ export default function SnipeView({ rows, players, actions, gemHaircut, psa9Hair
   );
 }
 
-function Detail({ row: r, onEdit }: { row: BoardRow; onEdit: () => void }) {
+function Detail({ row: r, budget, decisions, onEdit }: { row: BoardRow; budget: Budget; decisions: Record<string, Decision>; onEdit: () => void }) {
   const t = r.target;
   return (
     <tr className={s.detail}>
@@ -128,6 +132,7 @@ function Detail({ row: r, onEdit }: { row: BoardRow; onEdit: () => void }) {
                   <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
                     <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
+                    {l.kind === "auction" && <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} />}
                   </li>
                 ))}
               </ul>
@@ -197,5 +202,48 @@ function FormReview({ players }: { players: SnipeData["players"] }) {
         </table>
       </div>
     </section>
+  );
+}
+
+/** C3: approve (with a max), skip, or cancel one auction. Records the decision only; nothing bids on eBay. */
+function BidControls({ listing: l, row: r, left, decision }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision }) {
+  const router = useRouter();
+  const suggested = Math.max(0, Math.min(r.result.maxBid ?? 0, left + (decision?.status === "approved" ? decision.maxBid : 0)));
+  const [max, setMax] = useState(String(Math.floor(suggested)));
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (!l.externalId) return null;
+
+  const send = async (action: "approve" | "skip" | "cancel") => {
+    const t = token();
+    if (!t) { setMsg("Add your admin token first (Scan button, top of the page)."); return; }
+    setBusy(true); setMsg(null);
+    const res = await fetch("/api/snipe/bids", {
+      method: "POST", headers: { "content-type": "application/json", "x-admin-token": t },
+      body: JSON.stringify({ action, externalId: l.externalId, targetId: r.target.id, title: l.title, url: l.url, endsAt: l.endsAt, maxBid: Number(max) }),
+    }).catch(() => null);
+    setBusy(false);
+    const d = res ? await res.json().catch(() => ({})) : {};
+    if (!res || !res.ok) { setMsg(d.error ?? "Couldn't save"); return; }
+    router.refresh();
+  };
+
+  if (decision && decision.status !== "cancelled") {
+    return (
+      <span className={s.bid} onClick={(e) => e.stopPropagation()}>
+        {decision.status === "approved" ? <>Approved, max {usd(decision.maxBid)}. Enter it in Gixen or bid by hand. </> : <>{decision.status[0].toUpperCase() + decision.status.slice(1)}. </>}
+        {decision.status === "approved" || decision.status === "skipped" ? <button className="btn" disabled={busy} onClick={() => send("cancel")}>Undo</button> : null}
+        {msg && <span className="loss"> {msg}</span>}
+      </span>
+    );
+  }
+  return (
+    <span className={s.bid} onClick={(e) => e.stopPropagation()}>
+      <label>Max $<input type="number" min={1} step={1} value={max} onChange={(e) => setMax(e.target.value)} aria-label="Max bid in dollars" /></label>
+      <button className="btn" disabled={busy || over(l.price, Number(max))} onClick={() => send("approve")}>Approve</button>
+      <button className="btn" disabled={busy} onClick={() => send("skip")}>Skip</button>
+      {over(l.price, Number(max)) && <span className="muted"> current bid is above this max</span>}
+      {msg && <span className="loss"> {msg}</span>}
+    </span>
   );
 }

@@ -26,3 +26,7 @@
   .hideM { display: none; }
 }
 .divider { font-weight: 650; font-size: var(--t-sm); color: var(--ink-2); padding-top: 18px !important; border-bottom: 2px solid var(--ink) !important; }
+
+.budget { font-size: var(--t-sm); margin: 0 0 var(--s-3, 12px); }
+.bid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: var(--t-sm); }
+.bid input { width: 6ch; margin-left: 4px; font: inherit; font-variant-numeric: tabular-nums; }
