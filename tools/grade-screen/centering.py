@@ -38,6 +38,21 @@ def find_card(img):
     return best
 
 
+def on_backdrop(img, quad, band=0.02):
+    """True when the area outside the outline is an even backdrop that differs from the card's edge,
+    i.e. a card lying on a scanner bed or plain surface, not a printed frame inside a tightly cropped card."""
+    g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    h, w = g.shape
+    inside = np.zeros_like(g); cv2.fillPoly(inside, [quad.astype(np.int32)], 255)
+    outside = inside == 0
+    if outside.sum() < 0.03 * h * w:
+        return False
+    k = max(3, int(band * min(h, w)))
+    edge_in = (inside > 0) & (cv2.erode(inside, np.ones((k, k), np.uint8)) == 0)
+    out_px, edge_px = g[outside], g[edge_in]
+    return out_px.std() < 14 and abs(float(out_px.mean()) - float(edge_px.mean())) > 35
+
+
 def order(p):
     s, d = p.sum(1), np.diff(p, axis=1).ravel()
     return np.array([p[np.argmin(s)], p[np.argmin(d)], p[np.argmax(s)], p[np.argmax(d)]], np.float32)
@@ -73,15 +88,17 @@ def assess(path, border_mm=3.0):
     if img is None:
         return {"file": path, "result": "cant_measure", "why": "unreadable"}
     h, w = img.shape[:2]
-    if abs(w / h - 63 / 88) < 0.025:
-        # Already cropped to the cut edge (scans, tight eBay crops): use as-is. Detecting here would lock
-        # onto an inner printed frame and make the card look centred.
+    q = find_card(img)
+    cropped = abs(w / h - 63 / 88) < 0.025
+    if q is not None and (not cropped or on_backdrop(img, q)):
+        # A card outline inside the photo on a plain backdrop (scans on a dark bed, desk shots): measure from it.
+        card = flatten(img, q)
+    elif cropped:
+        # Photo already cropped at the cut edge: use as-is. Any outline found here is an inner printed frame,
+        # and measuring from it would make every card look centred.
         card = cv2.resize(img, (W, H))
     else:
-        q = find_card(img)
-        if q is None:
-            return {"file": path, "result": "cant_measure", "why": "card outline not found"}
-        card = flatten(img, q)
+        return {"file": path, "result": "cant_measure", "why": "card outline not found"}
     d, conf = lr_offset_mm(card)
     left = (border_mm + d) / (2 * border_mm)
     left = min(max(left, 0.0), 1.0)

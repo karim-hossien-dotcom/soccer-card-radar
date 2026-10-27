@@ -1,0 +1,26 @@
+n,ebay_item,card,photo,centering,lr,verdict
+0,366732479138,2026 Prizm WC Arda Guler Red Choice Scope 71/85,raw,warn,60/40,warn
+1,377557700800,2026 Prizm WC Arda Guler Pink Wave 30/45,raw,no_visible_issue,52/48,no_visible_issue
+2,377552356775,24-25 Chrome UCC Roman Numeral Salah III/XI,raw,no_visible_issue,50/50,no_visible_issue
+3,366724241344,25-26 Select WC Mbappe #80 Peacock SSP,raw,no_visible_issue,50/50,no_visible_issue
+4,377546050664,2026 Prizm WC Zizo Red RC /50,toploader,reject,39/61,photo not usable - rescan raw
+5,128112730713,2026 Prizm WC Musiala Pink Wave /45,toploader,no_visible_issue,53/47,photo not usable - rescan raw
+6,278425613160,23-24 Prizm PL Mainoo Blue Mosaic RC,toploader,warn,56/44,photo not usable - rescan raw
+7,278425702367,23-24 Chrome Euro Guler Future Stars Neon Green /150,toploader,no_visible_issue,54/46,photo not usable - rescan raw
+8,278426853220,2026 Prizm WC Mbappe Red Choice /85 #40,toploader,no_visible_issue,47/53,photo not usable - rescan raw
+9,278425882259,25-26 Pristine Wharton Auto Blue /75,toploader,no_visible_issue,47/53,photo not usable - rescan raw
+10,189038979853,2024 Topps UEFA Mainoo Gold /50,raw,no_visible_issue,53/47,no_visible_issue
+11,377537131326,2024 Chrome Yildiz #147 /50,"magnetic holder, angled",cant_measure,97/3,photo not usable - rescan raw
+12,327380480631,23-24 Immaculate Forbs Sapphire /25,magnetic holder on stand,cant_measure,50/50,photo not usable - rescan raw
+13,298709644678,2026 Prizm WC Salah Scorers Club Gold,raw,no_visible_issue,53/47,no_visible_issue
+14,800638223942,18-19 Donruss Ronaldo #158 Optic Purple Velocity,raw (small in frame),no_visible_issue,52/48,no_visible_issue
+15,278414481678,25-26 Chrome UCL Janneh Black Geometric /10,toploader,cant_measure,63/37,photo not usable - rescan raw
+16,278406235356,25-26 Chrome Bellingham Black Lazer Auto Green /99,toploader,warn,42/57,photo not usable - rescan raw
+17,278405062740,25-26 Select LaLiga Bellingham Winter Camo /30,toploader,no_visible_issue,51/49,photo not usable - rescan raw
+18,278405064095,25-26 Select LaLiga Pedri Fun Club White /20,toploader,no_visible_issue,53/47,photo not usable - rescan raw
+19,278406368726,25-26 Finest Ayari Gold RC /50,toploader,cant_measure,44/56,photo not usable - rescan raw
+20,278406377511,25-26 Finest Ibragimov Gold RC /50,toploader,cant_measure,49/51,photo not usable - rescan raw
+21,278406543444,25-26 Finest Sesko Swerve Gold /50,toploader,cant_measure,0/100,photo not usable - rescan raw
+22,307195740538,25-26 Select FIFA Rodrygo Green Mezzanine 2/5,raw,no_visible_issue,52/48,no_visible_issue
+23,377514162246,2025 Finest UEFA Mayulu True Black /10,raw,cant_measure,53/47,cant_measure
+24,366667417488,2026 Prizm WC Raphinha Manga SSP,raw,cant_measure,46/54,cant_measure
