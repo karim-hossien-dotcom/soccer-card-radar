@@ -6,7 +6,11 @@ const has = (title: string, term: string) => {
   return !t || new RegExp(`(^|[^a-z0-9])${esc(t)}($|[^a-z0-9])`).test(title);
 };
 
+/** Exclude term "numbered" = any print-run serial in the title (66/99, #/25, /10): base and unnumbered parallels never have one. */
+const NUMBERED = /(^|[^a-z0-9])(\d{1,4}|#)?\s*\/\s*\d{1,4}($|[^a-z0-9])/;
+const excluded = (t: string, x: string) => (norm(x).trim() === "numbered" ? NUMBERED.test(t.replace(/\b(19|20)\d\d\s*\/\s*\d{2,4}\b/g, "")) : has(t, x));
+
 export function matchesTarget(title: string, mustInclude: string[], exclude: string[]): boolean {
   const t = norm(title);
-  return mustInclude.every((m) => m.split("|").some((alt) => has(t, alt))) && !exclude.some((x) => has(t, x));
+  return mustInclude.every((m) => m.split("|").some((alt) => has(t, alt))) && !exclude.some((x) => excluded(t, x));
 }

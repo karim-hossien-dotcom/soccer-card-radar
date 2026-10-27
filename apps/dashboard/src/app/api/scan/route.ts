@@ -26,15 +26,19 @@ async function ebayToken(): Promise<string> {
   return d.access_token;
 }
 
-/** auction=true: C2 pass, auctions ending in the next 24h, soonest first (as eBay support recommended). */
+/**
+ * auction=true: C2 pass, auctions ending in the next 48h, soonest first. 48h because the scan runs daily: an auction
+ * ending just after tomorrow's scan is still seen a day ahead. eBay rejects a closed [start..end] itemEndDate range
+ * ("filter value is invalid") and then ignores it; the open form [..end] works (checked live 2026-10-26).
+ */
 async function search(query: string, auction = false): Promise<EbayItem[]> {
   const url = new URL("https://api.ebay.com/buy/browse/v1/item_summary/search");
   url.searchParams.set("q", query);
   url.searchParams.set("category_ids", "212");
   url.searchParams.set("limit", auction ? "50" : "10");
   if (auction) {
-    const now = new Date(), end = new Date(now.getTime() + 24 * 3600_000);
-    url.searchParams.set("filter", `buyingOptions:{AUCTION},itemEndDate:[${now.toISOString()}..${end.toISOString()}]`);
+    const end = new Date(Date.now() + 48 * 3600_000).toISOString().replace(/\.\d{3}Z$/, "Z");
+    url.searchParams.set("filter", `buyingOptions:{AUCTION},itemEndDate:[..${end}]`);
     url.searchParams.set("sort", "endingSoonest");
   }
   url.searchParams.set("fieldgroups", "MATCHING_ITEMS,EXTENDED");

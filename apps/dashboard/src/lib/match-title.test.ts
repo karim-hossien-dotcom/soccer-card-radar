@@ -17,3 +17,12 @@ test("accents and alternatives", () => {
   assert.ok(matchesTarget("2018 Panini Prizm World Cup Kylian Mbappé #80 RC", ["2018", "prizm", "mbappe", "80"], []));
   assert.ok(matchesTarget("Yamal UCC 64 Topps Chrome 2023-24", ["2023|2023-24", "chrome", "yamal", "64"], []));
 });
+
+test("numbered: serials excluded, season years are not serials", () => {
+  const inc = ["2023", "chrome", "yamal", "64", "refractor"], exc = ["numbered", "color match"];
+  assert.equal(matchesTarget("LAMINE YAMAL 2023-24 TOPPS CHROME UCC #64 ROOKIE COLOR MATCH REFRACTOR RC 66/99", inc, exc), false);
+  assert.equal(matchesTarget("2023-24 Topps Chrome UCC Lamine Yamal #64 Refractor RC /150", inc, ["numbered"]), false);
+  assert.equal(matchesTarget("2023-24 Topps Chrome UCC Lamine Yamal #64 Refractor #/99", inc, ["numbered"]), false);
+  assert.equal(matchesTarget("2023-24 Topps Chrome UCC Lamine Yamal #64 Refractor RC", inc, ["numbered"]), true);
+  assert.equal(matchesTarget("2023/24 Topps Chrome UCC Lamine Yamal #64 Refractor RC", inc, ["numbered"]), true, "2023/24 season is not a serial");
+});
