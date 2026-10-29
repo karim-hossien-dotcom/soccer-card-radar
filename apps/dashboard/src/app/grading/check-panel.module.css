@@ -1,24 +1,30 @@
-/* G2 check panel: minimal and token-light on purpose (the app is being restyled); colours fall back to currentColor. */
-.panel { max-width: 70ch; }
-.disclaimer { font-weight: 600; margin: 0 0 6px; }
-.tip, .hint, .muted { opacity: 0.75; font-size: 0.9em; }
-.hint { margin-left: 10px; }
-.form { display: grid; gap: 10px; margin: 12px 0; }
-.field { display: grid; gap: 4px; }
-.field em { font-style: normal; opacity: 0.75; }
-.field input { max-width: 100%; font: inherit; }
-.check { display: flex; gap: 8px; align-items: center; }
-.run { font: inherit; font-weight: 600; padding: 6px 14px; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
-.run:disabled { opacity: 0.5; cursor: default; }
-.status { font-style: italic; }
-.error { color: var(--loss, currentColor); font-weight: 600; }
-.report { margin-top: 16px; border-top: 1px solid var(--rule, currentColor); padding-top: 8px; }
-.h { font-size: 1em; margin: 16px 0 6px; }
-.sub { font-weight: 600; margin: 6px 0 2px; }
-.ceiling { font-size: 1.25em; font-weight: 700; margin: 0 0 4px; }
-.ceiling[data-capped="true"] { color: var(--loss, currentColor); }
-.list { margin: 0; padding-left: 1.2em; }
-.list li { margin: 2px 0; }
-.table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
-.table th, .table td { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--rule, currentColor); vertical-align: top; }
-@media (max-width: 520px) { .hint { display: block; margin: 4px 0 0; } .table { font-size: 0.9em; } }
+/* G2 check panel, UI-2 styling: a white panel; the grade ceiling leads in a navy band. */
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; max-width: 860px; }
+.disclaimer { font-weight: 650; margin: 0 0 4px; }
+.tip, .hint, .muted { color: var(--ink-3); font-size: var(--t-sm); }
+.hint { margin-left: 10px; white-space: nowrap; }
+.form { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 16px; margin: 14px 0 4px; align-items: end; }
+.field { display: grid; gap: 6px; font-size: var(--t-sm); font-weight: 600; color: var(--ink-2); }
+.field em { font-style: normal; font-weight: 500; color: var(--ink-3); }
+.field input { max-width: 100%; font: inherit; font-weight: 500; background: #f6f8fb; border: 1px dashed #b3bdcc; border-radius: 8px; padding: 10px; cursor: pointer; transition: border-color .15s, background .15s; }
+.field input:hover { border-color: var(--accent); background: var(--accent-soft); }
+.check { display: flex; gap: 8px; align-items: center; font-size: var(--t-sm); color: var(--ink-2); }
+.check input { width: 16px; height: 16px; accent-color: var(--accent); }
+.run { font: inherit; font-weight: 650; padding: 10px 18px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; cursor: pointer; justify-self: start; transition: background .15s, transform .15s var(--ease); }
+.run:hover { background: var(--accent-2); }
+.run:active { transform: scale(.98); }
+.run:disabled { opacity: 0.5; cursor: wait; }
+.status { color: var(--ink-2); font-size: var(--t-sm); }
+.error { color: var(--loss); font-weight: 600; background: #fde8e4; border-radius: 8px; padding: 8px 12px; }
+.report { margin-top: 18px; border-top: 1px solid var(--rule); padding-top: 4px; animation: rise .35s var(--ease); }
+@keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+.h { font-size: var(--t-md); font-weight: 750; margin: 18px 0 8px; }
+.sub { font-weight: 650; margin: 8px 0 4px; font-size: var(--t-sm); color: var(--ink-2); }
+.ceiling { display: inline-block; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin: 10px 0 6px; padding: 10px 16px; border-radius: 10px; background: var(--navy); color: var(--on-navy); }
+.ceiling[data-capped="true"] { background: #7a2318; color: #fff; }
+.list { margin: 0; padding-left: 1.2em; font-size: var(--t-sm); color: var(--ink-2); }
+.list li { margin: 3px 0; }
+.table { border-collapse: collapse; width: 100%; font-size: var(--t-sm); }
+.table th, .table td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid #e8edf3; vertical-align: top; }
+.table th { color: var(--ink-3); font-weight: 600; border-bottom-color: var(--rule); }
+@media (max-width: 520px) { .hint { display: block; margin: 4px 0 0; } }
