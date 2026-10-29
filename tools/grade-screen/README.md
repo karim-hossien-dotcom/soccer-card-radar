@@ -47,3 +47,13 @@ Chip rule: lighter than the border at that spot, lighter than the brightest dots
 near-colourless (exposed card stock), and not continuing 1 mm inward (so printed lines that run off the edge and prism
 dots are not chips). `test_condition.py` covers these cases. Thresholds are provisional until the PSA order
 26913695 grades come back; `centering.py` and the pre-registered baseline are unchanged.
+
+## Web app (G2, 2026-10-29)
+Grading tab > "Check a card" posts the photos to `apps/dashboard/api/condition.py`, a Vercel Python function
+(`opencv-python-headless` + `numpy` from `apps/dashboard/requirements.txt`, ~215 MB unzipped vs Vercel's 500 MB Python
+limit). It needs `ADMIN_TOKEN` (header `x-admin-token`), takes jpg/png/webp up to 8 MB each, and returns the
+`condition.py` report plus `centering_grades` (best PSA/BGS centering tolerance met per side). The browser re-encodes
+photos over 2 MB to a 3000 px long side, because Vercel caps a request at 4.5 MB.
+Vercel builds from `apps/dashboard`, so the function uses a copy in `apps/dashboard/api/_grade_screen`: after editing
+`condition.py` or `centering.py` run `python3 sync_vercel.py`; `test_api.py` fails if the copy drifts.
+Not on Render (no Python there).

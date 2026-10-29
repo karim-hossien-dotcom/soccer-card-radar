@@ -1,0 +1,24 @@
+/* G2 check panel: minimal and token-light on purpose (the app is being restyled); colours fall back to currentColor. */
+.panel { max-width: 70ch; }
+.disclaimer { font-weight: 600; margin: 0 0 6px; }
+.tip, .hint, .muted { opacity: 0.75; font-size: 0.9em; }
+.hint { margin-left: 10px; }
+.form { display: grid; gap: 10px; margin: 12px 0; }
+.field { display: grid; gap: 4px; }
+.field em { font-style: normal; opacity: 0.75; }
+.field input { max-width: 100%; font: inherit; }
+.check { display: flex; gap: 8px; align-items: center; }
+.run { font: inherit; font-weight: 600; padding: 6px 14px; border: 1px solid currentColor; border-radius: 4px; background: transparent; color: inherit; cursor: pointer; }
+.run:disabled { opacity: 0.5; cursor: default; }
+.status { font-style: italic; }
+.error { color: var(--loss, currentColor); font-weight: 600; }
+.report { margin-top: 16px; border-top: 1px solid var(--rule, currentColor); padding-top: 8px; }
+.h { font-size: 1em; margin: 16px 0 6px; }
+.sub { font-weight: 600; margin: 6px 0 2px; }
+.ceiling { font-size: 1.25em; font-weight: 700; margin: 0 0 4px; }
+.ceiling[data-capped="true"] { color: var(--loss, currentColor); }
+.list { margin: 0; padding-left: 1.2em; }
+.list li { margin: 2px 0; }
+.table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+.table th, .table td { text-align: left; padding: 4px 8px 4px 0; border-bottom: 1px solid var(--rule, currentColor); vertical-align: top; }
+@media (max-width: 520px) { .hint { display: block; margin: 4px 0 0; } .table { font-size: 0.9em; } }
