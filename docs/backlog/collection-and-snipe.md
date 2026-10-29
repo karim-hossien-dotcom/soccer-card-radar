@@ -76,10 +76,13 @@ Multi-user auth, billing, mobile app, sold-data scraping, Offer API integration 
 - C2 (2026-10-20): Root cause of 3/320 auctions in the first live scan: auction-only listings have no `price`, only `currentBidPrice`, so toListing dropped them as $0. Fixed + dedicated auction pass per target. 5/5 dashboard unit tests (new: currentBidPrice, auction+BIN uses bid, missing bid rejected). tsc clean. Local next build not run (no SWC binary for the linux/arm64 VM); Vercel build is the check. No code path bids or buys.
 - C3 (2026-10-26): Table SnipeBid (one decision per eBay item, unique externalId; RLS on, anon/authenticated revoked) + Assumption snipe_budget=500; migration 20261026_snipe_bid.sql. Budget per 14-day cycle anchored Mon 2026-10-26: approved bids count at max, won at price paid, skipped/cancelled/lost free (src/lib/budget.ts, 3 unit tests; dashboard tests 8/8). POST /api/snipe/bids (admin token): approve/skip/cancel; refuses over budget, ended auctions, $0. Board: budget line; Approve (max prefilled with min(engine max, budget left)), Skip, Undo on each live auction in the detail panel; Approve disabled when the max is below the current bid. Decisions apply on screen at once (router.refresh alone returned stale data in dev). Nothing places a bid. UAT (test/uat/c3.uat.js, fixture budget $100): 12/12 incl. over-budget message, $40 approve -> $60 left, undo, skip, 401 without token, ended auction 400, 390px no overflow, no page errors. next build OK (container, linux x64). Not verified: live Supabase writes (after deploy).
 
-### C4 QA notes (2026-10-28, ready for QA)
-- `/api/snipe/wins`: GET = daily cron 12:17 UTC (after scan); POST + admin token, `?dry=1` writes nothing.
-- Source: Trading GetMyeBayBuying WonList (30 days, EBAY_USER_TOKEN, valid to 2028-04-20). Not on eBay deprecation list.
-- Logs every eBay purchase (auction + BIN) with CreatedDate >= LOG_FROM 2026-10-29 as Card (raw/graded parsed from title) + LedgerEntry purchase (source ebay, ref = OrderLineItemID, dedup key).
-- Approved SnipeBids -> won (wonPrice counts against budget) or lost 3h after end if no matching won item.
-- Dry run vs live data 2026-10-29: 37 transactions in 30 days, 1 new (Mbappe SCC Night Vision /199, $12.50), older ones skipped. 0 approved bids to mark.
-- Known gap: player is only filled when the item matches a snipe target; other purchases get player blank (title kept in item).
+### C4 QA notes (2026-10-29, ready for QA)
+- `/api/snipe/wins`: GET = daily cron 12:17 UTC (after scan), last 30 days. POST + admin token: `?dry=1` preview over 90 days (writes nothing); `?import=<OrderLineItemID,...>` adds confirmed older lines; no params = same as cron.
+- Source: Trading GetOrders (OrderRole=Buyer), not WonList: WonList includes cancelled orders and only the item price. Not on eBay's deprecation list.
+- Cost = item + its shipping + its tax (ActualShippingCost + TotalTaxAmount), same as the Vault convention (checked to the cent: Zizo 10.74, Mbappe Optic 122.67, Kudus 124.67). Dates in New York time.
+- Logged: paid (Completed), card-only (brand/grader words; games, watches skipped), not cancelled, not already in the Vault. Unpaid lines wait until paid.
+- Already in the Vault = ledger ref is the line id, or a workbook/manual eBay purchase with the same cost within 3 days (28/28 Oct 2-15 purchases matched, no false matches).
+- LOG_FROM 2026-10-16 (day after last Vault eBay purchase). Older unmatched lines go to needsReview for owner confirmation.
+- Player: full name or unique surname from players already in the Vault + snipe targets (accents/case ignored); sealed product = "Sealed box"; unknown players blank.
+- Approved SnipeBids -> won (hammer price, counts against budget) or lost 3h after end if no non-cancelled order.
+- Dry run vs live 2026-10-29: 3 new (Guler Red Choice 25.26, Guler Pink Wave 47.30, Chronicles hanger 109.33); 10 unpaid Oct 27-28 wins wait; 4 cancelled ignored; review empty.
