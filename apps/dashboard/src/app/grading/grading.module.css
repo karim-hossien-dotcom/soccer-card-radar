@@ -1,0 +1,20 @@
+.basis { font-family: var(--serif); font-size: var(--t-sm); color: var(--ink-2); max-width: 70ch; margin-bottom: 10px; }
+.sub summary { cursor: pointer; list-style: none; }
+.sub summary::-webkit-details-marker { display: none; }
+.subHead { display: grid; grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)); gap: 6px 16px; align-items: baseline; padding: 10px 0; border-bottom: 1px solid var(--rule); }
+.sub[open] .subHead { border-bottom-color: transparent; }
+.subHead b { font-weight: 680; }
+.lbl { display: block; font-size: var(--t-xs); color: var(--ink-3); }
+.fig { font-variant-numeric: tabular-nums; font-weight: 650; }
+.small { display: block; font-size: var(--t-xs); color: var(--ink-3); margin-top: 2px; }
+.card { font-family: var(--serif); font-size: 14px; color: var(--ink-2); }
+.player { font-weight: 650; }
+.kpis { display: flex; flex-wrap: wrap; gap: 8px 28px; margin: 4px 0 12px; font-size: var(--t-sm); }
+.kpis b { font-variant-numeric: tabular-nums; font-size: var(--t-md); }
+.chev { color: var(--ink-3); font-size: var(--t-xs); }
+.sub[open] .chev { transform: rotate(90deg); display: inline-block; }
+@media (max-width: 760px) {
+  .subHead { grid-template-columns: 1fr 1fr; }
+  .subHead > :first-child { grid-column: 1 / -1; }
+  .hideM { display: none; }
+}

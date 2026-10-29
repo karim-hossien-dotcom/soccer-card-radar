@@ -25,12 +25,12 @@ const FIELDS: Field[] = [
   { key: "notes", label: "Notes" },
 ];
 
-export default function TargetPanel({ target, actions, onClose }: { target: Target | null; actions: { id: string; player: string }[]; onClose: () => void }) {
+export default function TargetPanel({ target, prefill = null, actions, onClose }: { target: Target | null; prefill?: Partial<Target> | null; actions: { id: string; player: string }[]; onClose: () => void }) {
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [v, setV] = useState<Record<string, string | boolean>>(() => {
-    const t = target as Record<string, unknown> | null;
-    const init: Record<string, string | boolean> = { actionId: (t?.actionId as string) ?? actions[0]?.id ?? "", ssp: !!t?.ssp, active: t ? t.active !== false : true };
+    const t = (target ?? prefill) as Record<string, unknown> | null;
+    const init: Record<string, string | boolean> = { actionId: (t?.actionId as string) || actions[0]?.id || "", ssp: !!t?.ssp, active: t ? t.active !== false : true };
     for (const f of FIELDS) {
       const x = t?.[f.key];
       init[f.key] = Array.isArray(x) ? x.join(", ") : x === null || x === undefined ? (f.key === "compsAsOf" ? today() : "") : String(x);

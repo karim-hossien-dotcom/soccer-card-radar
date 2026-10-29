@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import type { SnipeData, BoardRow, Target, LiveListing, Decision } from "./load";
 import type { Budget } from "@/lib/budget";
 import TargetPanel from "./target-panel";
+import { findTarget, type SnipePrefill } from "@/lib/grading";
 import s from "./snipe.module.css";
 
 const TOKEN_KEY = "scr.adminToken";
@@ -18,7 +19,7 @@ const endsIn = (iso: string | null) => {
   return m < 60 ? `${m}m` : m < 2880 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d`;
 };
 
-export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, own }: SnipeData) {
+export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, own, prefill = null }: SnipeData & { prefill?: SnipePrefill | null }) {
   const [open, setOpen] = useState<string | null>(null);
   // C3: apply a decision on screen as soon as the server accepts it; the next server render replaces this.
   const [local, setLocal] = useState<{ decisions: Record<string, Decision>; spent: number }>({ decisions: {}, spent: 0 });
@@ -31,18 +32,39 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
     setLocal((x) => ({ decisions: { ...x.decisions, [id]: d }, spent: x.spent + delta }));
   };
   const [editing, setEditing] = useState<Target | "new" | null>(null);
+  const [draft, setDraft] = useState<Partial<Target> | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  // G1: arriving from the Vault ("Snipe another copy"): open the existing target, or the add form prefilled.
+  useEffect(() => {
+    if (!prefill) return;
+    const hit = findTarget(rows.map((r) => r.target), prefill.card, prefill.cert);
+    if (hit) {
+      setOpen(hit.id);
+      setNotice(`Already a target: ${hit.card}`);
+      requestAnimationFrame(() => document.getElementById(`t-${hit.id}`)?.scrollIntoView({ block: "center" }));
+    } else {
+      const who = prefill.player.toLowerCase();
+      const action = actions.find((a) => a.player.toLowerCase() === who) ?? actions.find((a) => who && (a.player.toLowerCase().includes(who) || who.includes(a.player.toLowerCase())));
+      setDraft({ card: prefill.card, query: prefill.card, actionId: action?.id ?? "", raw: prefill.raw ?? null, psa9: prefill.psa9 ?? null, psa10: prefill.psa10 ?? null, compsAsOf: prefill.asOf ?? null, psaCert: prefill.cert ?? null, notes: "Added from the Vault." });
+      setNotice(action ? null : `No player on the board matches “${prefill.player}”: pick one in the form.`);
+      setEditing("new");
+    }
+    window.history.replaceState(null, "", "/snipe");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <>
       <p className={s.budget}>
         Budget {usd(budget.left)} left of {usd(budget.budget)} for {budget.start} to {budget.end}. Approved bids count at their max until the auction ends. Approving records your max; it does not bid.
       </p>
+      {notice && <p className="notice" role="status">{notice}</p>}
       <div className={s.toolbar}>
         <p className={s.basis}>
           Grading odds come from the PSA population report for each card (PSA 10s and 9s ÷ total graded). Pop only counts cards people chose to submit, so a raw buy gets {Math.round(gemHaircut * 100)}% of the PSA 10 rate and {Math.round(psa9Haircut * 100)}% of the PSA 9 rate; the rest is valued at raw.
           {own.graded > 0 && <> Your own submissions so far: {own.psa10} of {own.graded} came back PSA 10.</>} Low-confidence comps count for less.
         </p>
-        <button className="btn" onClick={() => setEditing("new")}>Add target</button>
+        <button className="btn" onClick={() => { setDraft(null); setEditing("new"); }}>Add target</button>
       </div>
 
       <div className="sheet-wrap">
@@ -64,7 +86,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                 {!r.live.length && (i === 0 || rows[i - 1].live.length > 0) && (
                   <tr><td colSpan={7} className={s.divider}>Watching: no live listing for these right now</td></tr>
                 )}
-                <tr className={s.row} aria-expanded={open === r.target.id} onClick={() => setOpen(open === r.target.id ? null : r.target.id)}>
+                <tr id={`t-${r.target.id}`} className={s.row} aria-expanded={open === r.target.id} onClick={() => setOpen(open === r.target.id ? null : r.target.id)}>
                   <td className="rank">{i + 1}</td>
                   <td>
                     <div className={s.player}>{r.player}</div>
@@ -103,7 +125,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
 
       <FormReview players={players} />
 
-      {editing && <TargetPanel target={editing === "new" ? null : editing} actions={actions} onClose={() => setEditing(null)} />}
+      {editing && <TargetPanel target={editing === "new" ? null : editing} prefill={editing === "new" ? draft : null} actions={actions} onClose={() => { setEditing(null); setDraft(null); }} />}
     </>
   );
 }

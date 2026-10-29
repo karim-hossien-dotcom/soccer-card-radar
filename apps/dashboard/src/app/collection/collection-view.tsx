@@ -5,6 +5,7 @@ import type { CollectionCard, CollectionData } from "./load";
 import Tracker from "./tracker";
 import CompsPanel from "./comps-panel";
 import s from "./collection.module.css";
+import { snipeHref, prefillFromComps } from "@/lib/grading";
 
 type Scenario = "now" | "10" | "9" | "8";
 type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale";
@@ -239,7 +240,10 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
         )}
         {c.decision && <div className={s.dec}>{c.decision}</div>}
         {c.estimated && showScen && <p className={s.note}>No PSA 10/9 sales found: graded values use the {c.band} raw-to-graded multiples.</p>}
-        {c.maxBid !== null && showScen && <p className={s.note}>Snipe max bid for another copy: {usd(c.maxBid)}</p>}
+        <p className={s.note}>
+          {c.maxBid !== null && showScen && <>Snipe max bid for another copy: {usd(c.maxBid)}. </>}
+          <a href={snipeHref(prefillFromComps(c.item, c.player, c.cert, c.gradeLabel.split(" ")[0], c.comps))}>Snipe another copy →</a>
+        </p>
         <h3>Price records</h3>
         <table className={s.tbl}><tbody>
           {c.comps.map((p, i) => <tr key={i}><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{p.method === "value_used" ? "current value" : p.method}</td><td className={s.muted}>{p.asOf}</td></tr>)}

@@ -8,6 +8,7 @@ const tabs = [
   { label: "Snipe", href: "/snipe" },
   { label: "Dips", href: "/dips" },
   { label: "Vault", href: "/collection" },
+  { label: "Grading", href: "/grading" },
 ];
 
 export default function NavBar() {

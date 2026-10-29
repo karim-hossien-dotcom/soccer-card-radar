@@ -60,7 +60,7 @@ export type CollectionData = { cards: CollectionCard[]; weeks: WeekTotal[]; tren
 
 export const fixtureMode = () => !!process.env.COLLECTION_FIXTURE && process.env.NODE_ENV !== "production";
 
-async function fetchRows(): Promise<RawRows> {
+export async function fetchRows(): Promise<RawRows> {
   // Local UAT without database access: COLLECTION_FIXTURE=path/to/collection.json (ignored in production).
   if (fixtureMode()) {
     const { readFile } = await import("node:fs/promises");
