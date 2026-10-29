@@ -52,6 +52,7 @@ export interface Database {
           card: string;
           query: string;
           mustInclude: string[];
+          maxBid: number | null;
           exclude: string[];
           raw: number | null;
           psa9: number | null;
@@ -77,6 +78,7 @@ export interface Database {
           card: string;
           query: string;
           mustInclude?: string[];
+          maxBid?: number | null;
           exclude?: string[];
           raw?: number | null;
           psa9?: number | null;

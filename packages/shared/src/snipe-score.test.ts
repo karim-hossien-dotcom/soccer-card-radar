@@ -74,3 +74,11 @@ test("form: Yamal-like season scores high, injured youngster low on minutes", ()
   assert.equal(kroupi, 0.5); // minutes 0 and youth 1
   assert.equal(formValue({ apps: null, minutes: null, goals: null, assists: null, avgRating: null, age: null }).value, null);
 });
+
+test("owner-set max bid overrides the formula (graded slab, no grading upside)", () => {
+  const slab = { raw: null, psa9: 120, psa10: 450, popTotal: null, pop9: null, pop10: null, printRun: null, ssp: false, maxBid: 383 };
+  const r = snipeScore(slab, 300, { signal: "HOLD", tier: "S", legend: true, form: null });
+  assert.equal(r.maxBid, 383);
+  assert.equal(r.ev, null, "no raw price, so no grading upside");
+  assert.equal(snipeScore({ ...slab, maxBid: null, raw: 42 }, 300, { signal: "HOLD", tier: "S", legend: true, form: null }).maxBid, 60, "formula when unset: min(120/2, 450/4)");
+});

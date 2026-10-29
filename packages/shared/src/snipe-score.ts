@@ -18,6 +18,7 @@ export type SnipeCard = {
   printRun: number | null;
   ssp: boolean;
   confidence?: string | null; // High / Medium / Low comps
+  maxBid?: number | null; // owner-set all-in ceiling; overrides the formula (graded slabs, numbered cards bought to hold)
 };
 export type PlayerForm = {
   apps: number | null;
@@ -106,7 +107,7 @@ export function formValue(f: PlayerForm): { value: number | null; note: string }
 /** price = live auction/listing price when known; otherwise the raw reference is used for upside and steal is left out. */
 export function snipeScore(c: SnipeCard, price: number | null, pl: SnipePlayer, cfg: SnipeConfig = DEFAULT_CONFIG): SnipeResult {
   const w = cfg.weights;
-  const maxBid = snipeMaxBid(c.psa9, c.psa10);
+  const maxBid = c.maxBid ?? snipeMaxBid(c.psa9, c.psa10);
   const priceUsed = price ?? c.raw;
   const g = expectedGraded(c, cfg);
   const parts: ScorePart[] = [];

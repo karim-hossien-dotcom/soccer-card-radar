@@ -9,7 +9,7 @@ export type Target = {
   id: string; actionId: string; card: string; query: string; mustInclude: string[]; exclude: string[];
   raw: number | null; psa9: number | null; psa10: number | null; popTotal: number | null; pop9: number | null; pop10: number | null;
   printRun: number | null; ssp: boolean; compsAsOf: string | null; confidence: string | null; notes: string | null; active: boolean;
-  psaCert: string | null; psaSpecId: number | null; popAsOf: string | null;
+  psaCert: string | null; psaSpecId: number | null; popAsOf: string | null; maxBid: number | null;
 };
 export type FormRow = FormStats & {
   actionId: string; asOf: string; season: string | null; club: string | null; league: string | null; scope: string | null;
@@ -56,7 +56,7 @@ async function fetchRows(): Promise<Rows> {
     : { data: [], error: null };
   if (l.error) throw new Error(l.error.message);
   return {
-    targets: (t.data ?? []).map((x) => ({ ...x, raw: num(x.raw), psa9: num(x.psa9), psa10: num(x.psa10) })) as Target[],
+    targets: (t.data ?? []).map((x) => ({ ...x, raw: num(x.raw), psa9: num(x.psa9), psa10: num(x.psa10), maxBid: num(x.maxBid) })) as Target[],
     forms: (f.data ?? []).map((x) => ({ ...x, avgRating: num(x.avgRating) })) as FormRow[],
     listings: (l.data ?? []) as ListingRow[],
     assumptions: (a.data ?? []).map((x) => ({ key: x.key, value: Number(x.value) })),
