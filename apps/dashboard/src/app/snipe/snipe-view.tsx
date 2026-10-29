@@ -102,6 +102,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                     {r.live.length ? (
                       <>
                         <span className={over(r.livePrice, r.result.maxBid) ? "muted" : undefined}>{usd(r.livePrice)}</span>
+                        {r.live[0].screen && r.live[0].screen.verdict !== "error" && <span className={s.screenMini} data-verdict={r.live[0].screen.verdict}>{r.live[0].screen.verdict === "ceiling" ? r.live[0].screen.summary.split(":")[0] : r.live[0].screen.verdict === "no_issue" ? "No visible issue" : "Photo: can't judge"}</span>}
                         <span className={s.small}>{over(r.livePrice, r.result.maxBid) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
                       </>
                     ) : <span className="muted">none live</span>}
@@ -164,6 +165,7 @@ function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRo
                   <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
                     <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
+                    {l.screen && <ScreenBadge s={l.screen} />}
                     <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} skipOnly={l.kind !== "auction"} />
                   </li>
                 ))}
@@ -193,6 +195,16 @@ function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRo
         </div>
       </td>
     </tr>
+  );
+}
+
+/** G3: grade screen of the listing photo. A warning only: it never hides a listing or changes the score. */
+function ScreenBadge({ s: x }: { s: NonNullable<LiveListing["screen"]> }) {
+  if (x.verdict === "error") return null;
+  return (
+    <span className={s.screen} data-verdict={x.verdict} title={x.gated ? "Photo checked by the photo screen, then measured" : "Measured without the photo screen"}>
+      {x.summary}
+    </span>
   );
 }
 

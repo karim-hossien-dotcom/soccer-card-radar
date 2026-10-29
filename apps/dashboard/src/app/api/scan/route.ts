@@ -62,7 +62,16 @@ async function save(rows: ListingRow[]): Promise<number> {
 export async function GET(req: Request) {
   const want = process.env.CRON_SECRET;
   if (!want || req.headers.get("authorization") !== `Bearer ${want}`) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  return scan(200);
+  const res = await scan(200);
+  await kickScreen(new URL(req.url).origin, want);
+  return res;
+}
+
+/** G3: after the daily scan, start grade-screening new listing photos (api/screen.py chains its own batches). */
+async function kickScreen(origin: string, cronSecret: string) {
+  try {
+    await fetch(`${origin}/api/screen?hop=0`, { headers: { authorization: `Bearer ${cronSecret}` }, signal: AbortSignal.timeout(2000) });
+  } catch { /* timeout expected: the screen keeps running in its own call */ }
 }
 
 /**

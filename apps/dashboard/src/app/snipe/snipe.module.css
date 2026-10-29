@@ -34,3 +34,11 @@
 .budget { font-size: var(--t-sm); margin: 0 0 var(--s-3, 12px); }
 .bid { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 6px; font-size: var(--t-sm); }
 .bid input { width: 7ch; margin-left: 4px; font: inherit; border: 1px solid var(--rule); border-radius: 6px; padding: 4px 6px; }
+
+/* G3 grade screen of listing photos */
+.screen { display: block; width: fit-content; margin-top: 6px; font-size: 12px; font-weight: 600; border-radius: 6px; padding: 3px 8px; background: #eef1f5; color: var(--ink-2); }
+.screen[data-verdict="ceiling"] { background: #fde8e4; color: #9a2b1c; }
+.screen[data-verdict="no_issue"] { background: #e3f4ec; color: #0b6b49; }
+.screenMini { display: block; font-size: 11px; font-weight: 600; margin-top: 2px; color: var(--ink-3); }
+.screenMini[data-verdict="ceiling"] { color: #9a2b1c; }
+.screenMini[data-verdict="no_issue"] { color: #0b6b49; }

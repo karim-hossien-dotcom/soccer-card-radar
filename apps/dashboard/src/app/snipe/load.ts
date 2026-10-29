@@ -16,9 +16,10 @@ export type FormRow = FormStats & {
   ratingSource: string | null; prior: Record<string, number | null> | null; note: string | null; sources: string[]; approved: boolean;
 };
 type ListingRow = { externalId?: string; title: string; priceUSD: number; url: string; rawData: Record<string, unknown> | null; actionId: string | null; lastSeenAt: string; soldAt: string | null };
-type Rows = { targets: Target[]; forms: FormRow[]; listings: ListingRow[]; assumptions: { key: string; value: number }[]; ownSubs: { grade: string | null }[]; bids?: Bid[] };
+export type Screen = { verdict: "ceiling" | "no_issue" | "cant_judge" | "error"; summary: string; gated: boolean };
+type Rows = { targets: Target[]; forms: FormRow[]; listings: ListingRow[]; assumptions: { key: string; value: number }[]; ownSubs: { grade: string | null }[]; bids?: Bid[]; screens?: ({ externalId: string; screenedAt: string } & Screen)[] };
 
-export type LiveListing = { externalId: string; title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null };
+export type LiveListing = { externalId: string; title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null; screen?: Screen | null };
 export type BoardRow = {
   target: Target; player: string; signal: ResearchAction["signal"]; tier: "S" | "A" | "B"; legend: boolean;
   form: FormRow | null; result: SnipeResult; live: LiveListing[]; livePrice: number | null;
@@ -56,7 +57,13 @@ async function fetchRows(): Promise<Rows> {
     ? await supabase.from("Listing").select('"externalId", title, "priceUSD", url, "rawData", "actionId", "lastSeenAt", "soldAt"').in("actionId", ids).is("soldAt", null).gte("lastSeenAt", cutoff)
     : { data: [], error: null };
   if (l.error) throw new Error(l.error.message);
+  const ext = [...new Set((l.data ?? []).map((x) => x.externalId).filter(Boolean))] as string[];
+  const sc = ext.length
+    ? await supabase.from("ListingScreen").select('"externalId", verdict, summary, gated, "screenedAt"').in("externalId", ext)
+    : { data: [], error: null };
+  if (sc.error) throw new Error(sc.error.message);
   return {
+    screens: (sc.data ?? []) as Rows["screens"],
     targets: (t.data ?? []).map((x) => ({ ...x, raw: num(x.raw), psa9: num(x.psa9), psa10: num(x.psa10), maxBid: num(x.maxBid) })) as Target[],
     forms: (f.data ?? []).map((x) => ({ ...x, avgRating: num(x.avgRating) })) as FormRow[],
     listings: (l.data ?? []) as ListingRow[],
@@ -113,13 +120,13 @@ const conditionFits = (t: Target, l: ListingRow) => {
   return isGradedTarget(t) ? graded : !graded;
 };
 
-export function liveFor(t: Target, listings: ListingRow[], now = Date.now(), skipped: Set<string> = new Set()): LiveListing[] {
+export function liveFor(t: Target, listings: ListingRow[], now = Date.now(), skipped: Set<string> = new Set(), screens: Map<string, Screen> = new Map()): LiveListing[] {
   return listings
     .filter((l) => l.actionId === t.actionId && !skipped.has(l.externalId ?? "") && conditionFits(t, l) && matchesTarget(l.title, t.mustInclude, t.exclude))
     .map((l) => {
       const raw = l.rawData ?? {};
       const endsAt = (raw.itemEndDate as string) ?? null;
-      return { externalId: l.externalId ?? "", title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null } as LiveListing;
+      return { externalId: l.externalId ?? "", title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null, screen: isGradedTarget(t) ? null : screens.get(l.externalId ?? "") ?? null } as LiveListing;
     })
     .filter((l) => l.kind === "buy" || !l.endsAt || new Date(l.endsAt).getTime() > now)
     .sort((a, b) => (a.kind === b.kind ? (a.kind === "auction" ? (a.endsAt ?? "").localeCompare(b.endsAt ?? "") : a.price - b.price) : a.kind === "auction" ? -1 : 1));
@@ -133,6 +140,8 @@ export function buildBoard(rows: Rows, now = new Date()): SnipeData {
     rows.forms.filter((f) => f.actionId === id && (!approvedOnly || f.approved)).sort((a, b) => b.asOf.localeCompare(a.asOf))[0] ?? null;
   const staleBefore = new Date(now.getTime() - STALE_COMP_DAYS * 86400_000).toISOString().slice(0, 10);
   const skippedIds = new Set((rows.bids ?? []).filter((b) => b.status === "skipped").map((b) => b.externalId));
+  const screens = new Map<string, Screen>();
+  for (const x of [...(rows.screens ?? [])].sort((a, b) => a.screenedAt.localeCompare(b.screenedAt))) screens.set(x.externalId, { verdict: x.verdict, summary: x.summary, gated: x.gated });
 
   const board: BoardRow[] = rows.targets.filter((t) => t.active).map((t) => {
     const a = byId.get(t.actionId);
@@ -140,7 +149,7 @@ export function buildBoard(rows: Rows, now = new Date()): SnipeData {
     const legend = a?.lane === "legacy";
     const tier = a ? assignTier(a.signal, a.lane, a.catalyst, PAGE[a.lane]) : "B";
     const form = legend ? null : latest(t.actionId, true);
-    const live = liveFor(t, rows.listings, now.getTime(), skippedIds);
+    const live = liveFor(t, rows.listings, now.getTime(), skippedIds, screens);
     const skipped = liveFor(t, rows.listings, now.getTime()).filter((l) => skippedIds.has(l.externalId));
     // Price to judge: soonest-ending auction, else cheapest Buy It Now.
     const livePrice = live.length ? live[0].price : null;

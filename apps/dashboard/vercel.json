@@ -13,6 +13,10 @@
     "api/condition.py": {
       "maxDuration": 60,
       "excludeFiles": "{.next/**,node_modules/**,public/**,src/**,test/**,**/test_*.py}"
+    },
+    "api/screen.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.next/**,node_modules/**,public/**,src/**,test/**,**/test_*.py}"
     }
   }
 }
