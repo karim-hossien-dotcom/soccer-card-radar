@@ -35,6 +35,15 @@ def test_auth():
     assert not scr.authorized({}, {})
 
 
+def test_matches_like_the_board():
+    assert scr.matches("2014 Panini Prizm Cristiano Ronaldo #161", ["2014", "ronaldo", "161"], ["silver"])
+    assert not scr.matches("2014 Prizm Ronaldo #161 Silver", ["2014", "ronaldo", "161"], ["silver"])
+    assert scr.matches("Kylian Mbappé RC", ["mbappe"], [])
+    assert scr.matches("Yamal Refractor", ["refractor|prism"], [])
+    assert not scr.matches("Mbappe Orange 12/25", ["mbappe"], ["numbered"])
+    assert scr.matches("2014-15 Mbappe", ["mbappe"], ["numbered"])
+
+
 def test_big_photo_url():
     assert scr.big("https://i.ebayimg.com/images/g/abc/s-l225.jpg") == "https://i.ebayimg.com/images/g/abc/s-l1600.jpg"
 
@@ -45,12 +54,14 @@ class FakeDB:
 
     def req(self, path, method="GET", body=None, extra=None):
         if path.startswith("/SnipeTarget"):
-            return [{"actionId": "ronaldo", "mustInclude": ["2014", "ronaldo"]}, {"actionId": "messi", "mustInclude": ["messi", "psa 9"]}]
+            return [{"actionId": "ronaldo", "mustInclude": ["2014", "ronaldo", "161"], "exclude": ["silver"]}, {"actionId": "messi", "mustInclude": ["messi", "psa 9"]}]
         if path.startswith("/Listing?"):
             assert "actionId=in.(ronaldo)" in path  # slab targets are not screened
-            return [{"externalId": "e1", "title": "2014 Prizm Ronaldo #161", "imageUrl": "https://x/s-l225.jpg"},
+            return [{"externalId": "e1", "title": "2014 Prizm Ronaldo #161", "imageUrl": "https://x/s-l225.jpg", "actionId": "ronaldo"},
+                    {"externalId": "e5", "title": "2014 Prizm Ronaldo #161 Silver", "imageUrl": "https://x/5.jpg", "actionId": "ronaldo"},
+                    {"externalId": "e6", "title": "2018 Prizm Ronaldo #154", "imageUrl": "https://x/6.jpg", "actionId": "ronaldo"},
                     {"externalId": "e2", "title": "2014 Prizm Ronaldo #161 PSA 9", "imageUrl": "https://x/2.jpg"},
-                    {"externalId": "e3", "title": "2014 Prizm Ronaldo #161 raw", "imageUrl": "https://x/3.jpg"},
+                    {"externalId": "e3", "title": "2014 Prizm Ronaldo #161 raw", "imageUrl": "https://x/3.jpg", "actionId": "ronaldo"},
                     {"externalId": "e4", "title": "2014 Prizm Ronaldo #161", "imageUrl": "https://x/4.jpg", "rawData": {"condition": "Graded"}}]
         if path.startswith("/ListingScreen?select"):
             return [{"externalId": "e3", "imageUrl": "https://x/3.jpg"}]  # already screened

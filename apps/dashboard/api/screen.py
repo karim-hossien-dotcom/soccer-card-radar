@@ -8,7 +8,7 @@ Results go to the ListingScreen table, keyed by (externalId, imageUrl), so a pho
 A reject filter only: it can warn that a listing caps below PSA 10; it never promises a grade.
 Read-only towards eBay: downloads the listing photo, never bids.
 """
-import base64, hmac, json, os, re, sys, time, urllib.parse, urllib.request
+import base64, hmac, json, os, re, sys, time, unicodedata, urllib.parse, urllib.request
 from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler
 
@@ -95,19 +95,44 @@ class Supa:
             return json.loads(raw) if raw else None
 
 
+def _norm(s):
+    return unicodedata.normalize("NFD", s or "").encode("ascii", "ignore").decode().lower()
+
+
+def _has(title, term):
+    t = _norm(term).strip()
+    return not t or re.search(r"(^|[^a-z0-9])" + re.escape(t) + r"($|[^a-z0-9])", title) is not None
+
+
+_NUMBERED = re.compile(r"(^|[^a-z0-9])(\d{1,4}|#)?\s*/\s*\d{1,4}($|[^a-z0-9])")
+
+
+def matches(title, must, exclude):
+    """Same rule as the board (src/lib/match-title.ts): whole-word terms, accents ignored, "a|b" = either,
+    exclude "numbered" = any print-run serial."""
+    t = _norm(title)
+    def excluded(x):
+        if _norm(x).strip() == "numbered":
+            return _NUMBERED.search(re.sub(r"\b(19|20)\d\d\s*/\s*\d{2,4}\b", "", t)) is not None
+        return _has(t, x)
+    return all(any(_has(t, a) for a in (m or "").split("|")) for m in (must or [])) and not any(excluded(x) for x in (exclude or []))
+
+
 def pending(db, now):
     """Listings to screen: live, fresh, raw-looking titles, for raw snipe targets, photo not screened yet."""
-    targets = db.req("/SnipeTarget?select=actionId,mustInclude&active=eq.true") or []
+    targets = db.req("/SnipeTarget?select=actionId,mustInclude,exclude&active=eq.true") or []
     # Same rule as the board (isGradedTarget): a target is for a slab when a title term names a grade.
     slab = re.compile(r"^(psa|bgs|sgc|cgc|tag)\b", re.I)
-    raw_ids = sorted({t["actionId"] for t in targets if not any(slab.match((m or "").strip()) for m in (t.get("mustInclude") or []))})
+    raw_targets = [t for t in targets if not any(slab.match((m or "").strip()) for m in (t.get("mustInclude") or []))]
+    raw_ids = sorted({t["actionId"] for t in raw_targets})
     if not raw_ids:
         return []
     since = (now - timedelta(hours=FRESH_H)).isoformat()
-    q = (f'/Listing?select=externalId,title,imageUrl,rawData&soldAt=is.null&imageUrl=not.is.null'
+    q = (f'/Listing?select=externalId,title,imageUrl,rawData,actionId&soldAt=is.null&imageUrl=not.is.null'
          f'&lastSeenAt=gte.{urllib.parse.quote(since)}&actionId=in.({",".join(raw_ids)})&order=lastSeenAt.desc&limit=400')
     rows = [r for r in (db.req(q) or []) if r.get("externalId") and not GRADED.search(r["title"] or "")
-            and str((r.get("rawData") or {}).get("condition") or "").lower() != "graded"]
+            and str((r.get("rawData") or {}).get("condition") or "").lower() != "graded"
+            and any(t["actionId"] == r.get("actionId") and matches(r["title"], t.get("mustInclude"), t.get("exclude")) for t in raw_targets)]
     if not rows:
         return []
     done = set()
