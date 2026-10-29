@@ -126,14 +126,14 @@ def fetch(url):
 
 
 def ask_gate(key, img, mtype):
-    body = {"model": MODEL, "max_tokens": 200, "messages": [{"role": "user", "content": [
+    body = {"model": MODEL, "max_tokens": 1024, "messages": [{"role": "user", "content": [
         {"type": "image", "source": {"type": "base64", "media_type": mtype, "data": base64.b64encode(img).decode()}},
         {"type": "text", "text": GATE_PROMPT}]}]}
     r = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(), headers={
         "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
     with urllib.request.urlopen(r, timeout=30) as res:
         d = json.loads(res.read())
-    text = d["content"][0]["text"]
+    text = next(b["text"] for b in d["content"] if b.get("type") == "text")
     return json.loads(text[text.index("{"): text.rindex("}") + 1])
 
 

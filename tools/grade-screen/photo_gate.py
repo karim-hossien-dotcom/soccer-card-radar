@@ -28,14 +28,14 @@ or item is the subject; other = anything else."""
 
 def ask(path):
     img = base64.b64encode(open(path, "rb").read()).decode()
-    body = {"model": MODEL, "max_tokens": 200, "messages": [{"role": "user", "content": [
+    body = {"model": MODEL, "max_tokens": 1024, "messages": [{"role": "user", "content": [
         {"type": "image", "source": {"type": "base64", "media_type": "image/jpeg", "data": img}},
         {"type": "text", "text": PROMPT}]}]}
     req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(), headers={
         "x-api-key": KEY, "anthropic-version": "2023-06-01", "content-type": "application/json"})
     with urllib.request.urlopen(req, timeout=60) as r:
         d = json.loads(r.read())
-    text = d["content"][0]["text"]
+    text = next(b["text"] for b in d["content"] if b.get("type") == "text")
     out = json.loads(text[text.index("{"): text.rindex("}") + 1])
     return out, d["usage"]
 
