@@ -43,10 +43,10 @@ export default function Tracker({ weeks, movers }: { weeks: WeekTotal[]; movers:
               <YAxis tick={{ fill: "var(--ink-3)", fontSize: 12 }} axisLine={false} tickLine={false} width={56} tickFormatter={(v) => `$${(v / 1000).toFixed(1)}k`} tickCount={4} domain={["auto", "auto"]} />
               <Tooltip
                 cursor={{ stroke: "var(--ink-3)", strokeDasharray: "3 3" }}
-                contentStyle={{ background: "var(--chalk)", border: "1px solid var(--ink)", borderRadius: 4, color: "var(--ink)", fontSize: 13 }}
+                contentStyle={{ background: "var(--surface)", border: "1px solid var(--rule)", borderRadius: 8, color: "var(--ink)", fontSize: 13, boxShadow: "0 8px 24px -12px rgba(15,22,34,.3)" }}
                 formatter={(v) => [usd(Number(v)), "Value"]}
               />
-              <Line type="monotone" dataKey="total" stroke="var(--pitch)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--pitch)", stroke: "var(--chalk)", strokeWidth: 2 }} activeDot={{ r: 5 }} />
+              <Line type="monotone" dataKey="total" stroke="var(--pitch)" strokeWidth={2.5} dot={{ r: 3, fill: "var(--pitch)", stroke: "var(--surface)", strokeWidth: 2 }} activeDot={{ r: 5 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>

@@ -91,10 +91,18 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
 
   return (
     <div className={s.wrap}>
-      <header className="page-head" style={{ marginBottom: 0 }}>
-        <h1>Vault</h1>
-        <p>{cards.length} cards, valued from the latest comps. Raw cards can also be priced as if graded.</p>
-      </header>
+      <section className={s.hero} aria-label="Collection totals">
+        <div className={s.heroHead}>
+          <h1>Vault</h1>
+          <p>{cards.length} cards. Values from 90-day sales, else Card Ladder.</p>
+        </div>
+        <div className={s.heroKpis}>
+          <div className={s.big}><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b><CountUp value={totals.value} /></b></div>
+          <div><span>Cost</span><b><CountUp value={totals.cost} /></b></div>
+          <div><span>Gain or loss</span><b className={tone(totals.gain)}><CountUp value={totals.gain} signed /></b></div>
+          <div><span>Cards in view</span><b>{list.length}</b></div>
+        </div>
+      </section>
       <Tracker weeks={weeks} movers={movers} />
       <div className={s.due} role="region" aria-label="Comps">
         <span>{staleCount ? `${staleCount} cards have comps older than 14 days.` : "All comps are current."}</span>
@@ -120,20 +128,17 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
         </div>
       </div>
 
-      <section className={s.kpis} aria-label="Collection totals">
-        <div><span>Cards</span><b>{list.length}</b></div>
-        <div><span>Cost</span><b>{usd(totals.cost)}</b></div>
-        <div><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b>{usd(totals.value)}</b></div>
-        <div><span>Gain or loss</span><b className={tone(totals.gain)}>{signed(totals.gain)}</b></div>
-      </section>
-
       <section className={s.grid} aria-label="Cards">
         {list.map((c) => {
           const v = scenarioValue(c, scen);
           const g = gain(c, scen);
           const est = scen !== "now" && c.estimated && c.status !== "graded";
           return (
-            <button key={c.id} className={s.tile} onClick={() => { setZoom(null); setOpen(c); }} aria-label={`${c.player}, ${c.item}`}>
+            <button key={c.id} className={s.tile} onClick={() => { setZoom(null); setOpen(c); }} aria-label={`${c.player}, ${c.item}`} onMouseMove={tilt} onMouseLeave={untilt}>
+              <div className={s.label}>
+                <span className={s.labelSet}>{c.item}</span>
+                <span className={s.labelGrade} data-status={c.status}><small>{c.status === "graded" ? c.gradeLabel.split(" ")[0] : STATUS_LABEL[c.status]}</small>{c.status === "graded" ? c.gradeLabel.split(" ").slice(1).join(" ") : "—"}</span>
+              </div>
               <div
                 className={s.shot}
                 onMouseMove={(e) => {
@@ -144,10 +149,8 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
               >
                 {c.imagePath ? <img src={c.imagePath} alt="" loading="lazy" /> : <div className={s.ph}><span>{c.player}</span></div>}
               </div>
-              <div className={s.tag} data-status={c.status}>{c.status === "graded" ? c.gradeLabel : STATUS_LABEL[c.status]}{c.stale && <span className={s.staleTag}>stale</span>}</div>
               <div className={s.meta}>
-                <div className={s.pl}>{c.player}</div>
-                <div className={s.it}>{c.item}</div>
+                <div className={s.pl}>{c.player}{c.stale && <span className={s.staleTag}>stale</span>}</div>
                 <div className={s.nums}>
                   <span className={s.val}>{usd(v)}{est && <small> est.</small>}</span>
                   <span className={tone(g)}>{signed(g)}</span>
@@ -167,6 +170,40 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
       {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={() => setOpen(null)} />}
     </div>
   );
+}
+
+/** Slab tilt: the tile leans toward the cursor and a light sheen follows it. CSS vars only, no re-render. */
+function tilt(e: React.MouseEvent<HTMLElement>) {
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  const el = e.currentTarget, r = el.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  el.style.setProperty("--ry", `${(x - 0.5) * 10}deg`);
+  el.style.setProperty("--rx", `${(0.5 - y) * 8}deg`);
+  el.style.setProperty("--mx", `${x * 100}%`);
+  el.style.setProperty("--my", `${y * 100}%`);
+}
+function untilt(e: React.MouseEvent<HTMLElement>) {
+  const el = e.currentTarget;
+  for (const k of ["--rx", "--ry", "--mx", "--my"]) el.style.removeProperty(k);
+}
+
+/** Totals count up when they change, so a filter switch reads as movement, not a jump. */
+function CountUp({ value, signed: sg = false }: { value: number; signed?: boolean }) {
+  const [shown, setShown] = useState(value);
+  const from = useRef(value);
+  useEffect(() => {
+    const start = performance.now(), a = from.current, b = value, dur = 650;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { setShown(b); from.current = b; return; }
+    let raf = 0;
+    const step = (t: number) => {
+      const k = Math.min(1, (t - start) / dur), e = 1 - Math.pow(1 - k, 4);
+      setShown(a + (b - a) * e);
+      if (k < 1) raf = requestAnimationFrame(step); else from.current = b;
+    };
+    raf = requestAnimationFrame(step);
+    return () => { cancelAnimationFrame(raf); from.current = b; };
+  }, [value]);
+  return <>{sg ? signed(Math.round(shown)) : usd(shown)}</>;
 }
 
 function Seg({ label, value, onChange, options }: { label: string; value: string; onChange: (v: string) => void; options: [string, string][] }) {

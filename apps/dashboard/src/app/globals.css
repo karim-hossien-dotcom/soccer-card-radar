@@ -1,37 +1,47 @@
 /*
- * Matchday programme (UI-1). Plan: docs/design/matchday.md
- * Chalk pages, a pitch-green masthead, team-sheet tables. Colour comes from card photos;
- * the interface stays quiet. Gold is reserved for the active tab and the pitch tier ring.
+ * UI-2 "Slab gallery" (2026-10-29). Light cool ground, navy shell, one blue accent.
+ * Cards are the heroes: slab-style tiles that tilt toward the cursor. Colour goes on data
+ * (gain/loss, selection), not chrome. One sans family (its tabular figures widen punctuation, so numbers stay proportional).
  */
-@import "@fontsource-variable/archivo/wdth.css";
-@import "@fontsource-variable/source-serif-4/opsz.css";
+@import "@fontsource-variable/schibsted-grotesk/index.css";
 
 :root {
-  --pitch: #0e3b2e;
-  --pitch-2: #145040;      /* pitch stripe, hover */
-  --chalk: #f4f1ea;        /* page */
-  --chalk-2: #ebe6da;      /* photo mat, hover row */
-  --ink: #14201b;
-  --ink-2: #4a564f;
-  --ink-3: #66716a;        /* >= 4.5:1 on chalk */
-  --rule: #d9d3c4;
-  --gold: #d4a017;         /* fills and rules only: too light for text on chalk */
-  --gain: #1f7a4d;
-  --loss: #b42318;
+  --navy: #0f1622;         /* shell band, primary ink surfaces */
+  --navy-2: #1b2535;
+  --ground: #eef1f5;       /* page */
+  --surface: #ffffff;      /* panels, tiles */
+  --surface-2: #e6ebf2;    /* photo mat, hover */
+  --ink: #0f1622;
+  --ink-2: #3e4c63;
+  --ink-3: #5a6880;        /* >= 4.5:1 on ground and white */
+  --rule: #d5dce6;
+  --accent: #2453e0;
+  --accent-2: #163baf;
+  --accent-soft: #e5ecff;
+  --on-navy: #f3f6fa;
+  --on-navy-2: #aebfd7;
+  --gain: #0b7d55;
+  --loss: #c2412d;
+  --radius: 10px;
+  --shadow: 0 1px 2px rgba(15, 22, 34, 0.06), 0 8px 24px -12px rgba(15, 22, 34, 0.18);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
 
-  --sans: "Archivo Variable", "Archivo", system-ui, sans-serif;
-  --serif: "Source Serif 4 Variable", "Source Serif 4", Georgia, serif;
+  --sans: "Schibsted Grotesk Variable", "Schibsted Grotesk", system-ui, sans-serif;
+  --serif: var(--sans);    /* serif retired in UI-2; kept as an alias for older modules */
 
   --t-xs: 12px;
   --t-sm: 13px;
   --t-md: 15px;
   --t-lg: 19px;
-  --t-xl: 30px;
+  --t-xl: 32px;
 
-  /* Legacy names still referenced by older inline styles */
-  --bg: var(--chalk);
-  --surface: var(--chalk);
-  --surface-2: var(--chalk-2);
+  /* Legacy names still referenced by older modules and inline styles */
+  --pitch: var(--accent);
+  --pitch-2: var(--accent-2);
+  --chalk: var(--ground);
+  --chalk-2: var(--surface-2);
+  --gold: var(--accent);
+  --bg: var(--ground);
   --border: var(--rule);
   --text: var(--ink);
   --text-2: var(--ink-2);
@@ -42,60 +52,68 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { background: var(--chalk); }
+html { background: var(--ground); }
+::selection { background: var(--accent); color: #fff; }
 body {
-  background: var(--chalk);
+  background: var(--ground);
   color: var(--ink);
   font-family: var(--sans);
   font-size: var(--t-md);
   line-height: 1.45;
-  font-variant-numeric: tabular-nums;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
+  overflow-x: clip;
 }
 
 a { color: inherit; }
 button, input, select, textarea { font: inherit; color: inherit; }
-:focus-visible { outline: 2px solid var(--pitch); outline-offset: 2px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb { background: #c3ccd9; border-radius: 10px; border: 2px solid var(--ground); }
+html { scrollbar-color: #c3ccd9 transparent; }
 img { display: block; }
 
-.shell { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
-main.page { padding-top: 28px; padding-bottom: 72px; }
+.shell { max-width: 1240px; margin: 0 auto; padding: 0 16px; }
+main.page { padding-top: 28px; padding-bottom: 72px; animation: page-in .35s var(--ease); }
+@keyframes page-in { from { opacity: 0; } to { opacity: 1; } } /* opacity only: a transform here would trap the fixed drawer and zoom inside main */
 
 /* Page heading: programme section title + intro paragraph */
 .page-head { margin-bottom: 24px; max-width: 64ch; }
-.page-head h1 { font-size: var(--t-xl); font-weight: 760; font-stretch: 115%; line-height: 1.05; letter-spacing: -0.01em; }
-.page-head p { font-family: var(--serif); font-size: 17px; color: var(--ink-2); margin-top: 6px; }
+.page-head h1 { font-size: var(--t-xl); font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; }
+.page-head p { font-size: 16px; color: var(--ink-2); margin-top: 8px; line-height: 1.5; }
 
-h2.section { font-size: var(--t-lg); font-weight: 700; font-stretch: 110%; margin: 36px 0 8px; }
+h2.section { font-size: var(--t-lg); font-weight: 750; letter-spacing: -0.01em; margin: 36px 0 10px; }
 
 /* Team sheet: hairline-ruled table */
-.sheet { width: 100%; border-collapse: collapse; font-size: var(--t-sm); }
-.sheet th { text-align: left; font-weight: 600; color: var(--ink-3); padding: 8px 10px 6px; border-bottom: 2px solid var(--ink); white-space: nowrap; }
-.sheet td { padding: 9px 10px; border-bottom: 1px solid var(--rule); vertical-align: baseline; }
+.sheet { width: 100%; border-collapse: separate; border-spacing: 0; font-size: var(--t-sm); }
+.sheet th { text-align: left; font-weight: 600; color: var(--ink-3); padding: 11px 14px 9px; border-bottom: 1px solid var(--rule); white-space: nowrap; background: var(--surface); position: sticky; top: 0; z-index: 1; }
+.sheet td { padding: 12px 14px; border-bottom: 1px solid #e8edf3; vertical-align: baseline; background: var(--surface); transition: background .18s var(--ease); }
+.sheet tbody tr:last-child td { border-bottom: 0; }
+.sheet tbody tr:hover td { background: #f6f8fb; }
 .sheet .num { text-align: right; }
 .sheet .rank { width: 2.5em; color: var(--ink-3); font-weight: 600; }
-.sheet-wrap { overflow-x: auto; }
+.sheet-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); box-shadow: var(--shadow); }
 
 .gain { color: var(--gain); }
 .loss { color: var(--loss); }
 .muted { color: var(--ink-3); }
-.serif { font-family: var(--serif); }
+.serif { font-family: var(--sans); }
 
 /* Collapsible notes */
-details.notes { margin-top: 32px; border-top: 1px solid var(--rule); padding-top: 10px; }
+details.notes { margin-top: 32px; background: var(--surface); border: 1px solid var(--rule); border-radius: var(--radius); padding: 10px 16px; }
 details.notes summary { cursor: pointer; font-weight: 600; font-size: var(--t-sm); color: var(--ink-2); padding: 4px 0; }
-details.notes > div { font-family: var(--serif); color: var(--ink-2); padding: 8px 0 0; max-width: 68ch; display: grid; gap: 6px; }
+details.notes > div { color: var(--ink-2); padding: 8px 0 0; max-width: 68ch; display: grid; gap: 6px; }
 details.notes strong { font-family: var(--sans); font-weight: 650; color: var(--ink); }
 
 /* Buttons */
-.btn { background: transparent; border: 1px solid var(--ink); color: var(--ink); border-radius: 4px; padding: 6px 12px; font-size: var(--t-sm); font-weight: 600; cursor: pointer; }
-.btn:hover { background: var(--chalk-2); }
+.btn { background: var(--surface); border: 1px solid #c3ccd9; color: var(--ink); border-radius: 8px; padding: 7px 14px; font-size: var(--t-sm); font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s, transform .15s var(--ease); }
+.btn:active { transform: scale(.98); }
+.btn:hover { background: #f3f6fa; border-color: var(--ink-3); }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
-.btn-primary { background: var(--pitch); border-color: var(--pitch); color: var(--chalk); }
-.btn-primary:hover { background: var(--pitch-2); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
 
-.notice { font-family: var(--serif); color: var(--ink-2); border-left: 3px solid var(--gold); padding: 6px 0 6px 12px; margin-bottom: 20px; }
+.notice { color: var(--ink-2); background: var(--accent-soft); border-radius: 8px; padding: 10px 14px; margin-bottom: 20px; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
