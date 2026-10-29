@@ -42,9 +42,16 @@ def warp_with_margin(img, quad):
     return cv2.warpPerspective(img, m, (CW + 2 * MARGIN, CH + 2 * MARGIN), borderMode=cv2.BORDER_REPLICATE)
 
 
+def read_image(src):
+    """A path, or the raw bytes of a jpg/png/webp upload, as a BGR image (None if it cannot be decoded)."""
+    if isinstance(src, (bytes, bytearray, memoryview)):
+        return cv2.imdecode(np.frombuffer(src, np.uint8), cv2.IMREAD_COLOR)
+    return cv2.imread(src)
+
+
 def load(path):
     """Normalised card with a backdrop margin, plus how many real pixels per mm the photo had."""
-    img = cv2.imread(path)
+    img = read_image(path)
     if img is None:
         return None, "unreadable", 0.0
     q = cen.find_card(img)
@@ -220,6 +227,14 @@ def surface_checks(card):
     return out
 
 
+def centering_grades(worse, back=False):
+    """Best PSA and BGS grade whose written centering tolerance this split (worse side, 0.5-1) still meets."""
+    i = 2 if back else 1
+    p = next((g for g, f, b in PSA_CENT if worse <= (f if i == 1 else b)), 6)
+    b = next((g for g, f, bk in BGS_CENT if worse <= (f if i == 1 else bk)), 7)
+    return p, b
+
+
 def grade_ceilings(front, back, cent):
     """Map every finding to the highest grade each company's written standard still allows."""
     psa, bgs, tag, why = 10, 10, 10, []
@@ -233,8 +248,7 @@ def grade_ceilings(front, back, cent):
     for label, worse, i in (("front L/R", cent.get("front_lr"), 1), ("back L/R", cent.get("back_lr"), 2)):
         if worse is None:
             continue
-        p = next((g for g, f, b in PSA_CENT if worse <= (f if i == 1 else b)), 6)
-        b = next((g for g, f, bk in BGS_CENT if worse <= (f if i == 1 else bk)), 7)
+        p, b = centering_grades(worse, back=i == 2)
         if p < 10 or b < 10:
             cap(p, b, min(p, b), f"{label} centering {round(worse*100)}/{round((1-worse)*100)}")
 
@@ -295,13 +309,19 @@ def side_report(path):
     if ppm < 8:
         return None, f"photo too small ({ppm:.1f} px per mm; need 8+) to judge corners and edges"
     lr = cen.lr_offset_mm(card[MARGIN:MARGIN + CH, MARGIN:MARGIN + CW])
-    return {"file": path, "px_per_mm": round(ppm, 1), "lr_offset_mm": round(lr[0], 2), "lr_symmetry": round(lr[1], 3),
+    return {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "lr_offset_mm": round(lr[0], 2), "lr_symmetry": round(lr[1], 3),
             "edges": edge_checks(card), "corners": corner_checks(card), "surface": surface_checks(card)}, None
 
 
 def assess(front, back=None, border_mm=3.0, holder=False):
-    """holder=True: card photographed in a sleeve, toploader, magnetic case or slab. Plastic hides and fakes edge and
+    """front / back: file paths or raw image bytes (jpg, png, webp).
+    holder=True: card photographed in a sleeve, toploader, magnetic case or slab. Plastic hides and fakes edge and
     corner detail, so only centering is reported."""
+    return assess_with_centering(front, back, border_mm, holder)[0]
+
+
+def assess_with_centering(front, back=None, border_mm=3.0, holder=False):
+    """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / back_lr."""
     f, ferr = side_report(front)
     b, berr = side_report(back) if back else (None, "no back photo")
     if holder:
@@ -325,7 +345,7 @@ def assess(front, back=None, border_mm=3.0, holder=False):
     if ferr: cant.append({"point": "front (all points)", "graders": "all", "why": ferr})
     if berr: cant.append({"point": "back (all points)", "graders": "all", "why": berr})
     return {"front": f, "back": b, "centering": {k: f"{round(v*100)}/{round((1-v)*100)}" for k, v in cent.items()},
-            "ceiling": ceil, "cant_judge": cant, "note": PROVISIONAL}
+            "ceiling": ceil, "cant_judge": cant, "note": PROVISIONAL}, cent
 
 
 if __name__ == "__main__":
