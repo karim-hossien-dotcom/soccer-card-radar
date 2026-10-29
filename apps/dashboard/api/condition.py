@@ -1,19 +1,21 @@
 """POST /api/condition: run the D3 photo condition check (tools/grade-screen/condition.py) on uploaded photos.
 
 Vercel Python function next to the Next.js app. Reject filter only: it can lower the grade ceiling, it never
-promises a grade. Behind ADMIN_TOKEN (x-admin-token header), same as the app's write routes.
+promises a grade. Open to the app's own pages (same-site Origin check); no login. Also grades a photo by URL
+(JSON {"imageUrl"}): an eBay listing photo or a Vault photo, screened by the photo gate first when ANTHROPIC_API_KEY is set.
 
 Body: multipart/form-data with `front` (required), `back` (optional) image files (jpg, png or webp, 8 MB each)
 and `holder` ("1" when the card is in a sleeve, toploader, magnetic case or slab).
 The vendored copy of the check lives in api/_grade_screen (kept identical by tools/grade-screen/sync_vercel.py).
 """
-import hmac, json, os, sys
+import json, os, sys, urllib.parse
 from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "_grade_screen"))
 import condition as cond  # noqa: E402
+from gate import ask_gate, fetch, media_type, summarize, usable  # noqa: E402
 
 MAX_IMAGE = 8 * 1024 * 1024
 MAX_BODY = 2 * MAX_IMAGE + 64 * 1024
@@ -58,36 +60,83 @@ def parse_form(content_type, body):
     return fields
 
 
+ALLOWED_IMAGE_HOSTS = ("i.ebayimg.com",)
+
+
+def same_site(headers):
+    """No login on this site, so the check is open to the app's own pages only: the browser's Origin (or Referer)
+    must be this host. Stops other sites and casual scripts from running it; not a substitute for a login."""
+    host = (headers.get("x-forwarded-host") or headers.get("host") or "").lower()
+    src = headers.get("origin") or headers.get("referer") or ""
+    try:
+        return bool(host) and urllib.parse.urlparse(src).netloc.lower() == host
+    except ValueError:
+        return False
+
+
+def image_from_url(url, host):
+    """Fetch a photo by URL: an eBay listing photo, or one of the app's own Vault photos (/cards/...)."""
+    u = urllib.parse.urlparse(url)
+    if u.scheme == "" and u.path.startswith("/cards/") and ".." not in u.path:
+        return fetch(f"https://{host}{u.path}")
+    if u.scheme == "https" and u.netloc.lower() in ALLOWED_IMAGE_HOSTS:
+        return fetch(url)
+    raise ValueError("Only eBay listing photos and Vault photos can be graded by URL")
+
+
 def handle(headers, body, env=os.environ):
     """Pure request -> (status, json dict). headers: case-insensitive mapping (or plain dict with lowercase keys)."""
-    want = env.get("ADMIN_TOKEN")
-    if not want:
-        return 503, {"error": "ADMIN_TOKEN is not set on the server"}
-    got = headers.get("x-admin-token") or ""
-    if not hmac.compare_digest(got.encode(), want.encode()):
-        return 401, {"error": "Wrong admin token"}
+    if not same_site(headers):
+        return 403, {"error": "Run the check from the Card Radar site"}
     if len(body) > MAX_BODY:
         return 413, {"error": "Photos too large: 8 MB each at most"}
-    fields = parse_form(headers.get("content-type") or "", body)
-    if fields is None:
-        return 400, {"error": "Send the photos as multipart/form-data"}
-    front, back = fields.get("front") or b"", fields.get("back") or b""
-    if not front:
-        return 400, {"error": "Add a front photo"}
-    for label, data in (("Front", front), ("Back", back)):
-        if not data:
-            continue
-        if len(data) > MAX_IMAGE:
-            return 413, {"error": f"{label} photo is over 8 MB"}
-        if image_kind(data) is None:
-            return 415, {"error": f"{label} photo must be a jpg, png or webp"}
-    holder = (fields.get("holder") or b"").strip().lower() in (b"1", b"true", b"on", b"yes")
+    ctype = (headers.get("content-type") or "").lower()
+    gate = None
+    if ctype.startswith("application/json"):
+        try:
+            req = json.loads(body or b"{}")
+            url = str(req.get("imageUrl") or "")
+            front = image_from_url(url, headers.get("x-forwarded-host") or headers.get("host"))
+        except ValueError as e:
+            return 400, {"error": str(e)}
+        except Exception as e:
+            return 502, {"error": f"Could not download the photo: {type(e).__name__}"}
+        back, holder = b"", False
+        if not media_type(front):
+            return 415, {"error": "That photo is not a jpg, png or webp"}
+        key = env.get("ANTHROPIC_API_KEY")
+        if key:
+            try:
+                gate = ask_gate(key, front, media_type(front))
+            except Exception as e:
+                return 502, {"error": f"Photo screen failed: {type(e).__name__}"}
+    else:
+        fields = parse_form(ctype, body)
+        if fields is None:
+            return 400, {"error": "Send the photos as multipart/form-data"}
+        front, back = fields.get("front") or b"", fields.get("back") or b""
+        if not front:
+            return 400, {"error": "Add a front photo"}
+        for label, data in (("Front", front), ("Back", back)):
+            if not data:
+                continue
+            if len(data) > MAX_IMAGE:
+                return 413, {"error": f"{label} photo is over 8 MB"}
+            if image_kind(data) is None:
+                return 415, {"error": f"{label} photo must be a jpg, png or webp"}
+        holder = (fields.get("holder") or b"").strip().lower() in (b"1", b"true", b"on", b"yes")
+    if gate is not None and not usable(gate):
+        verdict, summary = summarize(gate, None)
+        return 200, {"gate": gate, "verdict": verdict, "summary": summary, "measured": False}
     try:
         report, cent = cond.assess_with_centering(front, back or None, holder=holder)
     except Exception as e:  # a corrupt image that decodes partway, etc.
         return 422, {"error": f"Could not analyse the photo: {type(e).__name__}"}
     report["centering_grades"] = centering_grades(cent)
     report["holder"] = holder
+    report["gate"] = gate
+    report["verdict"], report["summary"] = summarize(gate, report)
+    report["measured"] = True
     return 200, report
 
 

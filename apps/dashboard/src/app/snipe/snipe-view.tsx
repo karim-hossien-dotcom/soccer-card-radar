@@ -13,13 +13,18 @@ const usd = (n: number | null | undefined) => (n === null || n === undefined ? "
 const token = () => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } };
 /** C2: a live price above the engine's max bid is shown but greyed out. */
 const over = (price: number | null, max: number | null) => price !== null && max !== null && price > max;
+const short = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+const agoShort = (iso: string) => {
+  const h = Math.floor((Date.now() - new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z").getTime()) / 3600_000);
+  return h < 1 ? "just now" : h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
+};
 const endsIn = (iso: string | null) => {
   if (!iso) return "";
   const m = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
   return m < 60 ? `${m}m` : m < 2880 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d`;
 };
 
-export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, own, prefill = null }: SnipeData & { prefill?: SnipePrefill | null }) {
+export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, own, prefill = null, listingsAt = null }: SnipeData & { prefill?: SnipePrefill | null; listingsAt?: string | null }) {
   const [open, setOpen] = useState<string | null>(null);
   // C3: apply a decision on screen as soon as the server accepts it; the next server render replaces this.
   const [local, setLocal] = useState<{ decisions: Record<string, Decision>; spent: number }>({ decisions: {}, spent: 0 });
@@ -55,17 +60,26 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
 
   return (
     <>
-      <p className={s.budget}>
-        Budget {usd(budget.left)} left of {usd(budget.budget)} for {budget.start} to {budget.end}. Approved bids count at their max until the auction ends. Approving records your max; it does not bid.
-      </p>
       {notice && <p className="notice" role="status">{notice}</p>}
-      <div className={s.toolbar}>
-        <p className={s.basis}>
-          Grading odds come from the PSA population report for each card (PSA 10s and 9s ÷ total graded). Pop only counts cards people chose to submit, so a raw buy gets {Math.round(gemHaircut * 100)}% of the PSA 10 rate and {Math.round(psa9Haircut * 100)}% of the PSA 9 rate; the rest is valued at raw.
-          {own.graded > 0 && <> Your own submissions so far: {own.psa10} of {own.graded} came back PSA 10.</>} Low-confidence comps count for less.
-        </p>
-        <button className="btn" onClick={() => { setDraft(null); setEditing("new"); }}>Add target</button>
+      <div className={s.strip}>
+        <div className={s.stats}>
+          <div><span>Budget left</span><b>{usd(budget.left)}</b><small>of {usd(budget.budget)} · {short(budget.start)}–{short(budget.end)}</small></div>
+          <div><span>Live listings</span><b>{rows.filter((r) => r.live.length).length}</b><small>of {rows.length} targets</small></div>
+          {own.graded > 0 && <div><span>Your PSA 10 rate</span><b>{own.psa10} of {own.graded}</b><small>cards you graded</small></div>}
+          {listingsAt && <div><span>eBay checked</span><b>{agoShort(listingsAt)}</b><small>daily scan</small></div>}
+        </div>
+        <button className="btn btn-primary" onClick={() => { setDraft(null); setEditing("new"); }}>Add target</button>
       </div>
+      <details className={s.how}>
+        <summary>How scoring and max bid work</summary>
+        <ul>
+          <li><b>Score</b> weighs what the card is worth graded, how cheap the live listing is, how rare it is, and how the player is doing.</li>
+          <li><b>Max bid</b> keeps PSA 9 at 2× and PSA 10 at 4× your cost, and never goes above the raw price for a raw card. Slab targets set their own max.</li>
+          <li><b>Grading odds</b> come from the PSA population report (PSA 10s and 9s ÷ total graded). Pop only counts cards people chose to submit, so a raw buy gets {Math.round(gemHaircut * 100)}% of the PSA 10 rate and {Math.round(psa9Haircut * 100)}% of the PSA 9 rate; the rest is valued at raw. Low-confidence comps count for less.</li>
+          <li><b>Budget:</b> approved bids count at their max until the auction ends. Approving records your max; it never bids on eBay.</li>
+          <li><b>Photo badges</b> come from the grade screen of each listing photo: a warning only, never a grade promise.</li>
+        </ul>
+      </details>
 
       <div className="sheet-wrap">
         <table className="sheet" aria-label="Snipe targets">

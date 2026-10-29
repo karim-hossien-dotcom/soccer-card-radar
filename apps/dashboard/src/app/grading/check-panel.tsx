@@ -1,14 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { parseReport, ceilingLine, centeringRows, wearFindings, checkFile, downscaleSize, type ConditionReport } from "@/lib/condition-report";
 import s from "./check-panel.module.css";
-
-const TOKEN_KEY = "scr.adminToken";
-const store = {
-  get: () => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } },
-  set: (v: string) => { try { localStorage.setItem(TOKEN_KEY, v); } catch { /* private mode: keep in memory only */ } },
-};
 
 /** Vercel caps a request at 4.5 MB: re-encode big photos as JPEG with the long side at 3000 px (still ~30 px/mm on a card). */
 async function shrink(f: File): Promise<Blob> {
@@ -29,13 +23,9 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
   const [holder, setHolder] = useState(false);
-  const [token, setToken] = useState("");
-  const [hasToken, setHasToken] = useState(true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [report, setReport] = useState<ConditionReport | null>(initialReport);
-
-  useEffect(() => { const t = store.get(); setToken(t); setHasToken(!!t); }, []);
 
   const pick = (label: "Front" | "Back", set: (f: File | null) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0] ?? null;
@@ -46,15 +36,13 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
 
   const run = async () => {
     if (!front) { setErr("Add a front photo"); return; }
-    if (!token) { setErr("Add your admin token first."); return; }
-    if (!hasToken) { store.set(token); setHasToken(true); }
     setBusy(true); setErr(null); setReport(null);
     try {
       const fd = new FormData();
       fd.append("front", await shrink(front), front.name);
       if (back) fd.append("back", await shrink(back), back.name);
       fd.append("holder", holder ? "1" : "0");
-      const res = await fetch("/api/condition", { method: "POST", headers: { "x-admin-token": token }, body: fd });
+      const res = await fetch("/api/condition", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error((body && typeof body.error === "string" && body.error) || (res.status === 413 ? "Photos too large for upload" : `Check failed (${res.status})`));
       setReport(parseReport(body));
@@ -87,12 +75,6 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
           <input type="checkbox" checked={holder} onChange={(e) => setHolder(e.target.checked)} disabled={busy} />
           <span>Card is in a sleeve, toploader or slab</span>
         </label>
-        {!hasToken && (
-          <label className={s.field}>
-            <span>Admin token</span>
-            <input type="password" value={token} onChange={(e) => setToken(e.target.value)} autoComplete="off" />
-          </label>
-        )}
         <div>
           <button type="button" className={s.run} onClick={run} disabled={busy || !front}>{busy ? "Checking…" : "Run check"}</button>
           <span className={s.hint}>jpg, png or webp, up to 8 MB each</span>

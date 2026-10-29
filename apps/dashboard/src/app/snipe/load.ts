@@ -15,11 +15,11 @@ export type FormRow = FormStats & {
   actionId: string; asOf: string; season: string | null; club: string | null; league: string | null; scope: string | null;
   ratingSource: string | null; prior: Record<string, number | null> | null; note: string | null; sources: string[]; approved: boolean;
 };
-type ListingRow = { externalId?: string; title: string; priceUSD: number; url: string; rawData: Record<string, unknown> | null; actionId: string | null; lastSeenAt: string; soldAt: string | null };
+type ListingRow = { externalId?: string; title: string; priceUSD: number; url: string; imageUrl?: string | null; rawData: Record<string, unknown> | null; actionId: string | null; lastSeenAt: string; soldAt: string | null };
 export type Screen = { verdict: "ceiling" | "no_issue" | "cant_judge" | "error"; summary: string; gated: boolean };
 type Rows = { targets: Target[]; forms: FormRow[]; listings: ListingRow[]; assumptions: { key: string; value: number }[]; ownSubs: { grade: string | null }[]; bids?: Bid[]; screens?: ({ externalId: string; screenedAt: string } & Screen)[] };
 
-export type LiveListing = { externalId: string; title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null; screen?: Screen | null };
+export type LiveListing = { externalId: string; title: string; url: string; price: number; kind: "auction" | "buy"; endsAt: string | null; bids: number | null; screen?: Screen | null; imageUrl?: string | null };
 export type BoardRow = {
   target: Target; player: string; signal: ResearchAction["signal"]; tier: "S" | "A" | "B"; legend: boolean;
   form: FormRow | null; result: SnipeResult; live: LiveListing[]; livePrice: number | null;
@@ -54,7 +54,7 @@ async function fetchRows(): Promise<Rows> {
   for (const r of [t, f, a, o]) if (r.error) throw new Error(r.error.message);
   const ids = [...new Set((t.data ?? []).map((x) => x.actionId))];
   const l = ids.length
-    ? await supabase.from("Listing").select('"externalId", title, "priceUSD", url, "rawData", "actionId", "lastSeenAt", "soldAt"').in("actionId", ids).is("soldAt", null).gte("lastSeenAt", cutoff)
+    ? await supabase.from("Listing").select('"externalId", title, "priceUSD", url, "imageUrl", "rawData", "actionId", "lastSeenAt", "soldAt"').in("actionId", ids).is("soldAt", null).gte("lastSeenAt", cutoff)
     : { data: [], error: null };
   if (l.error) throw new Error(l.error.message);
   const ext = [...new Set((l.data ?? []).map((x) => x.externalId).filter(Boolean))] as string[];
@@ -126,7 +126,7 @@ export function liveFor(t: Target, listings: ListingRow[], now = Date.now(), ski
     .map((l) => {
       const raw = l.rawData ?? {};
       const endsAt = (raw.itemEndDate as string) ?? null;
-      return { externalId: l.externalId ?? "", title: l.title, url: l.url, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null, screen: isGradedTarget(t) ? null : screens.get(l.externalId ?? "") ?? null } as LiveListing;
+      return { externalId: l.externalId ?? "", title: l.title, url: l.url, imageUrl: l.imageUrl ?? null, price: l.priceUSD, kind: raw.isAuction ? "auction" : "buy", endsAt, bids: (raw.bidCount as number) ?? null, screen: isGradedTarget(t) ? null : screens.get(l.externalId ?? "") ?? null } as LiveListing;
     })
     .filter((l) => l.kind === "buy" || !l.endsAt || new Date(l.endsAt).getTime() > now)
     .sort((a, b) => (a.kind === b.kind ? (a.kind === "auction" ? (a.endsAt ?? "").localeCompare(b.endsAt ?? "") : a.price - b.price) : a.kind === "auction" ? -1 : 1));

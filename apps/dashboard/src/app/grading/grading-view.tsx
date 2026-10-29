@@ -1,24 +1,33 @@
 import type { GradingData } from "./load";
 import s from "./grading.module.css";
 import CheckPanel from "./check-panel";
+import GradePicker from "./grade-picker";
 
 const usd = (n: number | null | undefined, d = 0) =>
   n === null || n === undefined ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d, minimumFractionDigits: d });
 const signed = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `${n >= 0 ? "+" : "−"}${usd(Math.abs(n))}`);
 const tone = (n: number | null | undefined) => (n === null || n === undefined ? undefined : n >= 0 ? "gain" : "loss");
 
-export default function GradingView({ open, back, backTotals: t, candidates, fee }: GradingData) {
+export default function GradingView({ open, back, backTotals: t, vault, listings }: GradingData) {
   const atPsa = open.reduce((n, x) => n + x.cards.length, 0);
   return (
     <>
       <header className="page-head">
         <h1>Grading</h1>
-        <p>What is at PSA, what came back, and which raw cards are worth sending. Values are the Vault&apos;s latest comps; open a submission to see its cards.</p>
+        <p>Pick cards, press Grade.</p>
       </header>
+
+      <section aria-label="Check cards">
+        <GradePicker vault={vault} listings={listings} />
+        <details className={s.upload}>
+          <summary>Check your own photo instead</summary>
+          <CheckPanel />
+        </details>
+      </section>
 
       <section aria-labelledby="open-h">
         <h2 className="section" id="open-h">At PSA</h2>
-        <p className={s.basis}>{atPsa} cards in {open.length} open submission{open.length === 1 ? "" : "s"}. Cost includes the grading fee. &ldquo;If all PSA 9/10&rdquo; adds up the comps for cards that have them.</p>
+        <p className={s.basis}>{atPsa} cards in {open.length} open submission{open.length === 1 ? "" : "s"}. Cost includes the fee.</p>
         {open.map((x) => (
           <details key={x.id} className={s.sub}>
             <summary className={s.subHead}>
@@ -79,32 +88,6 @@ export default function GradingView({ open, back, backTotals: t, candidates, fee
         </div>
       </section>
 
-      <section aria-labelledby="cand-h">
-        <h2 className="section" id="cand-h">Worth grading</h2>
-        <p className={s.basis}>Raw cards in hand where the engine says grade{fee !== null ? `, after a ${usd(fee)} fee` : ""}. Net is graded value minus your cost and the fee. &ldquo;est.&rdquo; means no PSA 9 or 10 sales, so the value comes from raw-to-graded multiples: check comps before sending.</p>
-        <div className="sheet-wrap">
-          <table className="sheet" aria-label="Worth grading">
-            <thead><tr><th>Card</th><th className="num">Raw now</th><th className="num">Net at 9</th><th className="num">Net at 10</th><th className={s.hideM}>Call</th></tr></thead>
-            <tbody>
-              {candidates.map((c) => (
-                <tr key={c.id}>
-                  <td><span className={s.player}>{c.player}</span><div className={s.card}>{c.item}</div></td>
-                  <td className="num">{usd(c.valueNow)}</td>
-                  <td className="num"><span className={tone(c.net9)}>{signed(c.net9)}</span>{c.estimated && <span className={s.small}>est.</span>}</td>
-                  <td className="num"><span className={tone(c.net10)}>{signed(c.net10)}</span></td>
-                  <td className={s.hideM}>{c.decision}</td>
-                </tr>
-              ))}
-              {candidates.length === 0 && <tr><td colSpan={5} className="serif muted">No raw card clears the fee right now.</td></tr>}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section aria-labelledby="check-h">
-        <h2 className="section" id="check-h">Check a card</h2>
-        <CheckPanel />
-      </section>
     </>
   );
 }
