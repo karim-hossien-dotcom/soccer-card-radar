@@ -64,14 +64,17 @@ def test_run_screens_only_new_raw_listings():
     db = FakeDB()
     chip = open(t.fake(chips=8), "rb").read()
     orig_supa, orig_fetch = scr.Supa, scr.fetch
-    scr.Supa, scr.fetch = (lambda env: db), (lambda url: chip)
+    orig_gate = scr.ask_gate
+    scr.Supa, scr.fetch, scr.ask_gate = (lambda env: db), (lambda url: chip), (lambda key, img, mt: dict(RAW))
     try:
-        out = scr.run({}, now=datetime(2026, 10, 29, tzinfo=timezone.utc))
+        assert scr.run({}, now=datetime(2026, 10, 29, tzinfo=timezone.utc))["skipped"]  # no key: no screen at all
+        assert db.writes == []
+        out = scr.run({"ANTHROPIC_API_KEY": "k"}, now=datetime(2026, 10, 29, tzinfo=timezone.utc))
     finally:
-        scr.Supa, scr.fetch = orig_supa, orig_fetch
-    assert out == {"screened": 1, "left": 0, "gated": False, "verdicts": {"ceiling": 1}}, out
+        scr.Supa, scr.fetch, scr.ask_gate = orig_supa, orig_fetch, orig_gate
+    assert out == {"screened": 1, "left": 0, "gated": True, "verdicts": {"ceiling": 1}}, out
     w = db.writes[0]
-    assert w["externalId"] == "e1" and w["verdict"] == "ceiling" and w["gated"] is False and w["summary"].startswith("At best PSA 8")
+    assert w["externalId"] == "e1" and w["verdict"] == "ceiling" and w["gated"] is True and w["summary"].startswith("At best PSA 8")
 
 
 if __name__ == "__main__":

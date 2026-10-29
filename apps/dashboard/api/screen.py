@@ -1,7 +1,7 @@
 """GET /api/screen: grade-screen the photos of live eBay listings for raw snipe targets (G3).
 
 Runs as a Vercel cron after the daily scan (vercel.json), or by hand with the admin token. Per listing photo:
-  1. photo gate (Claude vision, only when ANTHROPIC_API_KEY is set): is this one raw card, flat, straight-on,
+  1. photo gate (Claude vision; the screen does nothing until ANTHROPIC_API_KEY is set): is this one raw card, flat, straight-on,
      all four edges visible, filling the frame? If not, the verdict is "cant_judge" and no measurement runs.
   2. the D3 condition check (api/_grade_screen/condition.py): centering, edge chips, corner whitening.
 Results go to the ListingScreen table, keyed by (externalId, imageUrl), so a photo is screened once.
@@ -153,8 +153,10 @@ def screen_one(row, key):
 
 def run(env, now=None, clock=time.monotonic):
     now = now or datetime.now(timezone.utc)
-    db = Supa(env)
     key = env.get("ANTHROPIC_API_KEY") or None
+    if not key:  # without the photo gate, holders and slabs get measured as cards: worse than no screen
+        return {"screened": 0, "left": 0, "gated": False, "verdicts": {}, "skipped": "ANTHROPIC_API_KEY is not set"}
+    db = Supa(env)
     todo = pending(db, now)
     start, done, counts = clock(), 0, {}
     for row in todo[:BATCH]:
