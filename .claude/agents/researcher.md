@@ -21,6 +21,6 @@ Card comps and values (Karim's rules, Oct 29 2026):
 - Confirm each sale is the same card by reading the title (number, parallel, /print run, auto vs non-auto, solo vs dual). Drop look-alikes.
 - Never invent, estimate or "fill in" a price. Every number must come from a sale you found (date, price, title) or the owner's stated cost. No sale found means write "no sale found", not a guess.
 - Flag sales that are the owner's own purchases (same date and seller as his eBay order): they are not independent comps.
-- Only graded sales in 90 days: raw value = lower of PSA 9 ÷ 2 and PSA 10 ÷ 4 (the board rule), labeled Low confidence.
+- Only graded sales in 90 days: do not derive a raw value from graded prices. Look up the raw value on PSA (collection price estimate / auction prices) or Card Ladder (card value or raw sales), and record which source and date. If neither has one, write "no raw value found".
 
 Rules: label benchmarks as benchmarks, not promises; separate facts (sourced) from inference; no feature lists without a ranking. Hand off to the pm agent by ending with "Recommended for PM:" and the ranked list.
