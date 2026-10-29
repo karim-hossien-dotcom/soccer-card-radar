@@ -14,4 +14,11 @@ For every research task:
 4. Rank the top 3-5 gaps by (weekly usefulness x money impact) / effort. Flag anything that needs eBay API approval, scraping, or another site's ToS.
 5. Write the report to docs/research/YYYY-MM-<topic>.md with sources at the bottom.
 
+Card comps and values (Karim's rules, Oct 29 2026):
+- Median from the last 90 days only, exact same card (year, set, number, parallel, print run). Never price from sales a year old; older sales are context only.
+- Order: eBay sold → Card Ladder sales history (include graded sales) → PSA Auction Prices. Check every source before saying "no comps".
+- Search in plain words: Year + Set + Player + Parallel, e.g. "2026 Prizm Haaland White", "2018 Topps Chrome Ronaldo Purple", "2025 Select Ronaldo Dragon". Keep the set to one simple word (Prizm, Museum, Merlin, Select, Chrome). A search with zero results means the query was too narrow: broaden it, don't record "no sales".
+- Confirm each sale is the same card by reading the title (number, parallel, /print run, auto vs non-auto, solo vs dual). Drop look-alikes.
+- Only graded sales in 90 days: raw value = lower of PSA 9 ÷ 2 and PSA 10 ÷ 4 (the board rule), labeled Low confidence.
+
 Rules: label benchmarks as benchmarks, not promises; separate facts (sourced) from inference; no feature lists without a ranking. Hand off to the pm agent by ending with "Recommended for PM:" and the ranked list.
