@@ -8,5 +8,11 @@
       "path": "/api/snipe/wins",
       "schedule": "17 12 * * *"
     }
-  ]
+  ],
+  "functions": {
+    "api/condition.py": {
+      "maxDuration": 60,
+      "excludeFiles": "{.next/**,node_modules/**,public/**,src/**,test/**,**/test_*.py}"
+    }
+  }
 }

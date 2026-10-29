@@ -1,0 +1,111 @@
+"""POST /api/condition: run the D3 photo condition check (tools/grade-screen/condition.py) on uploaded photos.
+
+Vercel Python function next to the Next.js app. Reject filter only: it can lower the grade ceiling, it never
+promises a grade. Behind ADMIN_TOKEN (x-admin-token header), same as the app's write routes.
+
+Body: multipart/form-data with `front` (required), `back` (optional) image files (jpg, png or webp, 8 MB each)
+and `holder` ("1" when the card is in a sleeve, toploader, magnetic case or slab).
+The vendored copy of the check lives in api/_grade_screen (kept identical by tools/grade-screen/sync_vercel.py).
+"""
+import hmac, json, os, sys
+from email.parser import BytesParser
+from email.policy import HTTP
+from http.server import BaseHTTPRequestHandler
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "_grade_screen"))
+import condition as cond  # noqa: E402
+
+MAX_IMAGE = 8 * 1024 * 1024
+MAX_BODY = 2 * MAX_IMAGE + 64 * 1024
+
+
+def image_kind(b):
+    if b[:3] == b"\xff\xd8\xff": return "jpg"
+    if b[:8] == b"\x89PNG\r\n\x1a\n": return "png"
+    if b[:4] == b"RIFF" and b[8:12] == b"WEBP": return "webp"
+    return None
+
+
+def split(worse):
+    return f"{round(worse * 100)}/{round((1 - worse) * 100)}"
+
+
+def centering_grades(cent):
+    """Per side: the split, and the best PSA / BGS grade whose written tolerance it meets (plus that tolerance)."""
+    out = {}
+    for key, worse in cent.items():
+        back = key == "back_lr"
+        p, b = cond.centering_grades(worse, back=back)
+        psa_lim = next((f if not back else bk for g, f, bk in cond.PSA_CENT if g == p), None)
+        bgs_lim = next((f if not back else bk for g, f, bk in cond.BGS_CENT if g == b), None)
+        out[key] = {"split": split(worse), "psa": p, "psa_tolerance": split(psa_lim) if psa_lim else None,
+                    "bgs": b, "bgs_tolerance": split(bgs_lim) if bgs_lim else None}
+    return out
+
+
+def parse_form(content_type, body):
+    """multipart/form-data -> {name: bytes}. Returns None when the body is not multipart."""
+    if not content_type.lower().startswith("multipart/form-data"):
+        return None
+    msg = BytesParser(policy=HTTP).parsebytes(b"Content-Type: " + content_type.encode() + b"\r\n\r\n" + body)
+    if not msg.is_multipart():
+        return None
+    fields = {}
+    for part in msg.iter_parts():
+        name = part.get_param("name", header="content-disposition")
+        if name:
+            fields[name] = part.get_payload(decode=True) or b""
+    return fields
+
+
+def handle(headers, body, env=os.environ):
+    """Pure request -> (status, json dict). headers: case-insensitive mapping (or plain dict with lowercase keys)."""
+    want = env.get("ADMIN_TOKEN")
+    if not want:
+        return 503, {"error": "ADMIN_TOKEN is not set on the server"}
+    got = headers.get("x-admin-token") or ""
+    if not hmac.compare_digest(got.encode(), want.encode()):
+        return 401, {"error": "Wrong admin token"}
+    if len(body) > MAX_BODY:
+        return 413, {"error": "Photos too large: 8 MB each at most"}
+    fields = parse_form(headers.get("content-type") or "", body)
+    if fields is None:
+        return 400, {"error": "Send the photos as multipart/form-data"}
+    front, back = fields.get("front") or b"", fields.get("back") or b""
+    if not front:
+        return 400, {"error": "Add a front photo"}
+    for label, data in (("Front", front), ("Back", back)):
+        if not data:
+            continue
+        if len(data) > MAX_IMAGE:
+            return 413, {"error": f"{label} photo is over 8 MB"}
+        if image_kind(data) is None:
+            return 415, {"error": f"{label} photo must be a jpg, png or webp"}
+    holder = (fields.get("holder") or b"").strip().lower() in (b"1", b"true", b"on", b"yes")
+    try:
+        report, cent = cond.assess_with_centering(front, back or None, holder=holder)
+    except Exception as e:  # a corrupt image that decodes partway, etc.
+        return 422, {"error": f"Could not analyse the photo: {type(e).__name__}"}
+    report["centering_grades"] = centering_grades(cent)
+    report["holder"] = holder
+    return 200, report
+
+
+class handler(BaseHTTPRequestHandler):
+    def _send(self, status, data):
+        out = json.dumps(data, default=float).encode()
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("Content-Length", str(len(out)))
+        self.end_headers()
+        self.wfile.write(out)
+
+    def do_POST(self):
+        n = int(self.headers.get("content-length") or 0)
+        if n > MAX_BODY:
+            return self._send(413, {"error": "Photos too large: 8 MB each at most"})
+        self._send(*handle(self.headers, self.rfile.read(n) if n else b""))
+
+    def do_GET(self):
+        self._send(405, {"error": "POST photos to this endpoint"})

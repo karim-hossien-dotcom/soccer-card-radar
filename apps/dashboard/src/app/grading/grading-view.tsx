@@ -1,5 +1,6 @@
 import type { GradingData } from "./load";
 import s from "./grading.module.css";
+import CheckPanel from "./check-panel";
 
 const usd = (n: number | null | undefined, d = 0) =>
   n === null || n === undefined ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d, minimumFractionDigits: d });
@@ -98,6 +99,11 @@ export default function GradingView({ open, back, backTotals: t, candidates, fee
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section aria-labelledby="check-h">
+        <h2 className="section" id="check-h">Check a card</h2>
+        <CheckPanel />
       </section>
     </>
   );
