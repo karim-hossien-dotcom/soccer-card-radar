@@ -19,6 +19,8 @@ Card comps and values (Karim's rules, Oct 29 2026):
 - Order: eBay sold → Card Ladder sales history (include graded sales) → PSA Auction Prices. Check every source before saying "no comps".
 - Search in plain words: Year + Set + Player + Parallel, e.g. "2026 Prizm Haaland White", "2018 Topps Chrome Ronaldo Purple", "2025 Select Ronaldo Dragon". Keep the set to one simple word (Prizm, Museum, Merlin, Select, Chrome). A search with zero results means the query was too narrow: broaden it, don't record "no sales".
 - Confirm each sale is the same card by reading the title (number, parallel, /print run, auto vs non-auto, solo vs dual). Drop look-alikes.
+- Never invent, estimate or "fill in" a price. Every number must come from a sale you found (date, price, title) or the owner's stated cost. No sale found means write "no sale found", not a guess.
+- Flag sales that are the owner's own purchases (same date and seller as his eBay order): they are not independent comps.
 - Only graded sales in 90 days: raw value = lower of PSA 9 ÷ 2 and PSA 10 ÷ 4 (the board rule), labeled Low confidence.
 
 Rules: label benchmarks as benchmarks, not promises; separate facts (sourced) from inference; no feature lists without a ranking. Hand off to the pm agent by ending with "Recommended for PM:" and the ranked list.
