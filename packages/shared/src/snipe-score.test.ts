@@ -45,9 +45,10 @@ test("missing live price drops steal and renormalises; legend ignores form", () 
 
 test("steal curve: at max bid 0.5, half of max bid 0.75, 1.5x max bid 0", () => {
   const v = (price: number) => snipeScore(ronaldo161, price, legend).parts.find((p) => p.key === "steal")!.value;
-  assert.equal(v(42), 0.5);
-  assert.equal(v(21), 0.75);
-  assert.equal(v(63), 0);
+  // max bid = raw 25 (formula 42 capped at raw)
+  assert.equal(v(25), 0.5);
+  assert.equal(v(12.5), 0.75);
+  assert.equal(v(37.5), 0);
 });
 
 test("no pop data uses assumed rates and says so", () => {
@@ -80,5 +81,13 @@ test("owner-set max bid overrides the formula (graded slab, no grading upside)",
   const r = snipeScore(slab, 300, { signal: "HOLD", tier: "S", legend: true, form: null });
   assert.equal(r.maxBid, 383);
   assert.equal(r.ev, null, "no raw price, so no grading upside");
-  assert.equal(snipeScore({ ...slab, maxBid: null, raw: 42 }, 300, { signal: "HOLD", tier: "S", legend: true, form: null }).maxBid, 60, "formula when unset: min(120/2, 450/4)");
+  assert.equal(snipeScore({ ...slab, maxBid: null, raw: 42 }, 300, { signal: "HOLD", tier: "S", legend: true, form: null }).maxBid, 42, "formula when unset: min(120/2, 450/4) = 60, capped at raw 42");
+});
+
+test("raw target max never exceeds the raw price", () => {
+  const ron = { raw: 25, psa9: 84, psa10: 331, popTotal: 6599, pop9: 3981, pop10: 1755, printRun: null, ssp: false };
+  const pl = { signal: "BUY" as const, tier: "S" as const, legend: true, form: null };
+  assert.equal(snipeScore(ron, 28.81, pl).maxBid, 25, "formula says 42 (84/2), raw caps it at 25");
+  assert.equal(snipeScore({ ...ron, raw: 138 }, 28.81, pl).maxBid, 42, "formula below raw: formula stands");
+  assert.equal(snipeScore({ ...ron, raw: null }, 28.81, pl).maxBid, 42, "no raw price: formula");
 });

@@ -64,7 +64,7 @@ export type SnipeResult = {
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
-/** Same rule as the value engine: PSA 9 at 2x and PSA 10 at 4x your all-in cost. */
+/** Same rule as the value engine: PSA 9 at 2x and PSA 10 at 4x your all-in cost. snipeScore also caps it at the raw price. */
 export function snipeMaxBid(psa9: number | null, psa10: number | null): number | null {
   const c = [psa9 !== null ? psa9 / 2 : null, psa10 !== null ? psa10 / 4 : null].filter((x): x is number => x !== null);
   return c.length ? round2(Math.min(...c)) : null;
@@ -107,7 +107,9 @@ export function formValue(f: PlayerForm): { value: number | null; note: string }
 /** price = live auction/listing price when known; otherwise the raw reference is used for upside and steal is left out. */
 export function snipeScore(c: SnipeCard, price: number | null, pl: SnipePlayer, cfg: SnipeConfig = DEFAULT_CONFIG): SnipeResult {
   const w = cfg.weights;
-  const maxBid = c.maxBid ?? snipeMaxBid(c.psa9, c.psa10);
+  // Owner-set max wins. Otherwise the grading formula, capped at the raw price: never pay more than raw market for a raw card.
+  const formula = snipeMaxBid(c.psa9, c.psa10);
+  const maxBid = c.maxBid ?? (formula !== null && c.raw !== null ? Math.min(formula, c.raw) : formula);
   const priceUsed = price ?? c.raw;
   const g = expectedGraded(c, cfg);
   const parts: ScorePart[] = [];

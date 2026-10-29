@@ -22,6 +22,7 @@ export type LiveListing = { externalId: string; title: string; url: string; pric
 export type BoardRow = {
   target: Target; player: string; signal: ResearchAction["signal"]; tier: "S" | "A" | "B"; legend: boolean;
   form: FormRow | null; result: SnipeResult; live: LiveListing[]; livePrice: number | null;
+  skipped: LiveListing[]; // listings you skipped: kept out of the ranking and the live price
   staleComps: boolean; // comps older than 14 days: refresh before bidding
   askMedian: number | null; // median live Buy It Now ask for this exact card (free drift check on the raw comp)
   rawDrift: number | null; // raw comp / ask median; far from 1 means the comp is out of date or the target matches the wrong card
@@ -101,9 +102,20 @@ function config(assumptions: Rows["assumptions"]): SnipeConfig {
 
 const PAGE: Record<string, "rookie" | "stars" | "legends"> = { rookie: "rookie", steal: "stars", legacy: "legends" };
 
-export function liveFor(t: Target, listings: ListingRow[], now = Date.now()): LiveListing[] {
+/** A target is for a slab when its title terms name a grade (e.g. "psa 10"). */
+export const isGradedTarget = (t: Pick<Target, "mustInclude">) => t.mustInclude.some((m) => /^(psa|bgs|sgc|cgc|tag)\b/i.test(m.trim()));
+
+/** eBay's item condition: slabs are "Graded"; raw cards "Ungraded" (or a local-language equivalent). Unknown passes. */
+const conditionFits = (t: Target, l: ListingRow) => {
+  const c = String(l.rawData?.condition ?? "").toLowerCase();
+  if (!c) return true;
+  const graded = c === "graded";
+  return isGradedTarget(t) ? graded : !graded;
+};
+
+export function liveFor(t: Target, listings: ListingRow[], now = Date.now(), skipped: Set<string> = new Set()): LiveListing[] {
   return listings
-    .filter((l) => l.actionId === t.actionId && matchesTarget(l.title, t.mustInclude, t.exclude))
+    .filter((l) => l.actionId === t.actionId && !skipped.has(l.externalId ?? "") && conditionFits(t, l) && matchesTarget(l.title, t.mustInclude, t.exclude))
     .map((l) => {
       const raw = l.rawData ?? {};
       const endsAt = (raw.itemEndDate as string) ?? null;
@@ -120,6 +132,7 @@ export function buildBoard(rows: Rows, now = new Date()): SnipeData {
   const latest = (id: string, approvedOnly: boolean) =>
     rows.forms.filter((f) => f.actionId === id && (!approvedOnly || f.approved)).sort((a, b) => b.asOf.localeCompare(a.asOf))[0] ?? null;
   const staleBefore = new Date(now.getTime() - STALE_COMP_DAYS * 86400_000).toISOString().slice(0, 10);
+  const skippedIds = new Set((rows.bids ?? []).filter((b) => b.status === "skipped").map((b) => b.externalId));
 
   const board: BoardRow[] = rows.targets.filter((t) => t.active).map((t) => {
     const a = byId.get(t.actionId);
@@ -127,14 +140,15 @@ export function buildBoard(rows: Rows, now = new Date()): SnipeData {
     const legend = a?.lane === "legacy";
     const tier = a ? assignTier(a.signal, a.lane, a.catalyst, PAGE[a.lane]) : "B";
     const form = legend ? null : latest(t.actionId, true);
-    const live = liveFor(t, rows.listings, now.getTime());
+    const live = liveFor(t, rows.listings, now.getTime(), skippedIds);
+    const skipped = liveFor(t, rows.listings, now.getTime()).filter((l) => skippedIds.has(l.externalId));
     // Price to judge: soonest-ending auction, else cheapest Buy It Now.
     const livePrice = live.length ? live[0].price : null;
     const result = snipeScore(t, livePrice, { signal, tier, legend, form }, cfg);
     const asks = live.filter((l) => l.kind === "buy").map((l) => l.price).sort((x, y) => x - y);
     const askMedian = asks.length >= 3 ? asks[Math.floor(asks.length / 2)] : null;
     return {
-      target: t, player: a?.player ?? t.actionId, signal, tier, legend, form, result, live, livePrice,
+      target: t, player: a?.player ?? t.actionId, signal, tier, legend, form, result, live, livePrice, skipped,
       staleComps: !t.compsAsOf || t.compsAsOf < staleBefore,
       askMedian, rawDrift: askMedian && t.raw ? Math.round((t.raw / askMedian) * 100) / 100 : null,
     };

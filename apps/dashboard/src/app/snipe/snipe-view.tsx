@@ -142,11 +142,24 @@ function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRo
                   <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
                     <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
-                    {l.kind === "auction" && <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} />}
+                    <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} skipOnly={l.kind !== "auction"} />
                   </li>
                 ))}
               </ul>
             ) : <p className={s.note}>None in the last scan. The daily scan searches “{t.query}”.</p>}
+            {r.skipped.length > 0 && (
+              <>
+                <h3>Skipped</h3>
+                <ul className={s.live}>
+                  {r.skipped.map((l, i) => (
+                    <li key={i} className="muted">
+                      <strong>{usd(l.price)}</strong> <a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
+                      <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId] ?? { status: "skipped", maxBid: 0 }} onDecided={onDecided} skipOnly />
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
             {r.form && (
               <>
                 <h3>Player form</h3>
@@ -216,7 +229,7 @@ function FormReview({ players }: { players: SnipeData["players"] }) {
 }
 
 /** C3: approve (with a max), skip, or cancel one auction. Records the decision only; nothing bids on eBay. */
-function BidControls({ listing: l, row: r, left, decision, onDecided }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision; onDecided: (id: string, d: Decision) => void }) {
+function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly = false }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision; onDecided: (id: string, d: Decision) => void; skipOnly?: boolean }) {
   const router = useRouter();
   const suggested = Math.max(0, Math.min(r.result.maxBid ?? 0, left + (decision?.status === "approved" ? decision.maxBid : 0)));
   const [max, setMax] = useState(String(Math.floor(suggested)));
@@ -250,10 +263,10 @@ function BidControls({ listing: l, row: r, left, decision, onDecided }: { listin
   }
   return (
     <span className={s.bid} onClick={(e) => e.stopPropagation()}>
-      <label>Max $<input type="number" min={1} step={1} value={max} onChange={(e) => setMax(e.target.value)} aria-label="Max bid in dollars" /></label>
-      <button className="btn" disabled={busy || over(l.price, Number(max))} onClick={() => send("approve")}>Approve</button>
+      {!skipOnly && <label>Max $<input type="number" min={1} step={1} value={max} onChange={(e) => setMax(e.target.value)} aria-label="Max bid in dollars" /></label>}
+      {!skipOnly && <button className="btn" disabled={busy || over(l.price, Number(max))} onClick={() => send("approve")}>Approve</button>}
       <button className="btn" disabled={busy} onClick={() => send("skip")}>Skip</button>
-      {over(l.price, Number(max)) && <span className="muted"> current bid is above this max</span>}
+      {!skipOnly && over(l.price, Number(max)) && <span className="muted"> current bid is above this max</span>}
       {msg && <span className="loss"> {msg}</span>}
     </span>
   );

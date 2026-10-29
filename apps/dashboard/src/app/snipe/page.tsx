@@ -12,7 +12,7 @@ export default async function SnipePage() {
       <>
         <header className="page-head">
           <h1>Snipe</h1>
-          <p>Cards worth bidding on, ranked by what the card is worth graded, how cheap it is right now, how rare it is, and how the player is doing. Max bid keeps PSA 9 at 2x and PSA 10 at 4x your cost.</p>
+          <p>Cards worth bidding on, ranked by what the card is worth graded, how cheap it is right now, how rare it is, and how the player is doing. Max bid keeps PSA 9 at 2x and PSA 10 at 4x your cost, and never goes above the raw price for a raw card. Slab targets set their own max.</p>
         </header>
         <Freshness listingsAt={status.listingsAt} />
         <SnipeView {...data} />

@@ -28,3 +28,22 @@ Photo rules: front only, no sleeve, dark plain background, straight above, card 
 - PSA submission 26913695/26913701 (54 raw scans, cropped at the cut edge): predictions recorded in `baseline-psa-26913695.csv` before grades. 37 no visible issue, 9 warn, 8 cant_measure. Fill `psa_grade` when the order returns. Pass bar: no PSA 10 among `warn`/`reject` beyond chance, and warn cards grade lower on average.
 - eBay listings (`screen_listings.py`, 121 target listings): NOT usable yet. Spot check of 4 photos: 1 valid. Failures: slabs without a grade in the title, cards in magnetic holders/toploaders, several items in one photo, angled shots on stands; the outline found is the holder, not the card. Results were cleared from Listing and are not shown on the board.
 - Next for eBay: a photo gate before centering (raw card, no holder, single card, fills the frame). That is a classification job for a vision model (D2), not edge detection.
+
+## condition.py (D3, 2026-10-29): every PSA / BGS / TAG grading point
+
+`python3 condition.py front.jpg [back.jpg] [--holder]` prints a JSON report:
+
+- **Caps the grade ceiling** (checked by eye on the Ronaldo #161 test card): centering front and back against PSA
+  (55/45, 60/40, 65/35; back 75/25, 90/10) and Beckett (50/50, 55/45, 60/40; back 60/40, 70/30, 80/20) tolerances;
+  edge chipping / whitening specks on dark borders; corner whitening.
+- **Look flags** (measured, not yet allowed to lower the ceiling): cut-line notches, waviness and roughness (TAG),
+  corner dings vs the other corners, stains and print spots on light areas, colour registration.
+- **Can't judge from a photo** (listed in every report): surface scratches and metallic print lines on chrome, dents,
+  gloss, edge lifting/tears, corner fray under magnification, trimming, top/bottom centering.
+- `--holder` (sleeve, toploader, magnetic, slab): no condition ceiling at all; plastic hides wear and adds glare.
+- A front photo without a clean outline on a plain backdrop gets no ceiling.
+
+Chip rule: lighter than the border at that spot, lighter than the brightest dots the printed pattern has next to it,
+near-colourless (exposed card stock), and not continuing 1 mm inward (so printed lines that run off the edge and prism
+dots are not chips). `test_condition.py` covers these cases. Thresholds are provisional until the PSA order
+26913695 grades come back; `centering.py` and the pre-registered baseline are unchanged.
