@@ -18,7 +18,7 @@ def form(**parts):
             out += f'--{b}\r\nContent-Disposition: form-data; name="{name}"\r\n\r\n'.encode() + data + b"\r\n"
         else:
             out += f'--{b}\r\nContent-Disposition: form-data; name="{name}"; filename="{name}.png"\r\nContent-Type: image/png\r\n\r\n'.encode() + data + b"\r\n"
-    return {"content-type": f"multipart/form-data; boundary={b}", "x-admin-token": "s3cret"}, out + f"--{b}--\r\n".encode()
+    return {"content-type": f"multipart/form-data; boundary={b}", "host": "cards.test", "origin": "https://cards.test"}, out + f"--{b}--\r\n".encode()
 
 
 def png(**kw):
@@ -30,11 +30,34 @@ def test_vendored_copy_matches_tools():
         assert open(os.path.join(HERE, f), "rb").read() == open(os.path.join(API, "_grade_screen", f), "rb").read(), f"run sync_vercel.py: {f} drifted"
 
 
-def test_auth():
+def test_same_site_only():
     h, body = form(front=png())
-    assert api.handle(h, body, env={})[0] == 503
-    assert api.handle({**h, "x-admin-token": "nope"}, body, env=ENV)[0] == 401
-    assert api.handle({k: v for k, v in h.items() if k != "x-admin-token"}, body, env=ENV)[0] == 401
+    assert api.handle(h, body, env=ENV)[0] == 200
+    assert api.handle({**h, "origin": "https://evil.example"}, body, env=ENV)[0] == 403
+    assert api.handle({k: v for k, v in h.items() if k != "origin"}, body, env=ENV)[0] == 403
+    assert api.handle({k: v for k, v in h.items() if k != "origin"} | {"referer": "https://cards.test/grading"}, body, env=ENV)[0] == 200
+
+
+def test_grade_by_url():
+    site = {"content-type": "application/json", "host": "cards.test", "origin": "https://cards.test"}
+    chip = png(chips=8)
+    seen = []
+    orig = api.fetch, api.ask_gate
+    api.fetch = lambda url: (seen.append(url), chip)[1]
+    try:
+        api.ask_gate = lambda key, img, mt: {"type": "raw", "straight_on": True, "all_edges_visible": True, "fills_frame": True}
+        st, r = api.handle(site, b'{"imageUrl": "/cards/abc.webp"}', env={"ANTHROPIC_API_KEY": "k"})
+        assert st == 200 and r["measured"] and r["verdict"] == "ceiling" and r["summary"].startswith("At best PSA 8"), r
+        assert seen[-1] == "https://cards.test/cards/abc.webp"
+        api.ask_gate = lambda key, img, mt: {"type": "holder", "straight_on": True, "all_edges_visible": True, "fills_frame": True}
+        st, r = api.handle(site, b'{"imageUrl": "https://i.ebayimg.com/images/g/x/s-l225.jpg"}', env={"ANTHROPIC_API_KEY": "k"})
+        assert st == 200 and not r["measured"] and r["summary"] == "Can't judge: card is in a toploader or holder", r
+        assert api.handle(site, b'{"imageUrl": "https://evil.example/x.jpg"}', env={})[0] == 400
+        assert api.handle(site, b'{"imageUrl": "/cards/../etc/passwd"}', env={})[0] == 400
+        st, r = api.handle(site, b'{"imageUrl": "/cards/abc.webp"}', env={})  # no key: measured without the gate
+        assert st == 200 and r["gate"] is None and r["measured"]
+    finally:
+        api.fetch, api.ask_gate = orig
 
 
 def test_limits_and_types():
@@ -44,7 +67,7 @@ def test_limits_and_types():
     assert api.handle(h, body, env=ENV)[0] == 415
     h, body = form(front=b"\xff\xd8\xff" + b"0" * (8 * 1024 * 1024))
     assert api.handle(h, body, env=ENV)[0] == 413
-    assert api.handle({"content-type": "application/json", "x-admin-token": "s3cret"}, b"{}", env=ENV)[0] == 400
+    assert api.handle({"content-type": "application/json", "host": "cards.test", "origin": "https://cards.test"}, b"{}", env=ENV)[0] == 400
 
 
 def test_report_with_chips_and_back():

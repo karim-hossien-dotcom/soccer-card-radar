@@ -22,3 +22,9 @@
   .subHead > :first-child { grid-column: 1 / -1; }
   .hideM { display: none; }
 }
+.upload { margin: 14px 0 6px; }
+.upload > summary { cursor: pointer; font-size: var(--t-sm); font-weight: 650; color: var(--accent); list-style: none; padding: 6px 0; }
+.upload > summary::-webkit-details-marker { display: none; }
+.upload > summary::before { content: "+ "; }
+.upload[open] > summary::before { content: "− "; }
+.upload[open] > summary { margin-bottom: 10px; }

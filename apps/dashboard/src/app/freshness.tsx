@@ -13,9 +13,10 @@ function ago(iso: string, now: number): string {
 }
 
 /** S1: tells Karim how fresh the eBay data behind this page is, and why it's empty when the scan has stopped. */
-export default function Freshness({ listingsAt, soldAt }: { listingsAt: string | null; soldAt?: string | null }) {
+export default function Freshness({ listingsAt, soldAt, compact = false }: { listingsAt: string | null; soldAt?: string | null; compact?: boolean }) {
   const now = Date.now();
   const stale = !isFresh(listingsAt);
+  if (compact && !stale) return null; // the page shows "checked N hours ago" in its own stat strip
   return (
     <>
       {stale ? (
