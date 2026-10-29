@@ -39,6 +39,7 @@ export type WeekTotal = { week: string; total: number; graded: number; raw: numb
 export function weeklyTotals(rows: SnapshotRow[]): WeekTotal[] {
   const by = new Map<string, WeekTotal>();
   for (const r of rows) {
+    if (r.status === "sealed") continue; // packs and boxes sit in their own Vault section, outside card totals
     const t = by.get(r.week) ?? { week: r.week, total: 0, graded: 0, raw: 0, atGrader: 0, cards: 0 };
     const v = r.valueNow ?? 0;
     t.total += v;

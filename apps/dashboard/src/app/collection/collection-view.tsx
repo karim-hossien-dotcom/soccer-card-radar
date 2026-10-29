@@ -8,7 +8,7 @@ import s from "./collection.module.css";
 import { snipeHref, prefillFromComps } from "@/lib/grading";
 
 type Scenario = "now" | "10" | "9" | "8";
-type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale";
+type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
 type SortKey = "value" | "gain" | "upside" | "cost" | "date" | "name";
 
 const STATUS_LABEL: Record<string, string> = { graded: "Graded", raw: "Raw", at_grader: "At PSA", sealed: "Sealed", sold: "Sold" };
@@ -47,7 +47,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
     const needle = q.trim().toLowerCase();
     const L = cards.filter(
       (c) =>
-        (stat === "all" || c.status === stat || (stat === "raw" && c.status === "sealed") || (stat === "stale" && c.stale)) &&
+        (stat === "sealed" ? c.status === "sealed" : c.status !== "sealed" && (stat === "all" || c.status === stat || (stat === "stale" && c.stale))) &&
         (!player || c.player === player) &&
         (!needle || `${c.item} ${c.cert ?? ""} ${c.player}`.toLowerCase().includes(needle)),
     );
@@ -88,13 +88,14 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
   );
 
   const staleCount = useMemo(() => cards.filter((c) => c.stale).length, [cards]);
+  const sealedCount = useMemo(() => cards.filter((c) => c.status === "sealed").length, [cards]);
 
   return (
     <div className={s.wrap}>
       <section className={s.hero} aria-label="Collection totals">
         <div className={s.heroHead}>
           <h1>Vault</h1>
-          <p>{cards.length} cards. Values from 90-day sales, else Card Ladder.</p>
+          <p>{cards.length - sealedCount} cards{sealedCount ? ` + ${sealedCount} sealed` : ""}. Values from 90-day sales, else Card Ladder.</p>
         </div>
         <div className={s.heroKpis}>
           <div className={s.big}><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b><CountUp value={totals.value} /></b></div>
@@ -110,7 +111,7 @@ export default function CollectionView({ cards, weeks, trends }: CollectionData)
       </div>
       <div className={s.controls}>
         <Seg label="Price as" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
-        <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`]]} />
+        <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`], ...(sealedCount ? [["sealed", `Sealed (${sealedCount})`] as [string, string]] : [])]} />
         <div className={s.row}>
           <select aria-label="Player" value={player} onChange={(e) => setPlayer(e.target.value)}>
             <option value="">All players</option>
