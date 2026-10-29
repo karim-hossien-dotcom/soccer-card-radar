@@ -30,7 +30,8 @@ export function buildGrading(cards: GCard[], subs: Submission[]): Grading {
       const list = atPsa.filter((c) => c.submissionId === s.id);
       return { ...s, cards: list, cost: sum(list.map((c) => c.cost)), if9: sum(list.map((c) => c.psa9)), if10: sum(list.map((c) => c.psa10)), priced: list.filter((c) => c.psa9 !== null).length };
     })
-    .filter((s) => s.cards.length > 0 || !DONE.test(s.status ?? ""))
+    // An order with nothing left at PSA is done once any of its cards is back, whatever its status says.
+    .filter((s) => s.cards.length > 0 || (!DONE.test(s.status ?? "") && !cards.some((c) => c.submissionId === s.id)))
     .sort((a, b) => (a.arrivedOn ?? "9").localeCompare(b.arrivedOn ?? "9"));
 
   const back = cards

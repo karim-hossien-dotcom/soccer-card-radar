@@ -28,6 +28,11 @@ test("buildGrading: open subs carry their at-PSA cards and totals; completed sub
   assert.equal(g.backTotals.gain, 169.67);
 });
 
+test("buildGrading: an order whose cards are all back drops out even if still 'Completing'", () => {
+  const g = buildGrading([card({ id: "a", status: "graded", submissionId: "7", gradeLabel: "PSA 10" })], [sub({ id: "7", status: "Completing" }), sub({ id: "8", status: "Received" })]);
+  assert.deepEqual(g.open.map((s) => s.id), ["8"]);
+});
+
 test("buildGrading: candidates are raw, not yet submitted, engine says grade; best PSA 9 net first", () => {
   const g = buildGrading(
     [
