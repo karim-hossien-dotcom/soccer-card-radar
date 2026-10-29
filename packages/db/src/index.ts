@@ -28,7 +28,7 @@ function getClient(): DBClient {
     );
   }
   // Next.js caches fetch() by default, which served stale rows (snipe board, router.refresh). Always read fresh.
-  cached = createClient<Database>(url, key, { global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" }) } });
+  cached = createClient<Database>(url, key, { global: { fetch: (input, init) => fetch(input, { ...init, cache: "no-store" } as RequestInit) } });
   return cached;
 }
 
