@@ -19,13 +19,15 @@ Method (do all three; show each):
    both the base and the target parallel. For each, ratio = parallel median / base median. Report every ratio, the
    median, the spread (min-max) and the count. Drop obvious outliers (more than 3x the median ratio) and say so.
    Prefer at least 5 players; if fewer, widen to the same parallel in the same product line's other inserts and say so.
-3. **Trend.** If the card's own parallel sales are older than the base's recent move, scale them by the base's change
-   (base median now / base median at the time of the parallel sales) and show both dates.
+3. **Base move (owner's rule, preferred when it applies).** If the parallel's own sales are older than the base's latest
+   sales and the base has moved more than 20% since: for each parallel sale, ratio = sale / base price at that time
+   (median of base sales in the 60 days before it); value = median ratio x the base's newest sale. Show both dates and
+   the range you get from each individual "base then" sale (thin data swings it a lot).
 
 Proposal:
 - ratio estimate = this card's 90-day base median x the median ratio from step 2;
-- trend estimate = this card's own parallel sales adjusted by step 3 (when they exist);
-- propose one value, normally the lower of the two (conservative). Never below the base median. Never above the
+- base-move estimate = step 3 (when it applies, this is the proposal);
+- propose one value: the base-move estimate when it applies, otherwise the lower of the two. Never above the
   next scarcer parallel's recent sales if those exist.
 - Confidence: high (5+ ratio pairs, own sales within 30 days), medium, or low (fewer than 3 pairs or wide spread).
 
@@ -41,9 +43,10 @@ Worked example (verified Oct 30 2026): 2024-25 Merlin UCC Match Ball Signatures 
   on the card). Check every photo for a serial number before calling a sale "base".
 - Base (no serial, silver refractor): Oct 13 $211.70, Sep 26 $209.35 -> 90-day median $210.53.
 - Gold /50 own sales: Sep 18 $185, Sep 6 $155 -> $170 (Sep 1 $150 dropped: photo looks Orange).
-  Paired ratio (same months): Gold / base = 0.81 -> 0.81 x $211.70 = $171. Both methods agree: ~$170.
+  Base-move rule (owner): base when the Gold sold = median(Jul 15 $175.63, Jul 26 $115) = $145.31; Gold/base = 1.17;
+  x newest base $211.70 = $247.66 (range $205-313 by which July sale is used). Approved and saved Oct 30.
 - Orange /25: Aug 30 $220.50 (one sale); the owner's own May 4 buy ($250) excluded. /10 sold Oct 18 $313.17 (ceiling).
-- Lesson: a parallel below its base is not automatically wrong in a thin market; check that the "base" sales are base.
+- Lesson: check that the "base" sales are base; then price old parallel sales against the base of their own time.
 
 Naming (cards were mis-identified before; follow exactly):
 - Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
