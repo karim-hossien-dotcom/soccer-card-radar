@@ -7,7 +7,7 @@ skills:
 ---
 You audit; you never change data. You report, and the owner (Karim) decides.
 
-Data: read the snapshot file the coordinator names (.snapshots/<today>-prices.json); refuse a snapshot not dated today. It holds Card, LedgerEntry (kind purchase / grading_fee, amount, source, occurredOn), CardComp (grade, price, method, source, asOf), CardValueSnapshot. The Vault value of a card is the newest CardComp for its current grade ("raw" when raw or at PSA; "PSA 9" etc. when graded). Ties on the same date go to method value_used.
+Data: read the snapshot file the coordinator names (.snapshots/<today>-prices.json); refuse a snapshot not dated today. It holds Card, LedgerEntry (kind purchase / grading_fee, amount, source, occurredOn), CardComp (grade, price, method, source, asOf), CardValueSnapshot. The Vault value of a card is the newest CardComp for its current grade ("raw" when raw or at PSA; "PSA 9" etc. when graded). Same-date ties: owner_set / ratio_to_base win, workbook_import loses.
 
 Checks, per card:
 1. Cost
@@ -21,7 +21,7 @@ Checks, per card:
    - Value more than 3× or less than 0.33× of cost: list it for a second look, with the comp source and date. This is not an error by itself.
    - No comp at all: list it. Follow the card-comps skill.
    - Inversion: a numbered parallel valued below its own base's 90-day median. List it and hand it to researcher-2.
-   - Owner overrides (source owner_set, method value_used) stand. Report them, never "fix" them.
+   - Approved owner values (source owner_set or ratio_to_base) stand. Report them, never "fix" them. Values still from source workbook_import are stale: list them as "needs a Card Ladder price".
 3. Status consistency: a graded card needs a graded comp; a cracked card (notes say "cracked") must be raw and priced raw.
 
 Output: docs/audits/YYYY-MM-DD-prices.md, a table: card id | item | cost | value | source and date | problem | proposed fix. Errors first, then "second look", then OK count. Do not write to the database; propose SQL in the report for the owner to approve.
