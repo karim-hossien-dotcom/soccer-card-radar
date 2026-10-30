@@ -79,27 +79,17 @@ async function cornersOf(blob: Blob, sc: ScanicScanner | null, v: HTMLVideoEleme
 }
 
 /** G5: live phone scan. The camera preview finds the card, says what to fix, and auto-captures front then back. */
-/** cards: raw Vault cards to link the scan to (centering lines are saved against the card, for calibration
- * once PSA grades it). */
-export default function Scan({ cards = [] }: { cards?: { id: string; title: string }[] }) {
+/** cardId: the Vault card being scanned (from its tile), so confirmed centering lines are saved against it.
+ * compact: the small per-tile button. */
+export default function Scan({ cardId, compact = false }: { cardId?: string; compact?: boolean }) {
   const [open, setOpen] = useState(false);
-  const [cardId, setCardId] = useState("");
   return (
     <>
-      {cards.length > 0 && (
-        <label className={s.which}>
-          <span>Card</span>
-          <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
-            <option value="">Not in the Vault / not saved to a card</option>
-            {cards.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-          </select>
-        </label>
-      )}
-      <button type="button" className={s.launch} onClick={() => setOpen(true)}>
+      <button type="button" className={compact ? s.tileScan : s.launch} onClick={() => setOpen(true)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><rect x="8.5" y="7" width="7" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
-        Scan a card with your camera
+        {compact ? "Scan" : "Scan a card that isn't in the Vault"}
       </button>
-      {open && <ScanView cardId={cardId || undefined} onClose={() => setOpen(false)} />}
+      {open && <ScanView cardId={cardId} onClose={() => setOpen(false)} />}
     </>
   );
 }

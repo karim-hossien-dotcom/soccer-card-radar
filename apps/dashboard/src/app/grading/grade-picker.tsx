@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import type { GradePick } from "./load";
 import { parseReport, ceilingLine, centeringRows, wearFindings } from "@/lib/condition-report";
 import s from "./grade-picker.module.css";
+import Scan from "./scanner";
 
 type Result = { status: "running" } | { status: "done"; verdict: string; summary: string; detail: Detail | null } | { status: "error"; message: string };
 type Detail = { headline: string; reasons: string[]; centering: { side: string; split: string; psa: string; bgs: string }[]; wear: string[] };
@@ -64,7 +65,7 @@ export default function GradePicker({ vault, listings }: { vault: GradePick[]; l
         </div>
       </div>
 
-      {list.length === 0 && <p className={s.empty}>{tab === "vault" ? "No raw cards with a photo in the Vault." : "No live listings with a photo for your raw targets right now."}</p>}
+      {list.length === 0 && <p className={s.empty}>{tab === "vault" ? "No raw cards in the Vault." : "No live listings with a photo for your raw targets right now."}</p>}
 
       <div className={s.grid}>
         {list.map((p) => {
@@ -74,10 +75,14 @@ export default function GradePicker({ vault, listings }: { vault: GradePick[]; l
           const summary = r?.status === "done" ? r.summary : p.prior?.summary ?? null;
           return (
             <article key={p.key} className={s.tile} data-picked={on}>
-              <button className={s.pick} onClick={() => toggle(p.key)} aria-pressed={on} disabled={busy} aria-label={`${on ? "Unselect" : "Select"} ${p.player}, ${p.title}`}>
-                <span className={s.shot}><img src={p.imageUrl} alt="" loading="lazy" /></span>
-                <span className={s.box} aria-hidden="true">{on ? "✓" : ""}</span>
-              </button>
+              {p.gradeUrl ? (
+                <button className={s.pick} onClick={() => toggle(p.key)} aria-pressed={on} disabled={busy} aria-label={`${on ? "Unselect" : "Select"} ${p.player}, ${p.title}`}>
+                  <span className={s.shot}>{p.imageUrl ? <img src={p.imageUrl} alt="" loading="lazy" /> : null}</span>
+                  <span className={s.box} aria-hidden="true">{on ? "✓" : ""}</span>
+                </button>
+              ) : (
+                <div className={s.pick} data-nophoto="true"><span className={s.shot}><span className={s.nophoto}>No photo yet: scan it</span></span></div>
+              )}
               <div className={s.meta}>
                 <b className={s.player}>{p.player}</b>
                 <span className={s.title}>{p.title}</span>
@@ -85,6 +90,7 @@ export default function GradePicker({ vault, listings }: { vault: GradePick[]; l
                   {p.kind === "vault" ? <>Value {usd(p.value)}{p.cost !== null && <> · cost {usd(p.cost)}</>}</> : <>{usd(p.price)} · max bid {usd(p.maxBid)}</>}
                 </span>
                 {p.hint && p.kind === "vault" && <span className={s.hint}>{p.hint}</span>}
+                {p.kind === "vault" && <Scan cardId={p.key.slice(2)} compact />}
                 {r?.status === "running" && <span className={s.verdict} data-verdict="running">Checking the photo…</span>}
                 {r?.status === "error" && <span className={s.verdict} data-verdict="error">{r.message}</span>}
                 {summary && r?.status !== "running" && (
