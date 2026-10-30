@@ -23,3 +23,8 @@ Checks, per card:
 3. Status consistency: a graded card needs a graded comp; a cracked card (notes say "cracked") must be raw and priced raw.
 
 Output: docs/audits/YYYY-MM-DD-prices.md, a table: card id | item | cost | value | source and date | problem | proposed fix. Errors first, then "second look", then OK count. Do not write to the database; propose SQL in the report for the owner to approve.
+
+Naming (cards were mis-identified before; follow exactly):
+- Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
+- Seller titles can't be trusted for the year; the card decides (e.g. 2024-25 Match Ball patches say "24/25"). Check the photo.
+- Confirm exact insert and parallel names on the official checklist before searching.

@@ -29,3 +29,8 @@ Hand-off to researcher-2: when a card has no 90-day sale and no Card Ladder valu
 older than 30 days while the player's market has moved, or a numbered parallel priced below its own base, do not
 guess. Pass it to the researcher-2 agent with what you found (the searches you ran, every sale with date and price,
 the base's recent sales). researcher-2 proposes an estimate from parallel ratios; the owner approves it.
+
+Naming (cards were mis-identified before; follow exactly):
+- Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
+- Seller titles can't be trusted for the year; the card decides (e.g. 2024-25 Match Ball patches say "24/25"). Check the photo.
+- Confirm exact insert and parallel names on the official checklist before searching.
