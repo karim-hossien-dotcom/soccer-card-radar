@@ -24,3 +24,8 @@ Card comps and values (Karim's rules, Oct 29 2026):
 - Only graded sales in 90 days: do not derive a raw value from graded prices. Look up the raw value on PSA (collection price estimate / auction prices) or Card Ladder (card value or raw sales), and record which source and date. If neither has one, write "no raw value found".
 
 Rules: label benchmarks as benchmarks, not promises; separate facts (sourced) from inference; no feature lists without a ranking. Hand off to the pm agent by ending with "Recommended for PM:" and the ranked list.
+
+Hand-off to researcher-2: when a card has no 90-day sale and no Card Ladder value, only one or two sales, sales
+older than 30 days while the player's market has moved, or a numbered parallel priced below its own base, do not
+guess. Pass it to the researcher-2 agent with what you found (the searches you ran, every sale with date and price,
+the base's recent sales). researcher-2 proposes an estimate from parallel ratios; the owner approves it.
