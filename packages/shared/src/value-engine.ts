@@ -1,7 +1,7 @@
 /**
- * Value engine (A3). Single source of truth for graded-value scenarios,
- * grade-or-sell calls and snipe max bids. Mirrors card_collection_master.xlsx
- * (All Cards O:T + AB, Grade Screen max buy) so app and workbook agree.
+ * Value engine (A3). Single source of truth for graded-value scenarios and
+ * grade-or-sell calls. Mirrors card_collection_master.xlsx (All Cards O:T + AB)
+ * so app and workbook agree. Max bids live in snipe-score.ts (snipeMaxBid, C5).
  */
 
 export type CardStatus = "graded" | "raw" | "at_grader" | "sold" | "sealed";
@@ -89,12 +89,6 @@ export function valueCard(card: CardInput, cfg: EngineConfig): Valuation {
   }
 
   return { band, psa10, psa9, psa8, net10: net(psa10), net9: net(psa9), net8: net(psa8), decision, estimated: !has(c10) && !has(c9) && has(psa10) };
-}
-
-/** Snipe max bid (workbook Grade Screen): half the PSA 9 value or a quarter of the PSA 10 value, whichever is lower. */
-export function maxBid(psa9: number | null, psa10: number | null): number | null {
-  if (!has(psa9) || !has(psa10)) return null;
-  return Math.min(psa9 / 2, psa10 / 4);
 }
 
 /** Build config from Assumption table rows (key -> value). */

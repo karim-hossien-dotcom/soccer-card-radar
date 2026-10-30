@@ -1,5 +1,5 @@
 import { supabase } from "@soccer-card-radar/db";
-import { valueCard, configFromAssumptions, maxBid, type CardStatus, type Decision } from "@soccer-card-radar/shared";
+import { valueCard, configFromAssumptions, snipeMaxBid, snipeConfigFromAssumptions, type CardStatus, type Decision } from "@soccer-card-radar/shared";
 import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
 
 export type CompRow = { grade: string; price: number; method: string; source: string; asOf: string };
@@ -106,7 +106,9 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
   const staleBefore = new Date(now.getTime() - STALE_DAYS * 86400_000).toISOString().slice(0, 10);
   const popBy = new Map<string, PopRow>();
   for (const { cardId, ...p } of rows.pops ?? []) if (!popBy.has(cardId) || popBy.get(cardId)!.asOf < p.asOf) popBy.set(cardId, p);
-  const cfg = configFromAssumptions(Object.fromEntries(rows.assumptions.map((a) => [a.key, Number(a.value)])));
+  const assumptions = Object.fromEntries(rows.assumptions.map((a) => [a.key, Number(a.value)]));
+  const cfg = configFromAssumptions(assumptions);
+  const snipeCfg = snipeConfigFromAssumptions(assumptions);
 
   const compsBy = new Map<string, CompRow[]>();
   for (const c of rows.comps) {
@@ -133,21 +135,20 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
     const valueNow = nowComp?.price ?? null;
     const compAsOf = nowComp?.asOf ?? null;
     const cost = ledger.length ? ledger.reduce((s, l) => s + l.amount, 0) : null;
-    const v = valueCard(
-      {
-        status: card.status,
-        item: card.item,
-        cost,
-        valueUsed: valueNow,
-        comps: {
-          psa10: at("PSA 10", (c) => c.method !== "value_used"),
-          psa9: at("PSA 9", (c) => c.method !== "value_used"),
-          psa8: at("PSA 8", (c) => c.method !== "value_used"),
-          raw: at("raw", (c) => c.method !== "value_used"),
-        },
-      },
-      cfg,
-    );
+    const sales = {
+      psa10: at("PSA 10", (c) => c.method !== "value_used"),
+      psa9: at("PSA 9", (c) => c.method !== "value_used"),
+      psa8: at("PSA 8", (c) => c.method !== "value_used"),
+      raw: at("raw", (c) => c.method !== "value_used"),
+    };
+    const v = valueCard({ status: card.status, item: card.item, cost, valueUsed: valueNow, comps: sales }, cfg);
+    const pop = popBy.get(card.id) ?? null;
+    // C5: same max bid as the Snipe board, from real comps only (band/multiple estimates are not used: no guesses).
+    // Raw = raw sale comp, else the current raw value for a raw card. Pop rates when known, otherwise assumed rates.
+    const maxBid = snipeMaxBid({
+      raw: sales.raw ?? (curGrade === "raw" ? valueNow : null), psa9: sales.psa9, psa10: sales.psa10,
+      popTotal: pop?.total ?? null, pop9: pop?.pop9 ?? null, pop10: pop?.gem10 ?? null, printRun: null, ssp: false,
+    }, snipeCfg);
 
     return {
       id: card.id,
@@ -165,12 +166,12 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
       cost,
       valueNow,
       ...v,
-      maxBid: maxBid(v.psa9, v.psa10),
+      maxBid,
       comps: [...comps].sort(byRecency),
       compGrade: curGrade,
       compAsOf,
       stale: card.status !== "sealed" && (!compAsOf || compAsOf < staleBefore),
-      pop: popBy.get(card.id) ?? null,
+      pop,
       ledger,
     };
   });

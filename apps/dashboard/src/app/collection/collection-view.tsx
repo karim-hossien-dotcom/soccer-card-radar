@@ -279,7 +279,7 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
         {c.decision && <div className={s.dec}>{c.decision}</div>}
         {c.estimated && showScen && <p className={s.note}>No PSA 10/9 sales found: graded values use the {c.band} raw-to-graded multiples.</p>}
         <p className={s.note}>
-          {c.maxBid !== null && showScen && <>Snipe max bid for another copy: {usd(c.maxBid)}. </>}
+          {c.maxBid !== null && showScen && <>Snipe max bid for another copy: {usd(c.maxBid, 2)} (expected value if graded, after selling and grading fees, ÷ your target multiple, capped at a share of the raw price; same rule and settings as the Snipe board). </>}
           <a href={snipeHref(prefillFromComps(c.item, c.player, c.cert, c.gradeLabel.split(" ")[0], c.comps))}>Snipe another copy →</a>
         </p>
         <h3>Price records</h3>

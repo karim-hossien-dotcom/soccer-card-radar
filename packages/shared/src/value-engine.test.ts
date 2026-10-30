@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { valueCard, maxBid, bandFor, configFromAssumptions, type CardInput } from "./value-engine.ts";
+import { valueCard, bandFor, configFromAssumptions, type CardInput } from "./value-engine.ts";
 
 // Assumption table as imported to Supabase 2026-10-16.
 const cfg = configFromAssumptions({
@@ -46,11 +46,6 @@ for (const f of fixtures) {
     assert.equal(v.decision, f.exp.decision);
   });
 }
-
-test("max bid = min(PSA 9 / 2, PSA 10 / 4): 2014 Prizm WC #161 Ronaldo", () => {
-  assert.equal(maxBid(84, 331), 42);
-  assert.equal(maxBid(null, 331), null);
-});
 
 test("graded, sealed and lots are not valued for grading", () => {
   for (const [status, item] of [["graded", "x"], ["sealed", "Booster Box"], ["raw", "Topps Now #46 Salah (Qty 40, base)"]] as const) {
