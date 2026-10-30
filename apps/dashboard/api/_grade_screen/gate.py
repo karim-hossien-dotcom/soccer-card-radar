@@ -65,8 +65,10 @@ def summarize(gate, report):
     return "no_issue", f"No visible issue{cent_s}"
 
 
-def fetch(url):
-    r = urllib.request.Request(big(url), headers={"User-Agent": "Mozilla/5.0 card-radar-screen"})
+def fetch(url, cookie=None):
+    """cookie: only for the app's own Vault photos (behind the site lock); never sent to other hosts."""
+    h = {"User-Agent": "Mozilla/5.0 card-radar-screen", **({"Cookie": cookie} if cookie else {})}
+    r = urllib.request.Request(big(url), headers=h)
     with urllib.request.urlopen(r, timeout=15) as res:
         return res.read(9 * 1024 * 1024)
 

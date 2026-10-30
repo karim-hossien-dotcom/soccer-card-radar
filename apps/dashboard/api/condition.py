@@ -11,7 +11,7 @@ only, they never lower the ceiling. Optional `front_quad` / `back_quad` / `*_rak
 by the phone scanner, JSON [[x, y] x 4] in fractions of the photo; used instead of searching for the outline.
 The vendored copy of the check lives in api/_grade_screen (kept identical by tools/grade-screen/sync_vercel.py).
 """
-import json, os, sys, urllib.parse
+import http.cookies, json, os, sys, urllib.parse
 from email.parser import BytesParser
 from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler
@@ -19,7 +19,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "_grade_screen"))
 import condition as cond  # noqa: E402
 import surface as surf  # noqa: E402
-from session import logged_in  # noqa: E402
+from session import COOKIE, logged_in  # noqa: E402
 from gate import ask_gate, ask_surface, combine_surface, fetch, media_type, summarize, usable  # noqa: E402
 
 MAX_IMAGE = 8 * 1024 * 1024
@@ -79,11 +79,18 @@ def same_site(headers):
         return False
 
 
-def image_from_url(url, host):
-    """Fetch a photo by URL: an eBay listing photo, or one of the app's own Vault photos (/cards/...)."""
+def image_from_url(url, host, cookie=None):
+    """Fetch a photo by URL: an eBay listing photo, or one of the app's own Vault photos (/cards/...).
+    Vault photos are behind the site lock, so the caller's session cookie goes with that request (same host only)."""
     u = urllib.parse.urlparse(url)
     if u.scheme == "" and u.path.startswith("/cards/") and ".." not in u.path:
-        return fetch(f"https://{host}{u.path}")
+        jar = http.cookies.SimpleCookie()
+        try:
+            jar.load(cookie or "")
+        except http.cookies.CookieError:
+            pass
+        own = f"{COOKIE}={jar[COOKIE].value}" if COOKIE in jar else None
+        return fetch(f"https://{host}{u.path}", cookie=own)
     if u.scheme == "https" and u.netloc.lower() in ALLOWED_IMAGE_HOSTS:
         return fetch(url)
     raise ValueError("Only eBay listing photos and Vault photos can be graded by URL")
@@ -103,7 +110,7 @@ def handle(headers, body, env=os.environ):
         try:
             req = json.loads(body or b"{}")
             url = str(req.get("imageUrl") or "")
-            front = image_from_url(url, headers.get("x-forwarded-host") or headers.get("host"))
+            front = image_from_url(url, headers.get("x-forwarded-host") or headers.get("host"), headers.get("cookie"))
         except ValueError as e:
             return 400, {"error": str(e)}
         except Exception as e:
