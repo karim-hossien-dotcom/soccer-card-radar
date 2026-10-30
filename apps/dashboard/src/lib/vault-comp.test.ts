@@ -33,6 +33,9 @@ test("owner values (owner_set, ratio_to_base) win same-date ties, in both row or
       c("raw", 338.95, "value_used", "workbook_import", "2026-10-20"),
     ];
     for (const r of [rows, [...rows].reverse()]) assert.equal(vaultComp(r, "raw")?.price, 400, source);
+    // The source decides, not the method: an owner row stored with the schema default method "median" still wins.
+    const medianRows = [c("raw", 400, "median", source, "2026-10-20"), c("raw", 529, "median", "cardladder_manual", "2026-10-20")];
+    for (const r of [medianRows, [...medianRows].reverse()]) assert.equal(vaultComp(r, "raw")?.price, 400, `${source} (median)`);
   }
 });
 
