@@ -106,10 +106,18 @@ def test_tilted_print_worst_point():
 
 
 def test_low_resolution_refused():
-    ppm = 12
+    ppm = 9
     img, true = photo(card(ppm), ppm, size=(1200, 1600))
     out, flat = bd.measure(img, rough(true, err=3))
     assert out["status"] == "refused" and flat is None and "px per mm" in out["why"][0]
+
+
+def test_mid_resolution_measured_and_flagged():
+    ppm = 13.5
+    img, true = photo(card(ppm), ppm, size=(1400, 1800))
+    out, _ = bd.measure(img, rough(true, err=3))
+    assert out["status"] == "ok" and abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.008, out
+    assert any("lower resolution" in w for w in out["why"])
 
 
 def test_slab_outline_refused():

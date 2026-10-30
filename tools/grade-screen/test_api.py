@@ -51,6 +51,15 @@ def test_site_lock_cookie():
     assert se.verify(se.sign("pw", now=0), "pw", now=10) and not se.verify(se.sign("pw", now=0), "pw", now=31 * 24 * 3600)
 
 
+def test_tiny_cropped_vault_photo_says_why():
+    import cv2, numpy as np
+    thumb = np.full((613, 440, 3), 200, np.uint8)  # like a saved Vault thumbnail, cropped at the card edge
+    ok, b = cv2.imencode(".png", thumb)
+    h, body = form(front=b.tobytes())
+    st, r = api.handle(h, body, env=ENV)
+    assert st == 200 and r["verdict"] == "cant_judge" and "cropped tight" in r["summary"] and "6.9 px per mm" in r["summary"], r["summary"]
+
+
 def test_grade_by_url():
     site = {"content-type": "application/json", "host": "cards.test", "origin": "https://cards.test"}
     chip = png(chips=8)
@@ -94,9 +103,9 @@ def test_report_with_chips_and_back():
     assert status == 200, r
     assert r["ceiling"]["psa"] <= 8 and r["holder"] is False
     assert r["front"]["file"] is None and r["back"] is not None
-    # this test card is under 20 px/mm: centering is refused, never guessed
-    assert r["centering"] == {} and r["front"]["borders"]["status"] == "refused"
-    assert any(x["point"] == "centering (border lines)" and "px per mm" in x["why"] for x in r["cant_judge"])
+    # this test card is drawn centred at ~16 px/mm: measured, and flagged as lower resolution (check the lines)
+    assert r["centering"]["front_lr"] == "50/50" and r["front"]["borders"]["status"] == "ok"
+    assert any(x["point"] == "centering (border lines)" and "lower resolution" in x["why"] for x in r["cant_judge"])
 
 
 def test_measured_borders_four_sides():

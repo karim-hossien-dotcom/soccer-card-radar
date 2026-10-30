@@ -135,7 +135,7 @@ export const toFractions = (q: Quad, w: number, h: number) =>
 
 /** Crop box around the card (corners as fractions of a w x h photo) with `pad` of the card's size on each side,
  * clamped to the photo, plus the corners re-expressed as fractions of the crop. Cropping instead of shrinking keeps
- * the card at the photo's full resolution (centering needs 20+ px per mm). */
+ * the card at the photo's full resolution (centering needs 12+ px per mm, 20+ is best). */
 export function cropBox(fr: number[][], w: number, h: number, pad = 0.06) {
   const xs = fr.map((p) => p[0] * w), ys = fr.map((p) => p[1] * h);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
