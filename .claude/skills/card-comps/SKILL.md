@@ -16,8 +16,11 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
   Look up the raw value on PSA or Card Ladder and record source and date, else "no raw value found".
   (The snipe max-bid ceiling in packages/shared is a separate, approved bidding rule, not a valuation.)
 - Karim's own purchases (same date and price/seller as his ledger row) are not comps: flag them.
-- Owner overrides (CardComp source owner_set or ratio_to_base, method value_used) stand: report, never "fix".
-- Vault value of a card = newest CardComp for its current grade ("raw" when raw or at PSA); same-date ties go to value_used.
+- Approved owner values are ONLY CardComp rows with source owner_set or ratio_to_base: they stand; report, never "fix".
+  Rows with source workbook_import (the old workbook's "Value used" column, imported 2026-10-16) are ordinary old
+  prices, not Karim's choices: newer comps replace them.
+- Vault value of a card = newest CardComp for its current grade ("raw" when raw or at PSA); same-date ties: owner_set /
+  ratio_to_base win, workbook_import loses (one helper: apps/dashboard/src/lib/vault-comp.ts).
 
 ## Parallels
 - Inversion: a numbered parallel valued below its own base -> hand to researcher-2.

@@ -1,5 +1,5 @@
 import { supabase } from "@soccer-card-radar/db";
-import { snipeScore, DEFAULT_CONFIG, type SnipeConfig, type SnipeResult, type PlayerForm as FormStats } from "@soccer-card-radar/shared";
+import { snipeScore, snipeConfigFromAssumptions, type SnipeConfig, type SnipeResult, type PlayerForm as FormStats } from "@soccer-card-radar/shared";
 import { getResearchActions, type ResearchAction } from "../research-engine";
 import { assignTier } from "../helpers";
 import { matchesTarget } from "@/lib/match-title";
@@ -32,7 +32,9 @@ export type PlayerRow = { action: ResearchAction; latest: FormRow | null; legend
 /** Karim's own PSA results on cards he bought raw and submitted: the evidence for the gem haircut. */
 export type OwnRate = { graded: number; psa10: number };
 export type Decision = { status: Bid["status"]; maxBid: number };
-export type SnipeData = { budget: Budget; decisions: Record<string, Decision>; rows: BoardRow[]; players: PlayerRow[]; actions: { id: string; player: string }[]; gemHaircut: number; psa9Haircut: number; own: OwnRate };
+export type SnipeData = { budget: Budget; decisions: Record<string, Decision>; rows: BoardRow[]; players: PlayerRow[]; actions: { id: string; player: string }[]; gemHaircut: number; psa9Haircut: number; maxBidRule: MaxBidRule; own: OwnRate };
+/** C5: the settings behind the max bid, shown in the board note. */
+export type MaxBidRule = Pick<SnipeConfig, "sellFee" | "gradingFee" | "targetMultiple" | "rawCap">;
 
 const FRESH_HOURS = 48;
 const STALE_COMP_DAYS = 14;
@@ -94,18 +96,8 @@ export async function loadBids(): Promise<{ bids: Bid[]; budget: number }> {
   };
 }
 
-/** Weights and fee from Assumption (snipe_w_*, fee_to_grade_a_raw_in_hand_card); defaults otherwise. */
-function config(assumptions: Rows["assumptions"]): SnipeConfig {
-  const a = Object.fromEntries(assumptions.map((x) => [x.key, x.value]));
-  const w = { ...DEFAULT_CONFIG.weights };
-  for (const k of Object.keys(w) as (keyof typeof w)[]) if (typeof a[`snipe_w_${k}`] === "number") w[k] = a[`snipe_w_${k}`];
-  return {
-    ...DEFAULT_CONFIG, weights: w,
-    gradingFee: a.fee_to_grade_a_raw_in_hand_card ?? DEFAULT_CONFIG.gradingFee,
-    gemHaircut: a.snipe_gem_haircut ?? DEFAULT_CONFIG.gemHaircut,
-    psa9Haircut: a.snipe_psa9_haircut ?? DEFAULT_CONFIG.psa9Haircut,
-  };
-}
+/** Weights, fees, haircuts and max-bid settings from Assumption (snipe_*, fee_to_grade_a_raw_in_hand_card); defaults otherwise. */
+const config = (assumptions: Rows["assumptions"]): SnipeConfig => snipeConfigFromAssumptions(Object.fromEntries(assumptions.map((x) => [x.key, x.value])));
 
 const PAGE: Record<string, "rookie" | "stars" | "legends"> = { rookie: "rookie", steal: "stars", legacy: "legends" };
 
@@ -169,7 +161,7 @@ export function buildBoard(rows: Rows, now = new Date()): SnipeData {
   const own = { graded: (rows.ownSubs ?? []).length, psa10: (rows.ownSubs ?? []).filter((c) => c.grade === "10").length };
   const bids = rows.bids ?? [];
   const decisions = Object.fromEntries(bids.map((b) => [b.externalId, { status: b.status, maxBid: b.maxBid }]));
-  return { budget: budgetLeft(bids, budgetOf(rows.assumptions), now), decisions, rows: board, players, actions: actions.map((a) => ({ id: a.id, player: a.player })), gemHaircut: cfg.gemHaircut, psa9Haircut: cfg.psa9Haircut, own };
+  return { budget: budgetLeft(bids, budgetOf(rows.assumptions), now), decisions, rows: board, players, actions: actions.map((a) => ({ id: a.id, player: a.player })), gemHaircut: cfg.gemHaircut, psa9Haircut: cfg.psa9Haircut, maxBidRule: { sellFee: cfg.sellFee, gradingFee: cfg.gradingFee, targetMultiple: cfg.targetMultiple, rawCap: cfg.rawCap }, own };
 }
 
 export async function loadSnipe(): Promise<SnipeData> {

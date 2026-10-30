@@ -40,15 +40,35 @@ export type SnipePlayer = {
  * self-submitted results were 3 PSA 10, 1 PSA 9, 6 PSA 8 of 10). The removed share is valued at raw.
  * Editable in Assumptions (snipe_gem_haircut, snipe_psa9_haircut). Both 1 = the workbook Grade Screen.
  * confidence scales grading upside: thin or messy comps (Low) count for less.
+ * C5 max bid: sellFee = eBay selling fees on the graded sale, targetMultiple = (EV after fees - gradingFee) / bid,
+ * rawCap = most of the raw price you pay for a raw card. Editable in Assumptions (snipe_sell_fee,
+ * snipe_target_multiple, snipe_raw_cap).
  */
 export type SnipeConfig = {
   weights: SnipeWeights; gradingFee: number; assumedGem: number; assumed9: number;
   gemHaircut: number; psa9Haircut: number; confidence: Record<string, number>;
+  sellFee: number; targetMultiple: number; rawCap: number;
 };
 export const DEFAULT_CONFIG: SnipeConfig = {
   weights: DEFAULT_WEIGHTS, gradingFee: 32.99, assumedGem: 0.2, assumed9: 0.5,
   gemHaircut: 0.6, psa9Haircut: 0.5, confidence: { high: 1, medium: 0.85, low: 0.6 },
+  sellFee: 0.13, targetMultiple: 2, rawCap: 0.8,
 };
+
+/** Snipe config from Assumption rows (key -> value): snipe_w_*, fee_to_grade_a_raw_in_hand_card, snipe_*; defaults otherwise. */
+export function snipeConfigFromAssumptions(a: Record<string, number>): SnipeConfig {
+  const w = { ...DEFAULT_CONFIG.weights };
+  for (const k of Object.keys(w) as (keyof SnipeWeights)[]) if (typeof a[`snipe_w_${k}`] === "number") w[k] = a[`snipe_w_${k}`];
+  return {
+    ...DEFAULT_CONFIG, weights: w,
+    gradingFee: a.fee_to_grade_a_raw_in_hand_card ?? DEFAULT_CONFIG.gradingFee,
+    gemHaircut: a.snipe_gem_haircut ?? DEFAULT_CONFIG.gemHaircut,
+    psa9Haircut: a.snipe_psa9_haircut ?? DEFAULT_CONFIG.psa9Haircut,
+    sellFee: a.snipe_sell_fee ?? DEFAULT_CONFIG.sellFee,
+    targetMultiple: a.snipe_target_multiple ?? DEFAULT_CONFIG.targetMultiple,
+    rawCap: a.snipe_raw_cap ?? DEFAULT_CONFIG.rawCap,
+  };
+}
 
 export type ScorePart = { key: keyof SnipeWeights; label: string; value: number | null; weight: number; note: string };
 export type SnipeResult = {
@@ -64,12 +84,6 @@ export type SnipeResult = {
 const clamp = (x: number) => Math.max(0, Math.min(1, x));
 const round2 = (x: number) => Math.round(x * 100) / 100;
 
-/** Same rule as the value engine: PSA 9 at 2x and PSA 10 at 4x your all-in cost. snipeScore also caps it at the raw price. */
-export function snipeMaxBid(psa9: number | null, psa10: number | null): number | null {
-  const c = [psa9 !== null ? psa9 / 2 : null, psa10 !== null ? psa10 / 4 : null].filter((x): x is number => x !== null);
-  return c.length ? round2(Math.min(...c)) : null;
-}
-
 /** Grade Screen formula: gem x PSA 10 + PSA 9 rate x PSA 9 + rest x raw. Rates come from PSA pop (pre-screened submissions). */
 export function expectedGraded(c: SnipeCard, cfg: SnipeConfig = DEFAULT_CONFIG): { ev: number; gem: number; r9: number; assumed: boolean } | null {
   if (c.psa10 === null || c.psa9 === null || c.raw === null) return null;
@@ -79,6 +93,19 @@ export function expectedGraded(c: SnipeCard, cfg: SnipeConfig = DEFAULT_CONFIG):
   const r9 = havePop ? (c.pop9! / c.popTotal!) * cfg.psa9Haircut : cfg.assumed9;
   const ev = gem * c.psa10 + r9 * c.psa9 + Math.max(0, 1 - gem - r9) * c.raw;
   return { ev: round2(ev), gem, r9, assumed: !havePop };
+}
+
+/**
+ * C5: the one max bid for Snipe and Vault. Owner-set maxBid wins unchanged. Otherwise
+ * min((EV x (1 - sellFee) - gradingFee) / targetMultiple, rawCap x raw), rounded to cents.
+ * No EV (raw, PSA 9 or PSA 10 missing) or a result <= 0 -> null: never a guess.
+ */
+export function snipeMaxBid(c: SnipeCard, cfg: SnipeConfig = DEFAULT_CONFIG): number | null {
+  if (c.maxBid !== null && c.maxBid !== undefined) return c.maxBid;
+  const g = expectedGraded(c, cfg);
+  if (!g || c.raw === null) return null;
+  const bid = round2(Math.min((g.ev * (1 - cfg.sellFee) - cfg.gradingFee) / cfg.targetMultiple, cfg.rawCap * c.raw));
+  return bid > 0 ? bid : null;
 }
 
 export function rarityValue(c: SnipeCard): { value: number; note: string } {
@@ -107,9 +134,7 @@ export function formValue(f: PlayerForm): { value: number | null; note: string }
 /** price = live auction/listing price when known; otherwise the raw reference is used for upside and steal is left out. */
 export function snipeScore(c: SnipeCard, price: number | null, pl: SnipePlayer, cfg: SnipeConfig = DEFAULT_CONFIG): SnipeResult {
   const w = cfg.weights;
-  // Owner-set max wins. Otherwise the grading formula, capped at the raw price: never pay more than raw market for a raw card.
-  const formula = snipeMaxBid(c.psa9, c.psa10);
-  const maxBid = c.maxBid ?? (formula !== null && c.raw !== null ? Math.min(formula, c.raw) : formula);
+  const maxBid = snipeMaxBid(c, cfg);
   const priceUsed = price ?? c.raw;
   const g = expectedGraded(c, cfg);
   const parts: ScorePart[] = [];

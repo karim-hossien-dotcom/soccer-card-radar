@@ -1,8 +1,9 @@
 import { supabase } from "@soccer-card-radar/db";
-import { valueCard, configFromAssumptions, maxBid, type CardStatus, type Decision } from "@soccer-card-radar/shared";
+import { valueCard, configFromAssumptions, snipeMaxBid, snipeConfigFromAssumptions, type CardStatus, type Decision } from "@soccer-card-radar/shared";
 import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
+import { byRecency, vaultComp, maxBidInputs, isSaleComp, type VaultComp } from "@/lib/vault-comp";
 
-export type CompRow = { grade: string; price: number; method: string; source: string; asOf: string };
+export type CompRow = VaultComp;
 
 export type CollectionCard = {
   id: string;
@@ -39,10 +40,6 @@ export type CollectionCard = {
 
 export const STALE_DAYS = 14;
 export type PopRow = { asOf: string; total: number | null; gem10: number | null; pop9: number | null; gemRate: number | null };
-
-/** Newest comp wins; on the same date the workbook's chosen value ("value_used") wins. */
-const byRecency = (a: CompRow, b: CompRow) => b.asOf.localeCompare(a.asOf) || Number(b.method === "value_used") - Number(a.method === "value_used");
-const latest = (rows: CompRow[]) => [...rows].sort(byRecency)[0];
 
 type CardRow = {
   id: string; status: CardStatus; item: string; player: string | null; grader: string | null; grade: string | null;
@@ -106,7 +103,9 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
   const staleBefore = new Date(now.getTime() - STALE_DAYS * 86400_000).toISOString().slice(0, 10);
   const popBy = new Map<string, PopRow>();
   for (const { cardId, ...p } of rows.pops ?? []) if (!popBy.has(cardId) || popBy.get(cardId)!.asOf < p.asOf) popBy.set(cardId, p);
-  const cfg = configFromAssumptions(Object.fromEntries(rows.assumptions.map((a) => [a.key, Number(a.value)])));
+  const assumptions = Object.fromEntries(rows.assumptions.map((a) => [a.key, Number(a.value)]));
+  const cfg = configFromAssumptions(assumptions);
+  const snipeCfg = snipeConfigFromAssumptions(assumptions);
 
   const compsBy = new Map<string, CompRow[]>();
   for (const c of rows.comps) {
@@ -127,27 +126,21 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
     const ledger = ledgerBy.get(card.id) ?? [];
     const gradeLabel = card.grader && card.grade ? `${card.grader} ${card.grade}` : card.status === "at_grader" ? "At PSA" : card.status === "sealed" ? "Sealed" : "Raw";
     const curGrade = card.grader && card.grade ? `${card.grader} ${card.grade}` : "raw";
-    const at = (grade: string, pred: (c: CompRow) => boolean = () => true) => latest(comps.filter((c) => c.grade === grade && pred(c)))?.price ?? null;
+    const at = (grade: string) => vaultComp(comps.filter(isSaleComp), grade)?.price ?? null;
 
-    const nowComp = latest(comps.filter((c) => c.grade === curGrade));
+    const nowComp = vaultComp(comps, curGrade);
     const valueNow = nowComp?.price ?? null;
     const compAsOf = nowComp?.asOf ?? null;
     const cost = ledger.length ? ledger.reduce((s, l) => s + l.amount, 0) : null;
-    const v = valueCard(
-      {
-        status: card.status,
-        item: card.item,
-        cost,
-        valueUsed: valueNow,
-        comps: {
-          psa10: at("PSA 10", (c) => c.method !== "value_used"),
-          psa9: at("PSA 9", (c) => c.method !== "value_used"),
-          psa8: at("PSA 8", (c) => c.method !== "value_used"),
-          raw: at("raw", (c) => c.method !== "value_used"),
-        },
-      },
-      cfg,
-    );
+    const sales = { psa10: at("PSA 10"), psa9: at("PSA 9"), psa8: at("PSA 8"), raw: at("raw") };
+    const v = valueCard({ status: card.status, item: card.item, cost, valueUsed: valueNow, comps: sales }, cfg);
+    const pop = popBy.get(card.id) ?? null;
+    // C5: same max bid as the Snipe board. Inputs follow the Vault value per grade (vaultComp rule; no band/multiple
+    // estimates: no guesses). Pop rates when known, otherwise assumed rates.
+    const maxBid = snipeMaxBid({
+      ...maxBidInputs(comps),
+      popTotal: pop?.total ?? null, pop9: pop?.pop9 ?? null, pop10: pop?.gem10 ?? null, printRun: null, ssp: false,
+    }, snipeCfg);
 
     return {
       id: card.id,
@@ -165,12 +158,12 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
       cost,
       valueNow,
       ...v,
-      maxBid: maxBid(v.psa9, v.psa10),
+      maxBid,
       comps: [...comps].sort(byRecency),
       compGrade: curGrade,
       compAsOf,
       stale: card.status !== "sealed" && (!compAsOf || compAsOf < staleBefore),
-      pop: popBy.get(card.id) ?? null,
+      pop,
       ledger,
     };
   });
