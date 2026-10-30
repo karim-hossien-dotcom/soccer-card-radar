@@ -42,3 +42,13 @@ set Card.submissionId where a Submission row exists. Replace the two $32.99 fees
 - 1732612c Mainoo Sapphire #118 PSA 10: cert 93607347 verified as base #118; the photo shows a Green copy.
 - f210cf37 Salah Purple Mojo PSA 10: photo shows a raw card; no cert recorded.
 Proposed: replace graded cards' photos with PSA's own cert-page scan of the owner's slab (exact copy).
+
+## Update 2026-10-30 08:40: fees from the owner's PSA submission forms (applied)
+Per-card fee = (service fee x items + insured return shipping) / items; cents spread so each order sums to the form total.
+| Order | Submission | Service | Form total | Per card | Was |
+|---|---|---|---|---|---|
+| 27202721 | 15218639 | Regular | 8 x $79.99 + $39.99 = $679.91 | $84.98-84.99 | $85.00 |
+| 27202794 | 15218640 | Regular, dual (auto) grading | 2 x $104.99 + $34.99 = $244.97 | $122.48-122.49 | $122.00 |
+| 26913701 | 14972359 | Value, dual (auto) grading | 2 x $42.99 + $19.99 = $105.97 | $52.98-52.99 | $32.99 |
+| 26913695 | 14972358 | Value Bulk | 52 x $24.99 + $82.86 = $1,382.34 | $26.58-26.59 | $24.99 |
+64 grading_fee rows updated, ref = psa_form_<submission #>. Still needed: forms for 23295774, 24010392, 24163492 (the 14 cards above).
