@@ -1,7 +1,7 @@
 import { supabase } from "@soccer-card-radar/db";
 import { valueCard, configFromAssumptions, snipeMaxBid, snipeConfigFromAssumptions, type CardStatus, type Decision } from "@soccer-card-radar/shared";
 import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
-import { byRecency, vaultComp, maxBidInputs, type VaultComp } from "@/lib/vault-comp";
+import { byRecency, vaultComp, maxBidInputs, isSaleComp, type VaultComp } from "@/lib/vault-comp";
 
 export type CompRow = VaultComp;
 
@@ -126,7 +126,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
     const ledger = ledgerBy.get(card.id) ?? [];
     const gradeLabel = card.grader && card.grade ? `${card.grader} ${card.grade}` : card.status === "at_grader" ? "At PSA" : card.status === "sealed" ? "Sealed" : "Raw";
     const curGrade = card.grader && card.grade ? `${card.grader} ${card.grade}` : "raw";
-    const at = (grade: string) => vaultComp(comps.filter((c) => c.method !== "value_used"), grade)?.price ?? null;
+    const at = (grade: string) => vaultComp(comps.filter(isSaleComp), grade)?.price ?? null;
 
     const nowComp = vaultComp(comps, curGrade);
     const valueNow = nowComp?.price ?? null;
@@ -135,7 +135,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
     const sales = { psa10: at("PSA 10"), psa9: at("PSA 9"), psa8: at("PSA 8"), raw: at("raw") };
     const v = valueCard({ status: card.status, item: card.item, cost, valueUsed: valueNow, comps: sales }, cfg);
     const pop = popBy.get(card.id) ?? null;
-    // C5: same max bid as the Snipe board. Inputs follow the Vault value per grade (owner values count; no band/multiple
+    // C5: same max bid as the Snipe board. Inputs follow the Vault value per grade (vaultComp rule; no band/multiple
     // estimates: no guesses). Pop rates when known, otherwise assumed rates.
     const maxBid = snipeMaxBid({
       ...maxBidInputs(comps),

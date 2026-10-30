@@ -6,6 +6,7 @@ import Tracker from "./tracker";
 import CompsPanel from "./comps-panel";
 import s from "./collection.module.css";
 import { snipeHref, prefillFromComps } from "@/lib/grading";
+import { compLabel } from "@/lib/vault-comp";
 
 type Scenario = "now" | "10" | "9" | "8";
 type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
@@ -284,7 +285,7 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
         </p>
         <h3>Price records</h3>
         <table className={s.tbl}><tbody>
-          {c.comps.map((p, i) => <tr key={i}><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{p.method === "value_used" ? "current value" : p.method}</td><td className={s.muted}>{p.asOf}</td></tr>)}
+          {c.comps.map((p, i) => <tr key={i}><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{compLabel(p)}</td><td className={s.muted}>{p.asOf}</td></tr>)}
         </tbody></table>
         {c.ledger.length > 0 && (<>
           <h3>Ledger</h3>
