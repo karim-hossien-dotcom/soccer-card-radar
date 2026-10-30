@@ -40,3 +40,5 @@
 .link:hover { text-decoration: underline; }
 .foot { color: var(--ink-3); font-size: 12px; margin: 0; max-width: 70ch; }
 @media (max-width: 520px) { .grid { grid-template-columns: repeat(2, 1fr); gap: 10px; } .bar { top: 56px; } }
+.pick[data-nophoto="true"] { cursor: default; }
+.nophoto { display: grid; place-items: center; height: 100%; color: var(--ink-3); font-size: 13px; font-weight: 650; text-align: center; padding: 12px; }

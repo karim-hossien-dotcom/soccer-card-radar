@@ -40,7 +40,7 @@ function CentChecks({ checks }: { checks: CentCheck[] }) {
   );
 }
 
-export default function GradingView({ open, back, backTotals: t, vault, listings, scanCards, checks }: GradingData) {
+export default function GradingView({ open, back, backTotals: t, vault, listings, checks }: GradingData) {
   const atPsa = open.reduce((n, x) => n + x.cards.length, 0);
   return (
     <>
@@ -50,7 +50,7 @@ export default function GradingView({ open, back, backTotals: t, vault, listings
       </header>
 
       <section aria-label="Check cards">
-        <div className={s.scanRow}><Scan cards={scanCards} /><span>On your phone: point at a card, it captures front and back and checks them.</span></div>
+        <div className={s.scanRow}><Scan /><span>For a card in your Vault, use Scan on its tile below: the result is saved to that card.</span></div>
         <GradePicker vault={vault} listings={listings} />
         <details className={s.upload}>
           <summary>Check your own photo instead</summary>

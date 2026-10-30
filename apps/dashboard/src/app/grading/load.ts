@@ -15,8 +15,7 @@ export type CentCheck = {
   cardId: string; title: string; side: "front" | "back"; at: string; lr: number | null; tb: number | null; adjusted: boolean;
   status: string; grade: string | null; grader: string | null; // grade = "PSA 9" etc. once graded
 };
-export type ScanCard = { id: string; title: string };
-export type GradingData = Grading & { fee: number | null; vault: GradePick[]; listings: GradePick[]; scanCards: ScanCard[]; checks: CentCheck[] };
+export type GradingData = Grading & { fee: number | null; vault: GradePick[]; listings: GradePick[]; checks: CentCheck[] };
 
 async function fetchChecks(): Promise<{ cardId: string; side: string; createdAt: string; lr: number | null; tb: number | null; adjusted: boolean }[]> {
   if (fixtureMode()) {
@@ -44,9 +43,9 @@ export async function loadGrading(): Promise<GradingData> {
   const cards = buildCollection(rows);
   const fee = rows.assumptions.find((a) => a.key === "fee_to_grade_a_raw_in_hand_card")?.value ?? null;
   const vault: GradePick[] = cards
-    .filter((c) => c.status === "raw" && c.imagePath)
+    .filter((c) => c.status === "raw") // cards without a photo are listed too: they can still be scanned
     .map((c) => ({
-      key: `v:${c.id}`, kind: "vault" as const, imageUrl: c.imagePath!, gradeUrl: c.photoSourceFront ?? c.imagePath!, player: c.player, title: c.item,
+      key: `v:${c.id}`, kind: "vault" as const, imageUrl: c.imagePath ?? "", gradeUrl: c.photoSourceFront ?? c.imagePath ?? "", player: c.player, title: c.item,
       value: c.valueNow, cost: c.cost, price: null, maxBid: null, url: null,
       hint: c.decision?.startsWith("Grade") ? c.decision : null, prior: null,
     }))
@@ -58,7 +57,6 @@ export async function loadGrading(): Promise<GradingData> {
       value: r.target.raw, cost: null, price: l.price, maxBid: r.result.maxBid, url: l.url, hint: r.target.card,
       prior: l.screen ? { verdict: l.screen.verdict, summary: l.screen.summary } : null,
     })));
-  const scanCards: ScanCard[] = cards.filter((c) => c.status === "raw").map((c) => ({ id: c.id, title: c.item })).sort((a, b) => a.title.localeCompare(b.title));
   const byId = new Map(cards.map((c) => [c.id, c]));
   const seen = new Set<string>();
   const checks: CentCheck[] = [];
@@ -69,5 +67,5 @@ export async function loadGrading(): Promise<GradingData> {
     checks.push({ cardId: r.cardId, title: c.item, side: r.side as "front" | "back", at: r.createdAt.slice(0, 10), lr: r.lr, tb: r.tb, adjusted: r.adjusted,
       status: c.status, grade: c.status === "graded" ? c.gradeLabel : null, grader: null });
   }
-  return { ...buildGrading(cards, subs), fee: fee === null ? null : Number(fee), vault, listings, scanCards, checks };
+  return { ...buildGrading(cards, subs), fee: fee === null ? null : Number(fee), vault, listings, checks };
 }
