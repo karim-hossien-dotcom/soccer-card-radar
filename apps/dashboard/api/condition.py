@@ -125,6 +125,13 @@ def handle(headers, body, env=os.environ):
         hints = {k: corner_hint(fields.get(f"{k}_quad")) for k in ("front", "back", "front_raking", "back_raking")}
         if not front:
             return 400, {"error": "Add a front photo"}
+        if (fields.get("only") or b"").strip() == b"centering":  # repeatability shot: borders only
+            if len(front) > MAX_IMAGE or image_kind(front) is None:
+                return 415, {"error": "Front photo must be a jpg, png or webp under 8 MB"}
+            try:
+                return 200, {"borders": cond.centering_only(front, hints.get("front"))}
+            except Exception as e:
+                return 422, {"error": f"Could not analyse the photo: {type(e).__name__}"}
         for label, data in (("Front", front), ("Back", back), ("Front side-light", raking["front"]), ("Back side-light", raking["back"])):
             if not data:
                 continue

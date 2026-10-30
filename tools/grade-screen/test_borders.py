@@ -63,9 +63,9 @@ def test_known_borders():
     got = {s: out["inner"][s]["depth_mm"] for s in bd.SIDES}
     want = {"left": 2.5, "right": 3.5, "top": 3.0, "bottom": 4.0}
     for s in bd.SIDES:
-        assert abs(got[s] - want[s]) < 0.08, (s, got, out["alternates"])
-    assert abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.01
-    assert abs(out["centering"]["tb"]["mid"] - 4 / 7) < 0.01
+        assert abs(got[s] - want[s]) < 0.04, (s, got, out["alternates"])
+    assert abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.005
+    assert abs(out["centering"]["tb"]["mid"] - 4 / 7) < 0.005
     assert flat is not None and flat.shape[1] > 1500
 
 
@@ -80,6 +80,16 @@ def test_repeatable_across_shots():
         assert out["status"] == "ok", out
         lr.append(out["centering"]["lr"]["mid"])
     assert max(lr) - min(lr) < 0.01, lr
+
+
+def test_no_side_bias_at_minimum_resolution():
+    """At 20.5 px/mm, landscape 4K frame like a phone video still: every border within 0.04 mm, right/bottom included."""
+    ppm = 20.5
+    img, true = photo(card(ppm), ppm, angle=1.5, persp=0.0, size=(3840, 2160))
+    out, _ = bd.measure(img, rough(true))
+    want = {"left": 2.5, "right": 3.5, "top": 3.0, "bottom": 4.0}
+    for s in bd.SIDES:
+        assert abs(out["inner"][s]["depth_mm"] - want[s]) < 0.04, (s, out["inner"][s])
 
 
 def test_tilted_print_worst_point():

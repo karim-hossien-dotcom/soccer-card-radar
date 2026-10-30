@@ -142,13 +142,15 @@ def _side_profiles(lab, side, R, M, n=40, max_mm=12.0, band_mm=1.0):
     for i, p in enumerate(pos):
         c = int(round(M + p * R))
         if side == "top":
-            strip = lab[int(M): int(M) + len(dep), c - half: c + half + 1].mean(1)
+            strip = lab[int(round(M)): int(round(M)) + len(dep), c - half: c + half + 1].mean(1)
         elif side == "bottom":
-            strip = lab[int(round(M + H)) - len(dep): int(round(M + H)), c - half: c + half + 1].mean(1)[::-1]
+            e = int(round(M + H))  # pixel centre on the cut edge: depth 0, as on the top/left sides
+            strip = lab[e - len(dep) + 1: e + 1, c - half: c + half + 1].mean(1)[::-1]
         elif side == "left":
-            strip = lab[c - half: c + half + 1, int(M): int(M) + len(dep)].mean(0)
+            strip = lab[c - half: c + half + 1, int(round(M)): int(round(M)) + len(dep)].mean(0)
         else:
-            strip = lab[c - half: c + half + 1, int(round(M + W)) - len(dep): int(round(M + W))].mean(0)[::-1]
+            e = int(round(M + W))
+            strip = lab[c - half: c + half + 1, e - len(dep) + 1: e + 1].mean(0)[::-1]
         out[i, :len(strip)] = strip
     return pos, dep, out
 
@@ -176,7 +178,7 @@ def inner_lines(lab, side, R, M):
         sr = s[r]
         for i in range(max(lo, 1), len(sr) - 1):
             if sr[i] >= STEP_DE and sr[i] >= sr[i - 1] and sr[i] > sr[i + 1]:
-                peaks.append((r, _peak(sr, i) / R, float(sr[i])))
+                peaks.append((r, (_peak(sr, i) - 0.5) / R, float(sr[i])))  # step between samples i-1 and i
     if not peaks:
         return []
     P = np.array(peaks)

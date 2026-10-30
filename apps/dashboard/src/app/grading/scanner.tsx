@@ -33,6 +33,7 @@ async function fit(b: Blob, shot: Shot, quad?: number[][]): Promise<{ blob: Blob
   const out = await new Promise<Blob>((res) => c.toBlob((x) => res(x ?? b), "image/jpeg", 0.88));
   return { blob: out, quad: box.quad };
 }
+const EXTRA_STILLS = 2; // front is photographed 3 times; centering must agree within 1.5 points
 const PREVIEW = 640; // long side of the frame the browser analyses; the captured photo is full resolution
 
 /** Full-resolution still: ImageCapture.takePhoto where the browser has it (Chrome Android, Safari 18.4+), else the video frame. */
@@ -98,6 +99,7 @@ function ScanView({ onClose }: { onClose: () => void }) {
   const sigShot = useRef<Float32Array | null>(null);  // ... when the last photo was taken
   const busy = useRef(false);
   const shots = useRef<Partial<Record<Shot, Blob>>>({});
+  const extras = useRef<{ blob: Blob; quad?: number[][] }[]>([]); // 2 more front stills: 3-shot repeatability check
   const [step, setStep] = useState<Step>("front");
   const stepRef = useRef<Step>("front");
   const [hint, setHint] = useState("Starting the camera…");
@@ -122,10 +124,23 @@ function ScanView({ onClose }: { onClose: () => void }) {
         if (f.quad) fd.append(field[k][2], JSON.stringify(f.quad));
       }
       fd.append("holder", "0");
+      const repeatJobs = extras.current.map(async (x) => {
+        const f = await fit(x.blob, "front", x.quad), r = new FormData();
+        r.append("front", f.blob, "front-repeat.jpg");
+        if (f.quad) r.append("front_quad", JSON.stringify(f.quad));
+        r.append("only", "centering");
+        const res = await fetch("/api/condition", { method: "POST", body: r }).catch(() => null);
+        const b = res?.ok ? await res.json().catch(() => null) : null;
+        const c = b?.borders?.status !== "refused" ? b?.borders?.centering : null;
+        return { lr: c?.lr?.worst ?? null, tb: c?.tb?.worst ?? null };
+      });
       const res = await fetch("/api/condition", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);
       if (!res.ok) throw new Error((body && typeof body.error === "string" && body.error) || `Check failed (${res.status})`);
-      setReport(parseReport(body));
+      const rep = parseReport(body), extra = await Promise.all(repeatJobs);
+      const main = rep.front?.borders?.status !== "refused" ? rep.front?.borders?.centering : undefined;
+      if (extra.length) rep.repeats = { lr: [main?.lr?.worst ?? null, ...extra.map((e) => e.lr)], tb: [main?.tb?.worst ?? null, ...extra.map((e) => e.tb)] };
+      setReport(rep);
       go("done");
     } catch (e) {
       setErr((e as Error).message || "Check failed"); go("error");
@@ -154,6 +169,15 @@ function ScanView({ onClose }: { onClose: () => void }) {
       if (!isShot(cur)) return;
       shots.current[cur] = blob;
       quads.current[cur] = await cornersOf(blob, scanner.current, v, preview);
+      if (cur === "front") {
+        extras.current = [];
+        for (let k = 0; k < EXTRA_STILLS; k++) {
+          setHint(`Hold still: ${EXTRA_STILLS - k} more`);
+          await new Promise((r) => setTimeout(r, 400));
+          const b = await still(v, stream.current?.getVideoTracks()[0] ?? null).catch(() => null);
+          if (b) extras.current.push({ blob: b, quad: await cornersOf(b, scanner.current, v, preview) });
+        }
+      }
       sigShot.current = sigNow.current;
       await next(cur);
     } catch (e) {
