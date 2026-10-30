@@ -44,3 +44,8 @@ Card Ladder rules (from its help centre, Oct 2026):
   sale date x index today). Treat a CL value from a single old sale as weak and say so.
 - PSA's cert label is the authority for the card's name (e.g. "EMERGING STARS-AU-BLUE"): compare it with the Vault item.
 - Graded cards: search Card Ladder by the PSA cert number first (exact match via GemRate); then use the Same Grade / Same Grading Company views. Text search only when there is no cert.
+
+Card Ladder query rules (full notes: docs/research/2026-10-30-card-ladder-method.md):
+- `(a,b)` = OR; `-word` excludes; `-(PSA 9)` excludes an exact phrase; `!` anywhere = exact words, no typo fix/synonyms; `Raw` suffix = tracked raw cards.
+- Always exclude: other graders, other grades, lot/bundle, auto/patch/relic when the card has none, reprint, and every other parallel name.
+- Best: open one sale of the exact card -> View All Sales -> Same Grade. Graded: cert search (# button).
