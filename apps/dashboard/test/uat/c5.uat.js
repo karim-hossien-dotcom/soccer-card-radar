@@ -40,15 +40,16 @@ const noOverflow = (p) => p.evaluate(() => document.documentElement.scrollWidth 
     ok((await row(p, 'Lamine Yamal Refractor').innerText()).includes('$258'), `${name}: Yamal Refractor max bid $258 (formula 257.99)`);
     ok(await noOverflow(p), `${name}: board has no horizontal overflow`);
 
-    // Vault: Mainoo 19/49 (at PSA): PSA 10 618, PSA 9 206, raw sale 529 -> EV 385.30 -> 151.11.
+    // Vault: Mainoo 19/49 (at PSA): PSA 10 618, PSA 9 206, raw = Vault value 338.95 (value_used beats the 529 median on the
+    // same date) -> EV 0.2 x 618 + 0.5 x 206 + 0.3 x 338.95 = 328.29 -> (285.61 - 32.99) / 2 = 126.31 (cap 271.16).
     let d = await drawer(p, 'Kobbie Mainoo 19/49');
     let text = await d.innerText();
-    ok(/Snipe max bid for another copy: \$151\.11 \(expected value if graded, after selling and grading fees/.test(text), `${name}: Vault Mainoo 19/49 max bid $151.11 with explanation`);
+    ok(/Snipe max bid for another copy: \$126\.31 \(expected value if graded, after selling and grading fees/.test(text), `${name}: Vault Mainoo 19/49 max bid $126.31 (follows Vault value) with explanation`);
     await p.locator('[role=dialog] p', { hasText: 'Snipe max bid' }).scrollIntoViewIfNeeded();
     await p.screenshot({ path: `${SHOTS}/vault-${name}.png` });
-    // Raw fallback: no raw sale, value now 209; PSA 9 178, PSA 10 550 -> EV 261.70 -> 97.34 (cap 167.20).
+    // No raw sale: raw = Vault value (value now) 209; PSA 9 178, PSA 10 550 -> EV 261.70 -> 97.34 (cap 167.20).
     d = await drawer(p, 'Black Lazer Auto Green /99');
-    ok((await d.innerText()).includes('Snipe max bid for another copy: $97.34'), `${name}: Vault Bellingham Black Lazer Green /99 max bid $97.34 (raw falls back to value now)`);
+    ok((await d.innerText()).includes('Snipe max bid for another copy: $97.34'), `${name}: Vault Bellingham Black Lazer Green /99 max bid $97.34 (raw = Vault value now)`);
     // No PSA 9 sale -> no max bid (never a guess from band multiples).
     d = await drawer(p, 'MANGA #8 RAPHINHA');
     text = await d.innerText();
@@ -76,9 +77,9 @@ const noOverflow = (p) => p.evaluate(() => document.documentElement.scrollWidth 
       ok((await row(p, '#161 Cristiano Ronaldo (base)').innerText()).includes('$12.50'), 'override: #161 base $12.50 (50% of raw 25)');
       ok((await row(p, '#74 Erling Haaland').innerText()).includes('$58.72'), 'override: Haaland $58.72 ((232.40 x 0.9 - 32.99) / 3)');
       await p.screenshot({ path: `${SHOTS}/snipe-override-desktop.png` });
-      // Mainoo: (385.30 x 0.9 - 32.99) / 3 = 104.59; cap 264.50
+      // Mainoo: (328.29 x 0.9 - 32.99) / 3 = 87.49; cap 169.48
       const d = await drawer(p, 'Kobbie Mainoo 19/49');
-      ok((await d.innerText()).includes('Snipe max bid for another copy: $104.59'), 'override: Vault Mainoo 19/49 $104.59');
+      ok((await d.innerText()).includes('Snipe max bid for another copy: $87.49'), 'override: Vault Mainoo 19/49 $87.49');
       await p.close();
     } finally { fs.writeFileSync(SF, s0); fs.writeFileSync(CF, c0); }
   }
