@@ -72,7 +72,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
         <summary>How scoring and max bid work</summary>
         <ul>
           <li><b>Score</b> weighs what the card is worth graded, how cheap the live listing is, how rare it is, and how the player is doing.</li>
-          <li><b>Max bid</b> = expected value if graded, less {Math.round(m.sellFee * 100)}% selling fees and the {usd(m.gradingFee)} grading fee, ÷ {m.targetMultiple} (so you make {m.targetMultiple}× your all-in cost), capped at {Math.round(m.rawCap * 100)}% of the raw price. No max bid without raw, PSA 9 and PSA 10 comps. Slab targets set their own max.</li>
+          <li><b>Max bid</b> = expected value if graded, less {Math.round(m.sellFee * 100)}% selling fees and the {usd(m.gradingFee)} grading fee, ÷ {m.targetMultiple} (so the graded card, after fees, pays back the grading fee plus {m.targetMultiple}× your bid), capped at {Math.round(m.rawCap * 100)}% of the raw price. No max bid without raw, PSA 9 and PSA 10 comps. Slab targets set their own max.</li>
           <li><b>Grading odds</b> come from the PSA population report (PSA 10s and 9s ÷ total graded). Pop only counts cards people chose to submit, so a raw buy gets {Math.round(gemHaircut * 100)}% of the PSA 10 rate and {Math.round(psa9Haircut * 100)}% of the PSA 9 rate; the rest is valued at raw. Low-confidence comps count for less.</li>
           <li><b>Budget:</b> approved bids count at their max until the auction ends. Approving records your max; it never bids on eBay.</li>
           <li><b>Photo badges</b> come from the grade screen of each listing photo: a warning only, never a grade promise.</li>

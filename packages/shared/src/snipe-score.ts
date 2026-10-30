@@ -40,10 +40,8 @@ export type SnipePlayer = {
  * self-submitted results were 3 PSA 10, 1 PSA 9, 6 PSA 8 of 10). The removed share is valued at raw.
  * Editable in Assumptions (snipe_gem_haircut, snipe_psa9_haircut). Both 1 = the workbook Grade Screen.
  * confidence scales grading upside: thin or messy comps (Low) count for less.
- */
-/**
- * C5 max bid: sellFee = eBay selling fees on the graded sale, targetMultiple = EV after fees / all-in cost you
- * want, rawCap = most of the raw price you pay for a raw card. Editable in Assumptions (snipe_sell_fee,
+ * C5 max bid: sellFee = eBay selling fees on the graded sale, targetMultiple = (EV after fees - gradingFee) / bid,
+ * rawCap = most of the raw price you pay for a raw card. Editable in Assumptions (snipe_sell_fee,
  * snipe_target_multiple, snipe_raw_cap).
  */
 export type SnipeConfig = {
