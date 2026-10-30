@@ -107,6 +107,7 @@ def handle(headers, body, env=os.environ):
             return 502, {"error": f"Could not download the photo: {type(e).__name__}"}
         back, holder = b"", False
         raking = {"front": b"", "back": b""}
+        extra_lights = {}
         hints = {}
         if not media_type(front):
             return 415, {"error": "That photo is not a jpg, png or webp"}
@@ -121,8 +122,10 @@ def handle(headers, body, env=os.environ):
         if fields is None:
             return 400, {"error": "Send the photos as multipart/form-data"}
         front, back = fields.get("front") or b"", fields.get("back") or b""
-        raking = {s: fields.get(f"{s}_raking") or b"" for s in ("front", "back")}
+        raking = {s: fields.get(f"{s}_raking") or b"" for s in ("front", "back")}  # light from the left (or the only one)
+        extra_lights = {(s, l): fields.get(f"{s}_raking_{l}") or b"" for s in ("front", "back") for l in ("top", "right", "bottom")}
         hints = {k: corner_hint(fields.get(f"{k}_quad")) for k in ("front", "back", "front_raking", "back_raking")}
+        hints.update({f"{s}_raking_{l}": corner_hint(fields.get(f"{s}_raking_{l}_quad")) for (s, l) in extra_lights})
         if not front:
             return 400, {"error": "Add a front photo"}
         if (fields.get("only") or b"").strip() == b"centering":  # repeatability shot: borders only
@@ -132,7 +135,8 @@ def handle(headers, body, env=os.environ):
                 return 200, {"borders": cond.centering_only(front, hints.get("front"))}
             except Exception as e:
                 return 422, {"error": f"Could not analyse the photo: {type(e).__name__}"}
-        for label, data in (("Front", front), ("Back", back), ("Front side-light", raking["front"]), ("Back side-light", raking["back"])):
+        for label, data in (("Front", front), ("Back", back), ("Front side-light", raking["front"]), ("Back side-light", raking["back"]),
+                            *((f"{s.capitalize()} {l} light", d) for (s, l), d in extra_lights.items())):
             if not data:
                 continue
             if len(data) > MAX_IMAGE:
@@ -157,12 +161,13 @@ def handle(headers, body, env=os.environ):
     report["gate"] = gate
     report["verdict"], report["summary"] = summarize(gate, report)
     report["measured"] = True
-    if not holder and (raking["front"] or raking["back"]):
-        report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints)
+    if not holder and (raking["front"] or raking["back"] or any(extra_lights.values())):
+        report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints, extra_lights)
         for s in report["surface_scan"]:
             for f in s["findings"]:
                 src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
-                report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src})")
+                lit = f" under {', '.join(f['lights'])} light" if f.get("lights") else ""
+                report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src}{lit})")
     return 200, report
 
 
@@ -183,26 +188,29 @@ def corner_hint(raw):
         return None
 
 
-def surface_scan(front, back, raking, key, hints=None):
-    """Per side with a side-light photo: measured findings (surface.py), Claude's second look when a key is set, merged."""
-    out, hints = [], hints or {}
+def surface_scan(front, back, raking, key, hints=None, extra_lights=None):
+    """Per side with side-light photos (up to 4 directions): measured findings (surface.py), Claude's second look on
+    the first lit photo when a key is set, merged."""
+    out, hints, extra_lights = [], hints or {}, extra_lights or {}
     for side, flat in (("front", front), ("back", back)):
-        rk = raking.get(side)
-        if not rk or not flat:
+        lights = [(l, src, hints.get(k)) for l, src, k in (("left", raking.get(side), f"{side}_raking"),
+                  *((l, extra_lights.get((side, l)), f"{side}_raking_{l}") for l in ("top", "right", "bottom"))) if src]
+        if not lights or not flat:
             continue
         try:
-            res = surf.analyse(flat, rk, hints.get(side), hints.get(f"{side}_raking"))
+            res = surf.analyse_lights(flat, lights, hints.get(side))
         except Exception as e:
-            res = {"status": "cant_judge", "why": f"surface check failed: {type(e).__name__}", "findings": [], "overlay": None}
+            res = {"status": "cant_judge", "why": f"surface check failed: {type(e).__name__}", "findings": [], "overlay": None, "lights": []}
+        rk, rk_hint = lights[0][1], lights[0][2]
         ai, ai_err = [], None
         if key and res["status"] == "measured":
             try:
-                ai = ask_surface(key, surf.straight_jpeg(flat, hint=hints.get(side)), surf.straight_jpeg(rk, hint=hints.get(f"{side}_raking")))
+                ai = ask_surface(key, surf.straight_jpeg(flat, hint=hints.get(side)), surf.straight_jpeg(rk, hint=rk_hint))
             except Exception as e:
                 ai_err = f"Claude second look failed: {type(e).__name__}"
         out.append({"side": side.capitalize(), "status": res["status"], "why": res.get("why") or ai_err,
                     "findings": combine_surface(res["findings"], ai) if res["status"] == "measured" else [],
-                    "overlay": res.get("overlay"), "ai": bool(key) and ai_err is None and res["status"] == "measured"})
+                    "overlay": res.get("overlay"), "lights": res.get("lights", []), "ai": bool(key) and ai_err is None and res["status"] == "measured"})
     return out
 
 

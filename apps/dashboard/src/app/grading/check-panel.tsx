@@ -132,12 +132,12 @@ export function ReportView({ report, cardId }: { report: ConditionReport; cardId
           {report.surface.length > 0 && (
             <>
               <h3 className={s.h}>Surface (side light)</h3>
-              <p className={s.muted}>Dents, creases and scratches from the side-light photo. Not yet counted in the grade ceiling: check each by eye.</p>
+              <p className={s.muted}>Dents, creases and scratches from the side-light photos (a fold running the same way as the light barely shows, so each direction catches different things). Not yet counted in the grade ceiling: check each by eye.</p>
               {report.surface.map((sc) => (
                 <div key={sc.side} className={s.surface}>
                   {sc.overlay && <img src={sc.overlay} alt={`${sc.side} under side light, findings circled`} />}
                   <div>
-                    <p className={s.sub}>{sc.side}{sc.ai ? "" : " (Claude second look off)"}</p>
+                    <p className={s.sub}>{sc.side}{sc.lights?.length ? ` · light from ${sc.lights.join(", ")}` : ""}{sc.ai ? "" : " (Claude second look off)"}</p>
                     {sc.status !== "measured" ? <p className={s.muted}>Not judged: {sc.why}</p>
                       : sc.findings.length === 0 ? <p className={s.muted}>Nothing found.</p>
                       : <ul className={s.list}>{surfaceLines(sc).map((l) => <li key={l.text} data-source={l.source}>{l.n !== null && <b className={s.num}>{l.n}</b>}{l.text}</li>)}</ul>}

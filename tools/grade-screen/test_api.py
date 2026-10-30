@@ -26,7 +26,7 @@ def png(**kw):
 
 
 def test_vendored_copy_matches_tools():
-    for f in ("condition.py", "centering.py", "surface.py"):
+    for f in ("condition.py", "centering.py", "surface.py", "borders.py"):
         assert open(os.path.join(HERE, f), "rb").read() == open(os.path.join(API, "_grade_screen", f), "rb").read(), f"run sync_vercel.py: {f} drifted"
 
 
@@ -104,6 +104,21 @@ def test_centering_only_mode():
     status, r = api.handle(h, body, env=ENV)
     assert status == 200 and set(r) == {"borders"}, r
     assert r["borders"]["status"] == "ok" and abs(r["borders"]["centering"]["lr"]["mid"] - 3.5 / 6) < 0.01
+
+
+def test_four_side_lights_catch_a_horizontal_crease():
+    import test_surface as ts
+    hm = ts.height(hcrease=(0.5, 0.2, 0.8))
+    lit = {l: ts.enc(ts.place(ts.raking(ts.CARD, hm, l), 2.0 + 0.3 * i)) for i, l in enumerate(("left", "top", "right", "bottom"))}
+    h, body = form(front=ts.enc(ts.place(ts.CARD)), front_raking=lit["left"], front_raking_top=lit["top"],
+                   front_raking_right=lit["right"], front_raking_bottom=lit["bottom"])
+    status, r = api.handle(h, body, env=ENV)
+    assert status == 200, r
+    sc = r["surface_scan"][0]
+    assert sc["lights"] == ["left", "top", "right", "bottom"], sc
+    creases = [f for f in sc["findings"] if f["kind"] == "crease"]
+    assert len(creases) == 1 and {"top", "bottom"} <= set(creases[0]["lights"]), sc["findings"]
+    assert any("crease" in x and "light" in x for x in r["ceiling"]["look"]), r["ceiling"]["look"]
 
 
 def test_holder_flag_means_no_ceiling():

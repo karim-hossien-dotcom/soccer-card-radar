@@ -7,17 +7,25 @@ import { shape, pixels, moved, judge, signature, change, smooth, toFractions, cr
 import { shrink, ReportView } from "./check-panel";
 import s from "./scanner.module.css";
 
-type Shot = "front" | "light" | "back";
+type Light = "lightL" | "lightT" | "lightR" | "lightB";
+type Shot = "front" | Light | "back";
 type Step = Shot | "checking" | "done" | "error";
+const LIGHT_SIDE: Record<Light, string> = { lightL: "left", lightT: "top", lightR: "right", lightB: "bottom" };
+const lightIntro = (side: string, first: boolean) =>
+  `${first ? "Now light it from the side: hold a lamp or a second phone's flashlight low" : "Move the light low"} on the card's ${side} side, so it skims across the card`;
 const SHOTS: { step: Shot; tag: string; intro: string; skip?: string; grace: number }[] = [
-  { step: "front", tag: "1 of 3 · Front", intro: "Put the card on a dark, plain surface inside the frame", grace: 0 },
-  { step: "light", tag: "2 of 3 · Side light", intro: "Now light it from the side: hold a lamp or a second phone's flashlight low, beside the card, so the light skims across it", skip: "Skip side light", grace: -16 },
-  { step: "back", tag: "3 of 3 · Back", intro: "Flip the card over", skip: "Skip back", grace: -8 },
+  { step: "front", tag: "1 of 6 · Front", intro: "Put the card on a dark, plain surface inside the frame", grace: 0 },
+  ...(Object.keys(LIGHT_SIDE) as Light[]).map((l, i) => ({
+    step: l, tag: `${i + 2} of 6 · Light from the ${LIGHT_SIDE[l]}`, intro: lightIntro(LIGHT_SIDE[l], i === 0),
+    skip: i === 0 ? "Skip side lights" : "Skip this light", grace: i === 0 ? -16 : -10,
+  })),
+  { step: "back", tag: "6 of 6 · Back", intro: "Flip the card over", skip: "Skip back", grace: -8 },
 ];
-const isShot = (x: Step): x is Shot => x === "front" || x === "light" || x === "back";
+const isLight = (x: Step): x is Light => x in LIGHT_SIDE;
+const isShot = (x: Step): x is Shot => x === "front" || x === "back" || isLight(x);
 // Vercel caps a request at 4.5 MB: front and back cropped to the card at up to 2400 px (~24 px/mm, enough to measure
-// centering), side light at 1400 px (the surface check works at 12 px/mm). ~3 MB for all three.
-const UPLOAD_LONG_SIDE: Record<Shot, number> = { front: 2400, light: 1400, back: 2400 };
+// centering), each side light at 1200 px (the surface check works at 12 px/mm). ~3.8 MB for all six.
+const UPLOAD_LONG_SIDE = (shot: Shot) => (isLight(shot) ? 1200 : 2400);
 
 /** Crop to the card (keeping full resolution) when its corners are known, else shrink the whole photo.
  * Returns the JPEG and the corners as fractions of what was sent. */
@@ -25,7 +33,7 @@ async function fit(b: Blob, shot: Shot, quad?: number[][]): Promise<{ blob: Blob
   const bmp = await createImageBitmap(b).catch(() => null);
   if (!bmp) return { blob: await shrink(b), quad: undefined };
   const box = quad ? cropBox(quad, bmp.width, bmp.height) : { x: 0, y: 0, w: bmp.width, h: bmp.height, quad };
-  const k = Math.min(1, UPLOAD_LONG_SIDE[shot] / Math.max(box.w, box.h));
+  const k = Math.min(1, UPLOAD_LONG_SIDE(shot) / Math.max(box.w, box.h));
   const c = document.createElement("canvas");
   c.width = Math.round(box.w * k); c.height = Math.round(box.h * k);
   c.getContext("2d")!.drawImage(bmp, box.x, box.y, box.w, box.h, 0, 0, c.width, c.height);
@@ -127,13 +135,17 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
     go("checking");
     try {
       const fd = new FormData();
-      const field: Record<Shot, [string, string, string]> = { front: ["front", "front.jpg", "front_quad"], light: ["front_raking", "front-side-light.jpg", "front_raking_quad"], back: ["back", "back.jpg", "back_quad"] };
-      for (const k of ["front", "light", "back"] as Shot[]) {
+      // left light keeps the original field name (front_raking); the others add their side
+      const lf = (l: Light) => (l === "lightL" ? "front_raking" : `front_raking_${LIGHT_SIDE[l]}`);
+      const field = (k: Shot): [string, string, string] =>
+        isLight(k) ? [lf(k), `front-light-${LIGHT_SIDE[k]}.jpg`, `${lf(k)}_quad`] : [k, `${k}.jpg`, `${k}_quad`];
+      for (const k of SHOTS.map((x) => x.step)) {
         const b = shots.current[k];
         if (!b) continue;
         const f = await fit(b, k, quads.current[k]);
-        fd.append(field[k][0], f.blob, field[k][1]);
-        if (f.quad) fd.append(field[k][2], JSON.stringify(f.quad));
+        const [name, file, qname] = field(k);
+        fd.append(name, f.blob, file);
+        if (f.quad) fd.append(qname, JSON.stringify(f.quad));
       }
       fd.append("holder", "0");
       const repeatJobs = extras.current.map(async (x) => {
@@ -221,14 +233,14 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
         const gray = new Uint8ClampedArray(w * h);
         if (q) for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = (img.data[j] * 77 + img.data[j + 1] * 150 + img.data[j + 2] * 29) >> 8;
         const px = q ? pixels(gray, w, h, q) : null;
-        if (px && stepRef.current === "light") px.glare = 0; // side light is meant to make highlights
+        if (px && isLight(stepRef.current)) px.glare = 0; // side light is meant to make highlights
         const sh = q ? shape(q, w, h) : null;
         let verdict = q ? judge(q, sh, px) : judge(null, null, null);
         sigNow.current = q ? signature(gray, w, h, q) : null;
         // Don't re-shoot the same scene: the side-light shot needs the light changed, the back shot needs the card flipped.
         const cur = stepRef.current;
-        if (verdict.ok && (cur === "light" || cur === "back") && sigNow.current && sigShot.current && change(sigNow.current, sigShot.current) < NEEDS_CHANGE[cur])
-          verdict = { ok: false, hint: cur === "light" ? "Turn the side light on: it should look different from the first photo" : "Flip the card over" };
+        if (verdict.ok && cur !== "front" && sigNow.current && sigShot.current && change(sigNow.current, sigShot.current) < NEEDS_CHANGE[isLight(cur) ? "light" : "back"])
+          verdict = { ok: false, hint: isLight(cur) ? `Move the light to the card's ${LIGHT_SIDE[cur]} side: it should look different from the last photo` : "Flip the card over" };
         const mv = q && prev.current ? moved(prev.current, q, w, h) : 0;
         const still = !!q && mv < LIMITS.steadyMove;
         prev.current = q;
@@ -304,7 +316,7 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
           <p className={s.hint} data-ok={quad?.ok ?? false} aria-live="polite">{hint}</p>
           {dbg && <p className={s.debug}>{dbg}</p>}
           <div className={s.controls}>
-            {shot?.skip ? <button type="button" className={s.ghost} onClick={() => next(shot.step)}>{shot.skip}</button> : <span />}
+            {shot?.skip ? <button type="button" className={s.ghost} onClick={() => next(shot.step === "lightL" ? "lightB" : shot.step)}>{shot.skip}</button> : <span />}
             <button type="button" className={s.shutter} onClick={capture} aria-label="Take the photo now" />
             <span className={s.thumbs}>{thumbs.map((u) => <img key={u} src={u} alt="" />)}</span>
           </div>

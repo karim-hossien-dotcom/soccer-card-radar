@@ -83,3 +83,10 @@ test("surfaceLines: measured findings are numbered like the overlay; Claude-only
   assert.equal(lines[0].text, "Dent or dimple, top right, about 6 mm: measured and seen by Claude");
   assert.equal(lines[1].text, "Scratch, centre (fine line): seen by Claude only");
 });
+
+test("surfaceLines: says which side lights saw a finding when several were used", () => {
+  const sc = { side: "Front", status: "measured" as const, why: null, overlay: null, ai: false, lights: ["left", "top", "right", "bottom"],
+    findings: [{ kind: "crease", where: "centre", source: "measured" as const, size_mm: 35.4, lights: ["top", "bottom"] }] };
+  assert.equal(surfaceLines(sc)[0].text.includes("seen under top, bottom light"), true);
+  assert.equal(surfaceLines({ ...sc, lights: ["left"] })[0].text.includes("seen under"), false);
+});

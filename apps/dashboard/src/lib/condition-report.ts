@@ -16,8 +16,8 @@ type Side = { px_per_mm: number; edges: Edge[]; corners: Corner[]; borders: Bord
 export type CentKey = "front_lr" | "front_tb" | "back_lr" | "back_tb";
 export const CENT_KEYS: CentKey[] = ["front_lr", "front_tb", "back_lr", "back_tb"];
 type CentGrade = { split: string; psa: number; psa_tolerance: string | null; bgs: number; bgs_tolerance: string | null };
-export type SurfaceFinding = { kind: string; where: string; source: "both" | "measured" | "claude"; size_mm?: number; note?: string | null };
-export type SurfaceScan = { side: string; status: "measured" | "cant_judge"; why: string | null; findings: SurfaceFinding[]; overlay: string | null; ai: boolean };
+export type SurfaceFinding = { kind: string; where: string; source: "both" | "measured" | "claude"; size_mm?: number; note?: string | null; lights?: string[] };
+export type SurfaceScan = { side: string; status: "measured" | "cant_judge"; why: string | null; findings: SurfaceFinding[]; overlay: string | null; ai: boolean; lights?: string[] };
 export type ConditionReport = {
   front: Side; back: Side; holder: boolean; note: string;
   surface: SurfaceScan[];
@@ -119,6 +119,7 @@ export function surfaceLines(s: SurfaceScan): { n: number | null; text: string; 
   return s.findings.map((f) => {
     const num = f.source === "claude" ? null : ++n;
     const size = f.size_mm && f.source !== "claude" ? `, about ${Math.round(f.size_mm)} mm` : "";
-    return { n: num, text: `${f.kind[0].toUpperCase()}${f.kind.slice(1)}, ${f.where}${size}${f.note ? ` (${f.note})` : ""}: ${SOURCE[f.source]}`, source: f.source };
+    const lit = s.lights && s.lights.length > 1 && f.lights?.length ? `, seen under ${f.lights.join(", ")} light` : "";
+    return { n: num, text: `${f.kind[0].toUpperCase()}${f.kind.slice(1)}, ${f.where}${size}${lit}${f.note ? ` (${f.note})` : ""}: ${SOURCE[f.source]}`, source: f.source };
   });
 }
