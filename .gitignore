@@ -11,3 +11,4 @@ coverage/
 # grade-screen photos (local test set)
 tools/grade-screen/photos/
 __pycache__/
+.claude/worktrees/
