@@ -19,7 +19,8 @@
     "playwright": "^1.59.1",
     "react": "^18.3.0",
     "react-dom": "^18.3.0",
-    "recharts": "^3.8.1"
+    "recharts": "^3.8.1",
+    "scanic": "1.6.0"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

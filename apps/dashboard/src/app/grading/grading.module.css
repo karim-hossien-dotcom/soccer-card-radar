@@ -28,3 +28,5 @@
 .upload > summary::before { content: "+ "; }
 .upload[open] > summary::before { content: "− "; }
 .upload[open] > summary { margin-bottom: 10px; }
+.scanRow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin: 0 0 16px; }
+.scanRow span { color: var(--ink-3); font-size: var(--t-sm); }

@@ -5,7 +5,7 @@ import { parseReport, ceilingLine, centeringRows, wearFindings, checkFile, downs
 import s from "./check-panel.module.css";
 
 /** Vercel caps a request at 4.5 MB: re-encode big photos as JPEG with the long side at 3000 px (still ~30 px/mm on a card). */
-async function shrink(f: File): Promise<Blob> {
+export async function shrink(f: Blob): Promise<Blob> {
   if (typeof createImageBitmap !== "function") return f;
   const bmp = await createImageBitmap(f).catch(() => null);
   if (!bmp) return f;
@@ -53,8 +53,6 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
     }
   };
 
-  const ceil = report ? ceilingLine(report) : null;
-
   return (
     <div className={s.panel}>
       <p className={s.disclaimer}>
@@ -86,7 +84,15 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
         {err && <p className={s.error} role="alert">{err}</p>}
       </div>
 
-      {report && ceil && (
+      {report && <ReportView report={report} />}
+    </div>
+  );
+}
+
+/** The condition report: grade ceiling first, then centering, wear, look flags and what a photo can't show. */
+export function ReportView({ report }: { report: ConditionReport }) {
+  const ceil = ceilingLine(report);
+  return (
         <div className={s.report}>
           <h3 className={s.h}>Grade ceiling</h3>
           <p className={s.ceiling} data-capped={ceil.capped}>{ceil.headline}</p>
@@ -122,7 +128,5 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
           </ul>
           <p className={s.muted}>{report.note}</p>
         </div>
-      )}
-    </div>
   );
 }

@@ -2,6 +2,7 @@ import type { GradingData } from "./load";
 import s from "./grading.module.css";
 import CheckPanel from "./check-panel";
 import GradePicker from "./grade-picker";
+import Scan from "./scanner";
 
 const usd = (n: number | null | undefined, d = 0) =>
   n === null || n === undefined ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d, minimumFractionDigits: d });
@@ -18,6 +19,7 @@ export default function GradingView({ open, back, backTotals: t, vault, listings
       </header>
 
       <section aria-label="Check cards">
+        <div className={s.scanRow}><Scan /><span>On your phone: point at a card, it captures front and back and checks them.</span></div>
         <GradePicker vault={vault} listings={listings} />
         <details className={s.upload}>
           <summary>Check your own photo instead</summary>

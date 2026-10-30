@@ -47,6 +47,9 @@ importers:
       recharts:
         specifier: ^3.8.1
         version: 3.8.1(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react-is@19.2.5)(react@18.3.1)(redux@5.0.1)
+      scanic:
+        specifier: 1.6.0
+        version: 1.6.0
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -778,6 +781,10 @@ packages:
   resolve-pkg-maps@1.0.0:
     resolution: {integrity: sha512-seS2Tj26TBVOC2NIc2rOe2y2ZO7efxITtLZcGSOnHHNOQ7CkiUBfw0Iw2ck6xkIhPwLhKNLS8BO+hEpngQlqzw==}
 
+  scanic@1.6.0:
+    resolution: {integrity: sha512-p9qYL9cITvQ/BOrafsJvhm++Y8NA8GfRnwngUASqAyKUTRHqMuJzcrCuHjveHxQg29tNuEORUBDAAcigvFigPg==}
+    engines: {node: '>=22'}
+
   scheduler@0.23.2:
     resolution: {integrity: sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==}
 
@@ -1395,6 +1402,8 @@ snapshots:
   reselect@5.1.1: {}
 
   resolve-pkg-maps@1.0.0: {}
+
+  scanic@1.6.0: {}
 
   scheduler@0.23.2:
     dependencies:
