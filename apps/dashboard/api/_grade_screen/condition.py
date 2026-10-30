@@ -72,6 +72,10 @@ def locate(path, hint=None):
     if q is None:
         q = cen.find_card(img)
         if q is None or not cen.on_backdrop(img, q):
+            h, w = img.shape[:2]
+            if abs(min(w, h) / max(w, h) - 63.5 / 88.9) < 0.03:  # cropped at the card's edge, like a saved thumbnail
+                return img, None, (f"photo is cropped tight to the card ({w}x{h} px, {min(w, h) / 63.5:.1f} px per mm): "
+                                   "the check needs some plain background around the card, and 8+ px per mm (12+ for centering)")
             return img, None, "no clean outline on a plain backdrop (cropped, angled, in a holder or cluttered photo)"
     return img, q, None
 
@@ -382,7 +386,7 @@ def assess_with_centering(front, back=None, border_mm=None, holder=False, hints=
             c = bo["centering"].get(axis)
             if c and bo["status"] in ("ok", "needs_manual"):
                 cent[f"{name}_{axis}"] = c["worst"]  # graders judge the worst point
-        if bo["status"] != "ok":
+        if bo["why"]:
             cent_why.append(f"{name}: " + "; ".join(bo["why"]))
     if not f:
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front photo not usable: no ceiling"], "look": []}

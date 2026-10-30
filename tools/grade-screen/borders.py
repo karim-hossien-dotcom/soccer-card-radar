@@ -9,7 +9,7 @@
    the cut edge. The nearest such line to the edge is the border; others are kept as alternates.
 4. Centering = left / (left + right) and top / (top + bottom), at mid-side and at the worst point along the side.
 
-Refuses (status "refused") below 20 px/mm or when an outer edge is not a clean straight line; says
+Refuses (status "refused") below 12 px/mm (flags results under 20) or when an outer edge is not a clean straight line; says
 "needs_manual" when the inner border of any side cannot be found (borderless designs, full-art cards).
 All distances are in mm on a 63.5 x 88.9 mm card.
 """
@@ -17,7 +17,8 @@ import cv2
 import numpy as np
 
 CARD_W, CARD_H = 63.5, 88.9
-MIN_PPM = 20.0          # below this a 0.1 mm border change is under 2 px: centering can't be measured to 1 point
+MIN_PPM = 12.0          # tested: border error <= 0.04 mm and split error < 0.5 point down to 10.5 px/mm on synthetic cards
+GOOD_PPM = 20.0         # below this the result is flagged "lower resolution: check the lines"
 MIN_INLIERS = 0.6       # share of profiles that must agree on a line
 MAX_RMS_PX = 0.5        # outer edge line fit, inliers only
 MAX_TILT = 0.02         # inner line slope vs the cut edge (mm per mm): steeper is not a border line
@@ -311,4 +312,6 @@ def measure(img, quad):
         out["why"].append("printed border not found on " + ", ".join(missing) + " (borderless design, or the border blends into the art): set it by hand")
     else:
         out["status"] = "ok"
+    if ppm < GOOD_PPM:
+        out["why"].append(f"lower resolution ({ppm:.0f} px per mm): check the lines on the confirm screen")
     return out, flat
