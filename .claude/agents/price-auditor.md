@@ -18,6 +18,7 @@ Checks, per card:
    - Value from the owner's own purchase (same date and price as the ledger row): flag it.
    - Value more than 3× or less than 0.33× of cost: list it for a second look, with the comp source and date. This is not an error by itself.
    - No comp at all: list it. Follow the researcher rules (90-day median of the exact card, else latest Card Ladder value; never derive raw from graded; never invent a number).
+   - Inversion: a numbered parallel valued below its own base's 90-day median. List it and hand it to researcher-2.
    - Owner overrides (source owner_set, method value_used) stand. Report them, never "fix" them.
 3. Status consistency: a graded card needs a graded comp; a cracked card (notes say "cracked") must be raw and priced raw.
 
