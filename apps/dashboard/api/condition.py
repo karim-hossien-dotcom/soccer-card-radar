@@ -19,6 +19,7 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "_grade_screen"))
 import condition as cond  # noqa: E402
 import surface as surf  # noqa: E402
+from session import logged_in  # noqa: E402
 from gate import ask_gate, ask_surface, combine_surface, fetch, media_type, summarize, usable  # noqa: E402
 
 MAX_IMAGE = 8 * 1024 * 1024
@@ -92,6 +93,8 @@ def handle(headers, body, env=os.environ):
     """Pure request -> (status, json dict). headers: case-insensitive mapping (or plain dict with lowercase keys)."""
     if not same_site(headers):
         return 403, {"error": "Run the check from the Card Radar site"}
+    if not logged_in(headers, env):
+        return 401, {"error": "Log in first"}
     if len(body) > MAX_BODY:
         return 413, {"error": "Photos too large: 8 MB each at most"}
     ctype = headers.get("content-type") or ""  # keep case: the multipart boundary is case-sensitive

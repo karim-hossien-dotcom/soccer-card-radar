@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import m from "./masthead.module.css";
 
 
 /** Quick scan: first 25 eBay searches. The full sweep runs daily from GitHub Actions. */
 export default function ScanBtn() {
   const router = useRouter();
+  const pathname = usePathname();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
 
@@ -24,6 +25,7 @@ export default function ScanBtn() {
     setTimeout(() => setMsg(""), 6000);
   }
 
+  if (pathname === "/login") return null;
   return (
     <div className={m.scanWrap}>
       {msg && <span role="status">{msg}</span>}

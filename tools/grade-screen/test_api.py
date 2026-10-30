@@ -38,6 +38,19 @@ def test_same_site_only():
     assert api.handle({k: v for k, v in h.items() if k != "origin"} | {"referer": "https://cards.test/grading"}, body, env=ENV)[0] == 200
 
 
+def test_site_lock_cookie():
+    import importlib.util as iu, os as _os
+    sp = iu.spec_from_file_location("sess", _os.path.join(API, "_grade_screen", "session.py")); se = iu.module_from_spec(sp); sp.loader.exec_module(se)
+    h, body = form(front=png())
+    locked = {**ENV, "AUTH_PASSWORD": "pw", "VERCEL_ENV": "production"}
+    assert api.handle(h, body, env=locked)[0] == 401                                    # no cookie
+    assert api.handle({**h, "cookie": "cr_session=karimhossien.1.x"}, body, env=locked)[0] == 401
+    assert api.handle({**h, "cookie": f"cr_session={se.sign('pw')}"}, body, env=locked)[0] == 200
+    assert api.handle({**h, "cookie": f"cr_session={se.sign('other')}"}, body, env=locked)[0] == 401
+    assert api.handle(h, body, env={**ENV, "VERCEL_ENV": "production"})[0] == 401       # deployed, no password: closed
+    assert se.verify(se.sign("pw", now=0), "pw", now=10) and not se.verify(se.sign("pw", now=0), "pw", now=31 * 24 * 3600)
+
+
 def test_grade_by_url():
     site = {"content-type": "application/json", "host": "cards.test", "origin": "https://cards.test"}
     chip = png(chips=8)
