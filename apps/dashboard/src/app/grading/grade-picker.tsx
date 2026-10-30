@@ -12,7 +12,7 @@ const usd = (n: number | null | undefined) => (n === null || n === undefined ? "
 
 /** Runs one photo through POST /api/condition by URL (photo screen first, then the measurement). */
 async function gradeOne(p: GradePick): Promise<Result> {
-  const res = await fetch("/api/condition", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl: p.imageUrl }) });
+  const res = await fetch("/api/condition", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ imageUrl: p.gradeUrl }) });
   const body = await res.json().catch(() => null);
   if (!res.ok) return { status: "error", message: (body && typeof body.error === "string" && body.error) || `Check failed (${res.status})` };
   const verdict = String(body?.verdict ?? "cant_judge"), summary = String(body?.summary ?? "");
