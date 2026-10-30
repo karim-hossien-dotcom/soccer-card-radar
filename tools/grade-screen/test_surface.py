@@ -68,7 +68,7 @@ CARD = design()
 
 
 def run(hm, angle=2.0):
-    return sf.analyse(enc(place(CARD, angle)), enc(place(raking(CARD, hm), angle + 0.4)))
+    return sf.analyse_lights(enc(place(CARD, angle)), [("left", enc(place(raking(CARD, hm), angle + 0.4)), None)])
 
 
 def test_clean_card_has_no_findings():
@@ -121,7 +121,7 @@ def test_four_lights_one_finding_per_defect_and_clean_stays_clean():
 
 def test_no_card_is_cant_judge():
     blank = enc(np.full((800, 600, 3), 30, np.uint8))
-    assert sf.analyse(blank, blank)["status"] == "cant_judge"
+    assert sf.analyse_lights(blank, [("left", blank, None)])["status"] == "cant_judge"
 
 
 if __name__ == "__main__":
