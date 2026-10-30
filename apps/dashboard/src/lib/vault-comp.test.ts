@@ -15,6 +15,9 @@ const mainoo = [
 test("max-bid inputs: same-date value_used wins over the sale median (Mainoo 19/49 raw 338.95, not 529)", () => {
   assert.deepEqual(maxBidInputs(mainoo), { raw: 338.95, psa9: 206, psa10: 618 });
   assert.equal(vaultComp(mainoo, "raw")?.price, 338.95);
+  // Same result whatever the row order (sort is stable, so this checks the tie-break itself).
+  assert.deepEqual(maxBidInputs([...mainoo].reverse()), { raw: 338.95, psa9: 206, psa10: 618 });
+  assert.equal(vaultComp([...mainoo].reverse(), "raw")?.price, 338.95);
 });
 
 test("max-bid inputs: newest comp wins, owner overrides count", () => {
