@@ -31,6 +31,7 @@ PX = 10            # px per mm in the normalised card
 CW, CH = 63 * PX, 88 * PX
 MARGIN = 3 * PX    # keep 3 mm of backdrop around the card so cut edges and corners can be inspected
 PROVISIONAL = "thresholds provisional until calibrated against returned PSA grades"
+OUTLINE_RETAKE = "outline isn't the card's edge: retake on a plain contrasting background with all four edges visible"
 
 # Centering tolerances: worse side of the larger split, front / back.
 PSA_CENT = [(10, 0.55, 0.75), (9, 0.60, 0.90), (8, 0.65, 0.90), (7, 0.70, 0.90)]
@@ -333,8 +334,13 @@ def side_report(path, hint=None, straight=None):
     borders, flat = bd.measure(img, q)
     if straight is not None and flat is not None:
         straight["img"] = flat
-    return {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders,
-            "edges": edge_checks(card), "corners": corner_checks(card), "surface": surface_checks(card)}, None
+    rep = {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders}
+    shape = bd.outline_shape_error(q)
+    if shape:  # G9a: the outline is a mat, shadow or holder, not the cut edge: edges/corners/stains on it are meaningless
+        rep.update(edges=[], corners=[], surface={}, outline_error=shape)
+    else:
+        rep.update(edges=edge_checks(card), corners=corner_checks(card), surface=surface_checks(card))
+    return rep, None
 
 
 def assess(front, back=None, holder=False, hints=None):
@@ -374,9 +380,14 @@ def assess_with_centering(front, back=None, holder=False, hints=None, straight=N
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front photo not usable: no ceiling"], "look": []}
     elif holder:  # centering alone says nothing about corners, edges or surface: no ceiling, centering reported below
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["in a holder: only centering checked, no condition ceiling"], "look": []}
+    elif f.get("outline_error"):  # nothing on the front was measured on the card itself
+        ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front outline isn't the card's edge: no ceiling"], "look": []}
     else:
         ceil = grade_ceilings(f, b, cent)
     cant = [{"point": p, "graders": g, "why": w} for p, g, w in CANT_JUDGE]
+    for name, rep in (("front", f), ("back", b)):
+        if rep and rep.get("outline_error"):
+            cant.append({"point": f"{name} edges, corners and stains", "graders": "PSA, BGS, TAG", "why": OUTLINE_RETAKE + f" ({rep['outline_error']})"})
     for w in cent_why:
         cant.append({"point": "centering (border lines)", "graders": "PSA, BGS, TAG", "why": w + " - check or set the lines on the confirm screen"})
     if ferr: cant.append({"point": "front (all points)", "graders": "all", "why": ferr})

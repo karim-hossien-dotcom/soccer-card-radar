@@ -263,15 +263,25 @@ def centering(lines):
     return out
 
 
+def outline_shape_error(quad):
+    """None when the outline has a card's proportions, else why not (a slab, toploader, mat or shadow was traced)."""
+    q = order(np.float32(quad))
+    sides_px = [np.linalg.norm(q[(k + 1) % 4] - q[k]) for k in range(4)]
+    aspect = (sides_px[0] + sides_px[2]) / (sides_px[1] + sides_px[3])
+    if abs(aspect / (CARD_W / CARD_H) - 1) > MAX_ASPECT_ERR:
+        return f"outline is {aspect:.3f} wide/tall, a card is {CARD_W / CARD_H:.3f}: probably a slab, toploader or another object, not the card's cut edge"
+    return None
+
+
 def measure(img, quad):
     """Everything the confirm screen needs. img: full-resolution BGR photo; quad: rough corners in image px."""
     q = order(np.float32(quad))
     sides_px = [np.linalg.norm(q[(k + 1) % 4] - q[k]) for k in range(4)]
     ppm = float((sides_px[0] + sides_px[2]) / 2 / CARD_W + (sides_px[1] + sides_px[3]) / 2 / CARD_H) / 2
     out = {"status": "refused", "px_per_mm": round(ppm, 1), "outer": None, "inner": {}, "alternates": {}, "centering": {}, "why": []}
-    aspect = (sides_px[0] + sides_px[2]) / (sides_px[1] + sides_px[3])
-    if abs(aspect / (CARD_W / CARD_H) - 1) > MAX_ASPECT_ERR:
-        out["why"].append(f"outline is {aspect:.3f} wide/tall, a card is {CARD_W / CARD_H:.3f}: probably a slab, toploader or another object, not the card's cut edge")
+    shape = outline_shape_error(q)
+    if shape:
+        out["why"].append(shape)
         return out, None
     if ppm < MIN_PPM:
         out["why"].append(f"photo has {ppm:.1f} px per mm; centering needs {MIN_PPM:.0f}+ (move closer or use the full-size photo)")

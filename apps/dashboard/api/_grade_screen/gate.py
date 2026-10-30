@@ -58,6 +58,8 @@ def summarize(gate, report):
     if not report.get("front"):
         why = next((c["why"] for c in report.get("cant_judge") or [] if c.get("point") == "front (all points)"), None)
         return "cant_judge", f"Can't judge: {why}" if why else "Can't judge: card outline not found in the photo"
+    if report["front"].get("outline_error"):
+        return "cant_judge", "Can't judge: outline isn't the card's edge (retake on a plain contrasting background with all four edges visible)"
     cent = (report.get("centering") or {}).get("front_lr")
     cent_s = f" (centering {cent})" if cent else ""
     if ceil.get("psa") is not None and ceil["psa"] < 10:

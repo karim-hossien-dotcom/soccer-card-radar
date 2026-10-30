@@ -57,6 +57,47 @@ def test_corner_whitening():
     assert tl["whitening_pct"] > 3
 
 
+def mat_photo():
+    """G9a: card on a black mat (0.819 wide/tall) with light dust near the mat's edge, on a light table. The mat is the
+    outline found (and the one a phone hint can give); before the fix its dust read as chipping and capped PSA 8."""
+    rng = np.random.default_rng(3)
+    img = np.full((130 * S, 100 * S, 3), 175, np.uint8)
+    mh = 98; mw = 0.819 * mh
+    mx0, my0 = (100 - mw) / 2, (130 - mh) / 2
+    cv2.rectangle(img, (int(mx0 * S), int(my0 * S)), (int((mx0 + mw) * S), int((my0 + mh) * S)), (12, 12, 12), -1)
+    for _ in range(400):
+        side, t, d = rng.integers(4), rng.uniform(0, 1), rng.uniform(0.2, 0.7)
+        x, y = ((mx0 + d, my0 + t * mh), (mx0 + mw - d, my0 + t * mh), (mx0 + t * mw, my0 + d), (mx0 + t * mw, my0 + mh - d))[side]
+        cv2.circle(img, (int(x * S), int(y * S)), 2, (235, 235, 235), -1)
+    x0, y0, w, h = int(18.5 * S), int(21 * S), 63 * S, 88 * S
+    cv2.rectangle(img, (x0, y0), (x0 + w, y0 + h), (40, 30, 120), -1)
+    cv2.rectangle(img, (x0 + 4 * S, y0 + 4 * S), (x0 + w - 4 * S, y0 + h - 4 * S), (200, 200, 205), -1)
+    p = os.path.join(tempfile.mkdtemp(), "mat.png")
+    cv2.imwrite(p, img)
+    quad = [[mx0 / 100, my0 / 130], [(mx0 + mw) / 100, my0 / 130], [(mx0 + mw) / 100, (my0 + mh) / 130], [mx0 / 100, (my0 + mh) / 130]]
+    return p, quad
+
+
+def test_wrong_outline_measures_no_edges_and_sets_no_ceiling():
+    p, quad = mat_photo()
+    for hints in (None, {"front": quad}):  # outline found in the photo, or sent by the phone scanner
+        d = c.assess(p, hints=hints)
+        f = d["front"]
+        assert "0.819 wide/tall" in f["borders"]["why"][0], f["borders"]
+        assert f["edges"] == [] and f["corners"] == [] and f["surface"] == {}, f
+        assert d["ceiling"]["psa"] is None and not any("edges" in w or "corner" in w for w in d["ceiling"]["why"]), d["ceiling"]
+        cj = next(x for x in d["cant_judge"] if x["point"] == "front edges, corners and stains")
+        assert cj["why"].startswith("outline isn't the card's edge: retake on a plain contrasting background with all four edges visible"), cj
+
+
+def test_wrong_back_outline_cannot_lower_the_ceiling():
+    p, _ = mat_photo()
+    d = c.assess(fake(), p)
+    assert d["back"]["edges"] == [] and d["back"]["corners"] == []
+    assert d["ceiling"]["psa"] == 10 and not any(w.startswith("back") for w in d["ceiling"]["why"]), d["ceiling"]
+    assert any(x["point"] == "back edges, corners and stains" for x in d["cant_judge"])
+
+
 def test_holder_and_unusable_photos_never_claim_a_grade():
     h = c.assess(fake(chips=8), holder=True)
     assert h["front"]["edges"] == [] and h["ceiling"]["psa"] is None

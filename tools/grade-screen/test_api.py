@@ -154,6 +154,16 @@ def test_holder_flag_means_no_ceiling():
     assert status == 200 and r["holder"] is True and r["ceiling"]["psa"] is None and r["front"]["edges"] == []
 
 
+def test_wrong_outline_is_cant_judge_not_a_ceiling():
+    """G9a: card on a black mat whose outline is 0.819 wide/tall: no PSA 8 from mat dust, summary says retake."""
+    p, quad = t.mat_photo()
+    h, body = form(front=open(p, "rb").read(), front_quad=api.json.dumps(quad))
+    status, r = api.handle(h, body, env=ENV)
+    assert status == 200 and r["ceiling"]["psa"] is None and r["front"]["edges"] == [], r["ceiling"]
+    assert r["verdict"] == "cant_judge" and "outline isn't the card's edge" in r["summary"], r["summary"]
+    assert any(x["point"] == "front edges, corners and stains" for x in r["cant_judge"])
+
+
 def test_centering_grades_tolerances():
     g = api.centering_grades({"front_lr": 0.58, "back_lr": 0.85})
     assert g["front_lr"] == {"split": "58/42", "psa": 9, "psa_tolerance": "60/40", "bgs": 8, "bgs_tolerance": "60/40"}
