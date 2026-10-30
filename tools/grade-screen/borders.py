@@ -15,6 +15,7 @@ All distances are in mm on a 63.5 x 88.9 mm card.
 """
 import cv2
 import numpy as np
+from centering import order
 
 CARD_W, CARD_H = 63.5, 88.9
 MIN_PPM = 12.0          # tested: border error <= 0.04 mm and split error < 0.5 point down to 10.5 px/mm on synthetic cards
@@ -25,11 +26,6 @@ MAX_TILT = 0.02         # inner line slope vs the cut edge (mm per mm): steeper 
 STEP_DE = 9.0
 MAX_ASPECT_ERR = 0.06    # outline width/height vs a real card (63.5/88.9); a PSA slab is ~0.60, a card 0.714           # minimum colour step (delta E) for an inner border candidate
 SIDES = ("top", "right", "bottom", "left")
-
-
-def order(p):
-    s, d = p.sum(1), np.diff(p, axis=1).ravel()
-    return np.array([p[np.argmin(s)], p[np.argmin(d)], p[np.argmax(s)], p[np.argmax(d)]], np.float32)
 
 
 def _lab(img):

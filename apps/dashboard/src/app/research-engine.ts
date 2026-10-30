@@ -32,12 +32,6 @@ export interface ResearchAction {
   photo: string; // player headshot URL
 }
 
-export const signalStyles: Record<Signal, { color: string; bg: string }> = {
-  BUY: { color: "#fff", bg: "#0d9f4f" },
-  SELL: { color: "#fff", bg: "#dc2626" },
-  HOLD: { color: "#fff", bg: "#7c3aed" },
-};
-
 export function getResearchActions(): ResearchAction[] {
   return [
     // ─── Lane 1: Rookie Scout ──────────────────────────────────────────────

@@ -219,20 +219,6 @@ def overlay(raking, finds, width=420):
     return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else None
 
 
-def analyse(flat_src, raking_src, flat_hint=None, raking_hint=None):
-    """flat_src / raking_src: paths or image bytes of the same card side, one straight-on and one under raking light.
-    *_hint: phone-scanner corners (fractions of the photo)."""
-    flat, e1 = straighten(flat_src, flat_hint)
-    raking, e2 = straighten(raking_src, raking_hint)
-    if flat is None or raking is None:
-        return {"status": "cant_judge", "why": f"side-light photo: {e2 or e1}", "findings": [], "overlay": None}
-    z, mask = anomaly_map(flat, raking)
-    if z is None:
-        return {"status": "cant_judge", "why": "too much glare or black in the side-light photo", "findings": [], "overlay": None}
-    finds = findings_from(z)
-    return {"status": "measured", "why": None, "findings": finds, "overlay": overlay(raking, finds), "coverage": round(float(mask.mean()), 2)}
-
-
 LIGHTS = ("left", "top", "right", "bottom")
 
 
@@ -291,4 +277,4 @@ def straight_jpeg(src, width=900, hint=None):
 
 if __name__ == "__main__":
     import json, sys
-    print(json.dumps({k: v for k, v in analyse(sys.argv[1], sys.argv[2]).items() if k != "overlay"}, indent=1))
+    print(json.dumps({k: v for k, v in analyse_lights(sys.argv[1], [("raking", sys.argv[2], None)]).items() if k != "overlay"}, indent=1))

@@ -80,26 +80,8 @@ def locate(path, hint=None):
     return img, q, None
 
 
-def load(path, hint=None):
-    """Normalised card with a backdrop margin, plus how many real pixels per mm the photo had."""
-    img, q, err = locate(path, hint)
-    if q is None:
-        return None, err, 0.0
-    w = np.linalg.norm(cen.order(q)[1] - cen.order(q)[0])
-    return warp_with_margin(img, q), None, w / 63.0
-
-
 def lab(img):
     return cv2.cvtColor(img, cv2.COLOR_BGR2LAB).astype(np.float32)
-
-
-def border_ref(L, side):
-    """Median lightness of the printed border 1.5-3 mm in from one cut edge (corners excluded)."""
-    a, b, c = MARGIN + int(1.5 * PX), MARGIN + 3 * PX, 6 * PX
-    if side == "top":    return float(np.median(L[a:b, MARGIN + c: MARGIN + CW - c]))
-    if side == "bottom": return float(np.median(L[MARGIN + CH - b: MARGIN + CH - a, MARGIN + c: MARGIN + CW - c]))
-    if side == "left":   return float(np.median(L[MARGIN + c: MARGIN + CH - c, a:b]))
-    return float(np.median(L[MARGIN + c: MARGIN + CH - c, MARGIN + CW - b: MARGIN + CW - a]))
 
 
 def edge_band(L, side, depth_mm=0.8):
@@ -355,17 +337,17 @@ def side_report(path, hint=None, straight=None):
             "edges": edge_checks(card), "corners": corner_checks(card), "surface": surface_checks(card)}, None
 
 
-def assess(front, back=None, border_mm=None, holder=False, hints=None):
+def assess(front, back=None, holder=False, hints=None):
     """front / back: file paths or raw image bytes (jpg, png, webp).
     holder=True: card photographed in a sleeve, toploader, magnetic case or slab. Plastic hides and fakes edge and
     corner detail, so only centering is reported."""
-    return assess_with_centering(front, back, border_mm, holder, hints)[0]
+    return assess_with_centering(front, back, holder, hints)[0]
 
 
-def assess_with_centering(front, back=None, border_mm=None, holder=False, hints=None, straight=None):
+def assess_with_centering(front, back=None, holder=False, hints=None, straight=None):
     """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / front_tb / back_lr / back_tb,
-    measured from the printed border lines (borders.py) at the worst point along each side. border_mm is unused (kept
-    for old callers). straight: optional dict that receives {"front": {"img"}, "back": {"img"}} straightened cards.
+    measured from the printed border lines (borders.py) at the worst point along each side.
+    straight: optional dict that receives {"front": {"img"}, "back": {"img"}} straightened cards.
     hints: {"front": corners, "back": corners} from the phone scanner (fractions of the photo)."""
     hints = hints or {}
     straight = straight if straight is not None else {}
