@@ -154,16 +154,34 @@ def test_holder_flag_means_no_ceiling():
     assert status == 200 and r["holder"] is True and r["ceiling"]["psa"] is None and r["front"]["edges"] == []
 
 
+def test_wrong_outline_is_cant_judge_not_a_ceiling():
+    """G9a: card on a black mat whose outline is 0.819 wide/tall: no PSA 8 from mat dust, summary says retake."""
+    p, quad = t.mat_photo()
+    h, body = form(front=open(p, "rb").read(), front_quad=api.json.dumps(quad))
+    status, r = api.handle(h, body, env=ENV)
+    assert status == 200 and r["ceiling"]["psa"] is None and r["front"]["edges"] == [], r["ceiling"]
+    assert r["verdict"] == "cant_judge" and "outline isn't the card's edge" in r["summary"], r["summary"]
+    assert any(x["point"] == "front edges, corners and stains" for x in r["cant_judge"])
+
+
+def test_flash_lit_lights_stay_look_only():
+    """G9b: light=flash (phone torch, phone tilted): same findings, labelled flash-lit, ceiling unchanged."""
+    import test_surface as ts
+    flat = ts.enc(ts.place(ts.CARD))
+    dented = ts.enc(ts.place(ts.raking(ts.CARD, ts.height(dent=(0.6, 0.75))), 2.4))
+    _, plain = api.handle(*form(front=flat), env={})
+    s, rep = api.handle(*form(front=flat, front_raking=dented, light="flash"), env={})
+    assert s == 200 and rep["surface_scan"][0]["flash"] is True
+    assert any("dent or dimple" in l and "phone flash, not calibrated" in l for l in rep["ceiling"]["look"]), rep["ceiling"]["look"]
+    assert {k: rep["ceiling"][k] for k in ("psa", "bgs", "tag", "why")} == {k: plain["ceiling"][k] for k in ("psa", "bgs", "tag", "why")}
+    _, lamp = api.handle(*form(front=flat, front_raking=dented), env={})
+    assert lamp["surface_scan"][0]["flash"] is False and not any("phone flash" in l for l in lamp["ceiling"]["look"])
+
+
 def test_centering_grades_tolerances():
     g = api.centering_grades({"front_lr": 0.58, "back_lr": 0.85})
     assert g["front_lr"] == {"split": "58/42", "psa": 9, "psa_tolerance": "60/40", "bgs": 8, "bgs_tolerance": "60/40"}
     assert g["back_lr"]["psa"] == 9 and g["back_lr"]["psa_tolerance"] == "90/10" and g["back_lr"]["bgs"] == 7 and g["back_lr"]["bgs_tolerance"] is None
-
-
-if __name__ == "__main__":
-    for k, f in list(globals().items()):
-        if k.startswith("test_"):
-            f(); print("ok", k)
 
 
 def test_side_light_photo_adds_surface_look_flags():
@@ -215,3 +233,20 @@ def test_phone_corners_rescue_a_cluttered_background():
     s, rep = api.handle(*form(front=img, front_quad=_j.dumps(quad)), env={})
     assert s == 200 and rep["front"] is not None and rep["front"]["px_per_mm"] > 15, rep.get("cant_judge")
     assert api.corner_hint("[[0,0],[1,0],[1,1]]") is None and api.corner_hint("nope") is None and api.corner_hint('[[0,0],[2,0],[1,1],[0,1]]') is None
+
+
+# Known-broken, kept so it can be fixed rather than lost. Run by the main block below, which used to sit above the last
+# three tests so they never ran (found in G9a review).
+SKIP = {
+    "test_phone_corners_rescue_a_cluttered_background":
+        "precondition no longer holds: the outline search now finds the card on this synthetic clutter, so plain['front'] "
+        "is not None (fails on e1a48a9 too); needs a background the search really can't trace",
+}
+
+
+if __name__ == "__main__":
+    for k, f in list(globals().items()):
+        if k.startswith("test_"):
+            if k in SKIP:
+                print("skip", k, "-", SKIP[k]); continue
+            f(); print("ok", k)

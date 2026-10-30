@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Scanner as ScanicScanner } from "scanic";
 import { parseReport, type ConditionReport } from "@/lib/condition-report";
+import { hasTorch, torchWanted, setTorch, lightIntro, forTilt, lightField } from "@/lib/torch";
 import { shape, pixels, moved, judge, signature, change, smooth, toFractions, cropBox, NEEDS_CHANGE, LIMITS, CARD_RATIO, type Quad } from "@/lib/scan-checks";
 import { shrink, ReportView } from "./check-panel";
 import s from "./scanner.module.css";
@@ -11,18 +12,18 @@ type Light = "lightL" | "lightT" | "lightR" | "lightB";
 type Shot = "front" | Light | "back";
 type Step = Shot | "checking" | "done" | "error";
 const LIGHT_SIDE: Record<Light, string> = { lightL: "left", lightT: "top", lightR: "right", lightB: "bottom" };
-const lightIntro = (side: string, first: boolean) =>
-  `${first ? "Now light it from the side: hold a lamp or a second phone's flashlight low" : "Move the light low"} on the card's ${side} side, so it skims across the card`;
 const SHOTS: { step: Shot; tag: string; intro: string; skip?: string; grace: number }[] = [
   { step: "front", tag: "1 of 6 · Front", intro: "Put the card on a dark, plain surface inside the frame", grace: 0 },
   ...(Object.keys(LIGHT_SIDE) as Light[]).map((l, i) => ({
-    step: l, tag: `${i + 2} of 6 · Light from the ${LIGHT_SIDE[l]}`, intro: lightIntro(LIGHT_SIDE[l], i === 0),
+    step: l, tag: `${i + 2} of 6 · Light from the ${LIGHT_SIDE[l]}`, intro: lightIntro(LIGHT_SIDE[l], i === 0, false),
     skip: i === 0 ? "Skip side lights" : "Skip this light", grace: i === 0 ? -16 : -10,
   })),
   { step: "back", tag: "6 of 6 · Back", intro: "Flip the card over", skip: "Skip back", grace: -8 },
 ];
 const isLight = (x: Step): x is Light => x in LIGHT_SIDE;
 const isShot = (x: Step): x is Shot => x === "front" || x === "back" || isLight(x);
+/** G9b: light steps tell you to tilt the phone when its flash is lit, else to hold a lamp (wording unchanged). */
+const introOf = (x: { step: Shot; intro: string }, flash: boolean) => (isLight(x.step) ? lightIntro(LIGHT_SIDE[x.step], x.step === "lightL", flash) : x.intro);
 // Vercel caps a request at 4.5 MB: front and back cropped to the card at up to 2400 px (~24 px/mm, enough to measure
 // centering), each side light at 1200 px (the surface check works at 12 px/mm). ~3.8 MB for all six.
 const UPLOAD_LONG_SIDE = (shot: Shot) => (isLight(shot) ? 1200 : 2400);
@@ -118,6 +119,14 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
   const [err, setErr] = useState<string | null>(null);
   const [report, setReport] = useState<ConditionReport | null>(null);
   const [thumbs, setThumbs] = useState<string[]>([]);
+  // G9b: phone flash for the side-light steps. torchOk = camera has one; torchOn = the Flash toggle.
+  const [torchOk, setTorchOk] = useState(false);
+  const [torchOn, setTorchOn] = useState(true);
+  const lit = useRef(false);                                     // torch is lit right now
+  const litShots = useRef<Partial<Record<Light, boolean>>>({});  // which light shots were taken with it
+  const flashFor = useRef(false);                                // light-step wording: flash available and on
+  flashFor.current = torchOk && torchOn;
+  const track = () => stream.current?.getVideoTracks()[0] ?? null;
 
   const go = (x: Step) => { stepRef.current = x; setStep(x); };
 
@@ -138,6 +147,8 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
         if (f.quad) fd.append(qname, JSON.stringify(f.quad));
       }
       fd.append("holder", "0");
+      const light = lightField(Object.values(litShots.current).some(Boolean));
+      if (light) fd.append("light", light); // flash-lit findings stay look-only on the server
       const repeatJobs = extras.current.map(async (x) => {
         const f = await fit(x.blob, "front", x.quad), r = new FormData();
         r.append("front", f.blob, "front-repeat.jpg");
@@ -166,7 +177,7 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
     const i = SHOTS.findIndex((x) => x.step === cur);
     const nx = SHOTS[i + 1];
     if (!nx) { await submit(); return; }
-    go(nx.step); setHint(nx.intro);
+    go(nx.step); setHint(introOf(nx, flashFor.current));
     steady.current = nx.grace; // time to flip the card or set up the light before the next auto-capture
   }, [submit]);
 
@@ -182,6 +193,7 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
       const cur = stepRef.current;
       if (!isShot(cur)) return;
       shots.current[cur] = blob;
+      if (isLight(cur)) litShots.current[cur] = lit.current;
       quads.current[cur] = await cornersOf(blob, scanner.current, v, preview);
       if (cur === "front") {
         extras.current = [];
@@ -224,13 +236,14 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
         if (q) for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = (img.data[j] * 77 + img.data[j + 1] * 150 + img.data[j + 2] * 29) >> 8;
         const px = q ? pixels(gray, w, h, q) : null;
         if (px && isLight(stepRef.current)) px.glare = 0; // side light is meant to make highlights
-        const sh = q ? shape(q, w, h) : null;
+        const sh0 = q ? shape(q, w, h) : null;
+        const sh = sh0 && isLight(stepRef.current) && lit.current ? forTilt(sh0) : sh0; // the flash shot is taken tilted
         let verdict = q ? judge(q, sh, px) : judge(null, null, null);
         sigNow.current = q ? signature(gray, w, h, q) : null;
         // Don't re-shoot the same scene: the side-light shot needs the light changed, the back shot needs the card flipped.
         const cur = stepRef.current;
         if (verdict.ok && cur !== "front" && sigNow.current && sigShot.current && change(sigNow.current, sigShot.current) < NEEDS_CHANGE[isLight(cur) ? "light" : "back"])
-          verdict = { ok: false, hint: isLight(cur) ? `Move the light to the card's ${LIGHT_SIDE[cur]} side: it should look different from the last photo` : "Flip the card over" };
+          verdict = { ok: false, hint: isLight(cur) ? `${lit.current ? "Tilt the phone over" : "Move the light to"} the card's ${LIGHT_SIDE[cur]} ${lit.current ? "edge" : "side"}: it should look different from the last photo` : "Flip the card over" };
         const mv = q && prev.current ? moved(prev.current, q, w, h) : 0;
         const still = !!q && mv < LIMITS.steadyMove;
         prev.current = q;
@@ -258,6 +271,7 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
         });
         if (!live) { ms.getTracks().forEach((t) => t.stop()); return; }
         stream.current = ms;
+        setTorchOk(hasTorch(ms.getVideoTracks()[0]));
         if (video.current) { video.current.srcObject = ms; await video.current.play().catch(() => {}); }
         const { Scanner } = await import("scanic");
         const sc = new Scanner();
@@ -273,6 +287,7 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
 
     return () => {
       live = false; window.clearTimeout(timer);
+      void setTorch(stream.current?.getVideoTracks()[0], false);
       stream.current?.getTracks().forEach((t) => t.stop());
     };
   }, [capture]);
@@ -281,8 +296,23 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
   thumbsRef.current = thumbs;
   useEffect(() => () => thumbsRef.current.forEach((u) => URL.revokeObjectURL(u)), []); // free photos when the scanner closes
 
-  const close = () => { stream.current?.getTracks().forEach((t) => t.stop()); onClose(); };
-  const restart = () => { thumbs.forEach((u) => URL.revokeObjectURL(u)); sigShot.current = null; shots.current = {}; quads.current = {}; setThumbs([]); setReport(null); setErr(null); steady.current = 0; go("front"); setHint(SHOTS[0].intro); };
+  // Flash on during the light steps (if the camera has one and the toggle is on), off for front, back and results.
+  useEffect(() => {
+    const want = torchWanted(isLight(step), torchOk, torchOn);
+    if (!torchOk) { lit.current = false; return; }
+    let cur = true;
+    setTorch(track(), want).then((ok) => { if (cur) lit.current = want && ok; });
+    return () => { cur = false; };
+  }, [step, torchOk, torchOn]);
+  const toggleTorch = () => {
+    const on = !torchOn;
+    setTorchOn(on);
+    const sh = SHOTS.find((x) => x.step === stepRef.current);
+    if (sh) setHint(introOf(sh, on && torchOk));
+  };
+
+  const close = () => { void setTorch(track(), false); stream.current?.getTracks().forEach((t) => t.stop()); onClose(); };
+  const restart = () => { thumbs.forEach((u) => URL.revokeObjectURL(u)); sigShot.current = null; shots.current = {}; litShots.current = {}; quads.current = {}; setThumbs([]); setReport(null); setErr(null); steady.current = 0; go("front"); setHint(SHOTS[0].intro); };
   const shooting = isShot(step);
   const shot = SHOTS.find((x) => x.step === step);
 
@@ -300,6 +330,9 @@ function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string })
         {flash && <div className={s.flash} />}
         <div className={s.top}>
           <span className={s.stepTag}>{shot?.tag}</span>
+          {torchOk && isLight(step) && (
+            <button type="button" className={s.ghost} onClick={toggleTorch} aria-pressed={torchOn}>Flash {torchOn ? "on" : "off"}</button>
+          )}
           <button type="button" className={s.x} onClick={close} aria-label="Close the scanner">✕</button>
         </div>
         <div className={s.bottom}>
