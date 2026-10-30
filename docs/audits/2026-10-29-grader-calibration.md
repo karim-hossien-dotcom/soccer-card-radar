@@ -53,3 +53,18 @@ Then compare the check's ceiling with the owner's call; repeat for 10 draft card
 
 Not checked (no photo): Guler Pink Wave, Guler Red Choice Scope, Ronaldo Lost Rookie, 2006 Ronaldo #169, Messi Starball Debut, Salah Topps Now #46, two unidentified Salahs, Ronaldinho Golazo, R9 Renaissance.
 Excluded: Ronaldo 2019 Sapphire Green (graded PSA 8 and cracked).
+
+## First returned grades (order 26913701, graded 2026-10-29)
+
+Predictions were recorded before grading (baseline-psa-26913695.csv, old mirror-symmetry method on the small scans).
+
+| Card | Predicted | Symmetry | PSA | Read |
+|---|---|---|---|---|
+| 2022-23 Inception UCC Emerging Stars Auto Blue 19/49 Kobbie Mainoo | warn, L/R 58/42 | 0.455 | 10 | Miss: false warn |
+| 2023-24 Topps Chrome UCC Black Lazer Auto Gold Refractor Kevin De Bruyne | warn, L/R 41/59 | 0.434 | 8, auto 9 | Direction right; 59/41 alone allows PSA 9, so the 8 came from something else (likely surface/corners on chrome) |
+
+Lessons:
+- Both fronts are full-art (no printed border). The mirror method measures the design's own asymmetry, not centering; on full-art cards it must not warn. The new border engine (borders.py) returns "needs_manual" for these instead.
+- Symmetry scores of 0.43-0.46 are too weak to trust: raise the old method's floor or retire it once borders.py has real calibration data.
+- Neither photo could be re-measured with borders.py: Vault photos are ~7 px/mm, PSA slab scans 15-19 px/mm with edges lost in the holder.
+- From now on: scan raw cards with the phone scanner, linked to the Vault card, before they go to PSA (Grading -> Centering checks).
