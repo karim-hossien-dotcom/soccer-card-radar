@@ -6,11 +6,14 @@ import type { SnipeData, BoardRow, Target, LiveListing, Decision } from "./load"
 import type { Budget } from "@/lib/budget";
 import TargetPanel from "./target-panel";
 import { findTarget, type SnipePrefill } from "@/lib/grading";
+import { GIXEN_URL, ebayItemNumber, maxText, reminderUrl } from "@/lib/gixen";
 import s from "./snipe.module.css";
 
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
 /** C2: a live price above the engine's max bid is shown but greyed out. */
 const over = (price: number | null, max: number | null) => price !== null && max !== null && price > max;
+/** The max to compare a live listing against: the approved max when the auction has one (it can be hand-set above the engine max). */
+const maxFor = (decisions: Record<string, Decision>, l: LiveListing, r: BoardRow) => (decisions[l.externalId]?.status === "approved" ? decisions[l.externalId].maxBid : r.result.maxBid);
 const short = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const agoShort = (iso: string) => {
   const h = Math.floor((Date.now() - new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z").getTime()) / 3600_000);
@@ -113,9 +116,9 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                   <td className="num">
                     {r.live.length ? (
                       <>
-                        <span className={over(r.livePrice, r.result.maxBid) ? "muted" : undefined}>{usd(r.livePrice)}</span>
+                        <span className={over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "muted" : undefined}>{usd(r.livePrice)}</span>
                         {r.live[0].screen && r.live[0].screen.verdict !== "error" && <span className={s.screenMini} data-verdict={r.live[0].screen.verdict}>{r.live[0].screen.verdict === "ceiling" ? r.live[0].screen.summary.split(":")[0] : r.live[0].screen.verdict === "no_issue" ? "No visible issue" : "Photo: can't judge"}</span>}
-                        <span className={s.small}>{over(r.livePrice, r.result.maxBid) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
+                        <span className={s.small}>{over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
                       </>
                     ) : <span className="muted">none live</span>}
                   </td>
@@ -172,8 +175,8 @@ function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRo
             {r.live.length ? (
               <ul className={s.live}>
                 {r.live.slice(0, 6).map((l, i) => (
-                  <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
-                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
+                  <li key={i} className={over(l.price, maxFor(decisions, l, r)) ? "muted" : undefined}>
+                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, maxFor(decisions, l, r)) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
                     {l.screen && <ScreenBadge s={l.screen} />}
                     <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} skipOnly={l.kind !== "auction"} />
@@ -218,6 +221,40 @@ function ScreenBadge({ s: x }: { s: NonNullable<LiveListing["screen"]> }) {
   );
 }
 
+/** C3b: copy text for the manual Gixen hand-off. Clipboard API, then a hidden-textarea fallback. */
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = async () => {
+    let done = false;
+    try { await navigator.clipboard.writeText(text); done = true; } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { done = document.execCommand("copy"); } catch { done = false; }
+      ta.remove();
+    }
+    setState(done ? "copied" : "failed");
+    setTimeout(() => setState("idle"), 1500);
+  };
+  return <button className="btn" onClick={copy} aria-label={`Copy ${label}`}>{state === "copied" ? "Copied" : state === "failed" ? "Select and copy" : "Copy"}</button>;
+}
+
+/** C3b: approved bid -> item # and max to copy, Open Gixen, calendar reminder. Links only; nothing logs in to Gixen or bids. */
+function GixenHandoff({ listing: l, card, maxBid }: { listing: LiveListing; card: string; maxBid: number }) {
+  const item = ebayItemNumber(l.externalId);
+  const reminder = reminderUrl({ card: card || l.title, maxBid, endsAt: l.endsAt, url: l.url, itemNumber: item });
+  return (
+    <>
+      Approved, max {usd(maxBid)}. Enter it in Gixen or bid by hand.
+      <span>Item # <b>{item}</b> <CopyButton text={item} label="item number" /></span>
+      <span>Max <b>{maxText(maxBid)}</b> <CopyButton text={maxText(maxBid)} label="max bid" /></span>
+      <a href={GIXEN_URL} target="_blank" rel="noopener noreferrer">Open Gixen</a>
+      {reminder && <a href={reminder} target="_blank" rel="noopener noreferrer">Add reminder</a>}
+      {" "}
+    </>
+  );
+}
+
 /** C3: approve (with a max), skip, or cancel one auction. Records the decision only; nothing bids on eBay. */
 function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly = false }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision; onDecided: (id: string, d: Decision) => void; skipOnly?: boolean }) {
   const router = useRouter();
@@ -243,7 +280,7 @@ function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly =
   if (decision && decision.status !== "cancelled") {
     return (
       <span className={s.bid} onClick={(e) => e.stopPropagation()}>
-        {decision.status === "approved" ? <>Approved, max {usd(decision.maxBid)}. Enter it in Gixen or bid by hand. </> : <>{decision.status[0].toUpperCase() + decision.status.slice(1)}. </>}
+        {decision.status === "approved" ? <GixenHandoff listing={l} card={r.target.card} maxBid={decision.maxBid} /> : <>{decision.status[0].toUpperCase() + decision.status.slice(1)}. </>}
         {decision.status === "approved" || decision.status === "skipped" ? <button className="btn" disabled={busy} onClick={() => send("cancel")}>Undo</button> : null}
         {msg && <span className="loss"> {msg}</span>}
       </span>
