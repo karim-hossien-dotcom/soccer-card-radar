@@ -14,6 +14,7 @@ export type CollectionCard = {
   qty: number;
   dateAdded: string | null;
   imagePath: string | null;
+  photoSourceFront: string | null;
   notes: string | null;
   submissionId: string | null;
   cost: number | null;
@@ -46,6 +47,7 @@ const latest = (rows: CompRow[]) => [...rows].sort(byRecency)[0];
 type CardRow = {
   id: string; status: CardStatus; item: string; player: string | null; grader: string | null; grade: string | null;
   cert: string | null; qty: number; submissionId: string | null; dateAdded: string | null; imagePath: string | null; notes: string | null;
+  photoSourceFront?: string | null; // full photo of this copy for grading (seller's listing photo); imagePath is the card-only crop
 };
 export type RawRows = {
   cards: CardRow[];
@@ -157,6 +159,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
       qty: card.qty,
       dateAdded: card.dateAdded,
       imagePath: card.imagePath,
+      photoSourceFront: card.photoSourceFront ?? null,
       notes: card.notes,
       submissionId: card.submissionId,
       cost,

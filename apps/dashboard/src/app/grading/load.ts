@@ -4,8 +4,9 @@ import { buildGrading, type Grading, type Submission } from "@/lib/grading";
 import { loadSnipe, isGradedTarget } from "../snipe/load";
 
 /** G4: what can be picked and graded from a photo. */
+/** imageUrl: what the tile shows; gradeUrl: the photo the check runs on (the seller's full photo when saved). */
 export type GradePick = {
-  key: string; kind: "vault" | "listing"; imageUrl: string; player: string; title: string;
+  key: string; kind: "vault" | "listing"; imageUrl: string; gradeUrl: string; player: string; title: string;
   value: number | null; cost: number | null; price: number | null; maxBid: number | null; url: string | null;
   hint: string | null; prior: { verdict: string; summary: string } | null;
 };
@@ -45,7 +46,7 @@ export async function loadGrading(): Promise<GradingData> {
   const vault: GradePick[] = cards
     .filter((c) => c.status === "raw" && c.imagePath)
     .map((c) => ({
-      key: `v:${c.id}`, kind: "vault" as const, imageUrl: c.imagePath!, player: c.player, title: c.item,
+      key: `v:${c.id}`, kind: "vault" as const, imageUrl: c.imagePath!, gradeUrl: c.photoSourceFront ?? c.imagePath!, player: c.player, title: c.item,
       value: c.valueNow, cost: c.cost, price: null, maxBid: null, url: null,
       hint: c.decision?.startsWith("Grade") ? c.decision : null, prior: null,
     }))
@@ -53,7 +54,7 @@ export async function loadGrading(): Promise<GradingData> {
   const listings: GradePick[] = (snipe?.rows ?? [])
     .filter((r) => !isGradedTarget(r.target))
     .flatMap((r) => r.live.filter((l) => l.imageUrl).map((l) => ({
-      key: `l:${l.externalId}`, kind: "listing" as const, imageUrl: l.imageUrl!, player: r.player, title: l.title,
+      key: `l:${l.externalId}`, kind: "listing" as const, imageUrl: l.imageUrl!, gradeUrl: l.imageUrl!, player: r.player, title: l.title,
       value: r.target.raw, cost: null, price: l.price, maxBid: r.result.maxBid, url: l.url, hint: r.target.card,
       prior: l.screen ? { verdict: l.screen.verdict, summary: l.screen.summary } : null,
     })));
