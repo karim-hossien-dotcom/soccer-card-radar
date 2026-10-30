@@ -1,6 +1,8 @@
 import { dealRows, scanStatus } from "../deal-rows";
 import Freshness, { isFresh } from "../freshness";
 import { getResearchActions } from "../research-engine";
+import { loadSnipe } from "../snipe/load";
+import PlayerFormTable from "../player-form";
 
 export const dynamic = "force-dynamic";
 
@@ -105,7 +107,7 @@ const LANE: Record<string, string> = { rookie: "Rookie", steal: "Star", legacy: 
 const trend = (t: number | null) => (t === null ? <span className="muted">—</span> : <span className={t < 0 ? "loss" : "gain"}>{t >= 0 ? "+" : "−"}{Math.abs(t).toFixed(0)}%</span>);
 
 export default async function DipsPage() {
-  const [{ rows, warning }, status] = await Promise.all([loadDips(), scanStatus()]);
+  const [{ rows, warning }, status, snipe] = await Promise.all([loadDips(), scanStatus(), loadSnipe().catch(() => null)]);
 
   return (
     <>
@@ -173,6 +175,7 @@ export default async function DipsPage() {
           <p>Long-run comparisons need accumulated weekly history; a trend view follows after about 12 weeks of snapshots.</p>
         </div>
       </details>
+      {snipe && <PlayerFormTable players={snipe.players} />}
     </>
   );
 }

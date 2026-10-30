@@ -6,25 +6,18 @@ import { compTemplate, parseCompPaste } from "@soccer-card-radar/shared";
 import type { CollectionCard } from "./load";
 import s from "./collection.module.css";
 
-const TOKEN_KEY = "scr.adminToken";
 const usd = (n: number) => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
-const store = {
-  get: () => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } },
-  set: (v: string) => { try { localStorage.setItem(TOKEN_KEY, v); } catch { /* private mode: keep in memory only */ } },
-};
 
 /** A4: weekly Card Ladder entry (copy template -> fill prices -> paste -> save) and PSA pop refresh. */
 export default function CompsPanel({ cards, inView, onClose }: { cards: CollectionCard[]; inView: CollectionCard[]; onClose: () => void }) {
   const router = useRouter();
   const ref = useRef<HTMLDivElement>(null);
   const [text, setText] = useState("");
-  const [token, setToken] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const today = new Date().toISOString().slice(0, 10);
 
   useEffect(() => {
-    setToken(store.get());
     ref.current?.focus();
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", k);
@@ -49,8 +42,7 @@ export default function CompsPanel({ cards, inView, onClose }: { cards: Collecti
   };
 
   const call = async (url: string, body?: unknown) => {
-    store.set(token);
-    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-admin-token": token }, body: body ? JSON.stringify(body) : undefined });
+    const res = await fetch(url, { method: "POST", headers: { "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
     return json;
@@ -89,7 +81,7 @@ export default function CompsPanel({ cards, inView, onClose }: { cards: Collecti
         <p className={s.note}>Copy the template for the cards in view, add this week&apos;s Card Ladder prices in the &quot;new price&quot; column, then paste the sheet back. Rows without a new price are ignored.</p>
         <div className={s.row}>
           <button className={s.btn} onClick={copyTemplate}>Copy template ({inView.filter((c) => c.status !== "sealed").length} cards)</button>
-          <button className={s.btn} onClick={refreshPsa} disabled={busy || !token}>Refresh PSA pop</button>
+          <button className={s.btn} onClick={refreshPsa} disabled={busy}>Refresh PSA pop</button>
         </div>
         <textarea className={s.paste} aria-label="Paste comps" placeholder={"Paste the filled template, or lines like:\nref, grade, price[, sales][, YYYY-MM-DD]\n6f1c2a9e, PSA 10, 250, 4"} value={text} onChange={(e) => setText(e.target.value)} rows={8} spellCheck={false} />
         {parsed && (
@@ -119,8 +111,7 @@ export default function CompsPanel({ cards, inView, onClose }: { cards: Collecti
             )}
           </>
         )}
-        <label className={s.tok}>Admin token <input type="password" autoComplete="off" value={token} onChange={(e) => setToken(e.target.value)} placeholder="ADMIN_TOKEN from Render" /></label>
-        <button className={`${s.btn} ${s.primary}`} onClick={save} disabled={busy || !token || !parsed?.rows.length}>
+        <button className={`${s.btn} ${s.primary}`} onClick={save} disabled={busy || !parsed?.rows.length}>
           {busy ? "Working…" : `Save ${parsed?.rows.length ?? 0} comps`}
         </button>
         {msg && <p role="status" className={msg.ok ? s.okMsg : s.errMsg}>{msg.text}</p>}
