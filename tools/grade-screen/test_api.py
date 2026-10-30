@@ -164,6 +164,20 @@ def test_wrong_outline_is_cant_judge_not_a_ceiling():
     assert any(x["point"] == "front edges, corners and stains" for x in r["cant_judge"])
 
 
+def test_flash_lit_lights_stay_look_only():
+    """G9b: light=flash (phone torch, phone tilted): same findings, labelled flash-lit, ceiling unchanged."""
+    import test_surface as ts
+    flat = ts.enc(ts.place(ts.CARD))
+    dented = ts.enc(ts.place(ts.raking(ts.CARD, ts.height(dent=(0.6, 0.75))), 2.4))
+    _, plain = api.handle(*form(front=flat), env={})
+    s, rep = api.handle(*form(front=flat, front_raking=dented, light="flash"), env={})
+    assert s == 200 and rep["surface_scan"][0]["flash"] is True
+    assert any("dent or dimple" in l and "phone flash, not calibrated" in l for l in rep["ceiling"]["look"]), rep["ceiling"]["look"]
+    assert {k: rep["ceiling"][k] for k in ("psa", "bgs", "tag", "why")} == {k: plain["ceiling"][k] for k in ("psa", "bgs", "tag", "why")}
+    _, lamp = api.handle(*form(front=flat, front_raking=dented), env={})
+    assert lamp["surface_scan"][0]["flash"] is False and not any("phone flash" in l for l in lamp["ceiling"]["look"])
+
+
 def test_centering_grades_tolerances():
     g = api.centering_grades({"front_lr": 0.58, "back_lr": 0.85})
     assert g["front_lr"] == {"split": "58/42", "psa": 9, "psa_tolerance": "60/40", "bgs": 8, "bgs_tolerance": "60/40"}

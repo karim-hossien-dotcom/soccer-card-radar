@@ -9,6 +9,8 @@ and `holder` ("1" when the card is in a sleeve, toploader, magnetic case or slab
 `back_raking`: the same side under low side light, for the surface check (dents, creases, scratches): look flags
 only, they never lower the ceiling. Optional `front_quad` / `back_quad` / `*_raking_quad`: the card's corners as found
 by the phone scanner, JSON [[x, y] x 4] in fractions of the photo; used instead of searching for the outline.
+Optional `light` = "flash": the side-light photos were lit by the phone's own flash, phone tilted (G9b); their findings
+are labelled as flash-lit and stay look flags (never lower the ceiling) until calibrated.
 The vendored copy of the check lives in api/_grade_screen (kept identical by tools/grade-screen/sync_vercel.py).
 """
 import http.cookies, json, os, sys, urllib.parse
@@ -119,6 +121,7 @@ def handle(headers, body, env=os.environ):
         raking = {"front": b"", "back": b""}
         extra_lights = {}
         hints = {}
+        flash = False
         if not media_type(front):
             return 415, {"error": "That photo is not a jpg, png or webp"}
         key = env.get("ANTHROPIC_API_KEY")
@@ -154,6 +157,7 @@ def handle(headers, body, env=os.environ):
             if image_kind(data) is None:
                 return 415, {"error": f"{label} photo must be a jpg, png or webp"}
         holder = (fields.get("holder") or b"").strip().lower() in (b"1", b"true", b"on", b"yes")
+        flash = (fields.get("light") or b"").strip().lower() == b"flash"
     if gate is not None and not usable(gate):
         verdict, summary = summarize(gate, None)
         return 200, {"gate": gate, "verdict": verdict, "summary": summary, "measured": False}
@@ -174,9 +178,12 @@ def handle(headers, body, env=os.environ):
     if not holder and (raking["front"] or raking["back"] or any(extra_lights.values())):
         report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints, extra_lights)
         for s in report["surface_scan"]:
-            for f in s["findings"]:
+            s["flash"] = flash
+            for f in s["findings"]:  # look flags only: side-light findings never lower the ceiling
                 src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
                 lit = f" under {', '.join(f['lights'])} light" if f.get("lights") else ""
+                if flash:
+                    lit += " (phone flash, not calibrated)"
                 report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src}{lit})")
     return 200, report
 
