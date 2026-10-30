@@ -29,3 +29,5 @@ Supersede an entry with a new one; never delete.
 | 2026-10-30 | Snipe targets from the eBay watch list: 6 exact cards watched more than once added (Messi Starball SD-10 Mini Diamond, Ronaldo 2026 Prizm #367 Silver, Ronaldo 2026 National Landmarks #7, Ronaldo 2015 Select #36, Messi 2015 Select #65, Messi 2018 Prizm Hyper #1); existing targets kept (all players on the list); one-off watched cards come via the watch-list sync | SnipeTarget |
 | 2026-10-30 | Mane Gold 32/50 cost = $0 (pack pull, ledger source pack_pull); Karim ended his 'Gold Lava' eBay listing himself (title error) | LedgerEntry |
 | 2026-10-30 | G9 shipped: phone flash for the 4 light shots (look-only findings); wrong outline -> can't judge, no ceiling. Gixen hand-off (C3b) held on its branch | e98484a |
+| 2026-10-30 | C3b Gixen hand-off shipped (copy item #/max, Open Gixen, calendar reminder) | e325620 |
+| 2026-10-30 | soccerdata not adopted for the Monday run: FBref, Sofascore, WhoScored and SoFIFA block the cloud runner (403); only Understat and ESPN answer | scheduled task unchanged |
