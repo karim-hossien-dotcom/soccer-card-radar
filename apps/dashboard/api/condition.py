@@ -90,9 +90,9 @@ def handle(headers, body, env=os.environ):
         return 403, {"error": "Run the check from the Card Radar site"}
     if len(body) > MAX_BODY:
         return 413, {"error": "Photos too large: 8 MB each at most"}
-    ctype = (headers.get("content-type") or "").lower()
+    ctype = headers.get("content-type") or ""  # keep case: the multipart boundary is case-sensitive
     gate = None
-    if ctype.startswith("application/json"):
+    if ctype.lower().startswith("application/json"):
         try:
             req = json.loads(body or b"{}")
             url = str(req.get("imageUrl") or "")

@@ -10,7 +10,7 @@ ENV = {"ADMIN_TOKEN": "s3cret"}
 
 
 def form(**parts):
-    b = uuid.uuid4().hex
+    b = "----WebKitFormBoundaryXyZ" + uuid.uuid4().hex[:12]  # mixed case, like a browser: the boundary is case-sensitive
     out = b""
     for name, data in parts.items():
         if isinstance(data, str):
