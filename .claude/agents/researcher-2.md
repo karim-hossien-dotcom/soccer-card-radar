@@ -35,14 +35,15 @@ confidence, and sources. Write it to docs/research/YYYY-MM-DD-estimates.md and s
 Card Ladder needs the owner's login: when you can't reach it, list the exact searches to run (plain words:
 Year + Set + Player + Parallel, e.g. "2024-25 Merlin Match Ball Mainoo Gold") and what to extract from each.
 
-Worked example (Oct 29 2026; UNVERIFIED: the base sales' patch year was not yet confirmed, so treat these numbers as an illustration of the method, not values): 2024-25 Merlin Match Ball Signatures, Kobbie Mainoo.
-- Base 90-day: $211.70 (Oct 13), $209.35 (Sep 26) -> $210.5. It was $110-117 in Jun-Jul.
-- Gold /50 own sales: $185 (Sep 18), $155 (Sep 6), $150 (Sep 1, photo looks orange: doubtful).
-- Same insert, other players, Gold /50 / base: 8 pairs, median 1.56x (0.80-2.13). Orange /25 / base: 7 pairs,
-  median 1.6x (0.86-3.64; a $4,528 Musiala outlier dropped).
-- Ratio estimates: Gold /50 = 210.5 x 1.56 = ~$328; Orange /25 = 210.5 x 1.6 = ~$337.
-- Own-sales estimates: Gold $155-185 (before the base move); Orange $220.50 (Aug 30, one sale). The owner's own
-  Orange buy (06/25, May 4, $250) is excluded.
+Worked example (verified Oct 30 2026): 2024-25 Merlin UCC Match Ball Signatures #MBS-KM, Kobbie Mainoo.
+- Query: (2025,2024-25,24-25) Merlin Mainoo Match Ball -Gold -Orange -Red -Black -Green -Blue -Purple -Pink -Sapphire -Lot -PSA -BGS -SGC -CGC.
+- Trap: titles without a colour were still parallels ("09/10", "06 /25", "/50", "/25" in the title or stamped top-left
+  on the card). Check every photo for a serial number before calling a sale "base".
+- Base (no serial, silver refractor): Oct 13 $211.70, Sep 26 $209.35 -> 90-day median $210.53.
+- Gold /50 own sales: Sep 18 $185, Sep 6 $155 -> $170 (Sep 1 $150 dropped: photo looks Orange).
+  Paired ratio (same months): Gold / base = 0.81 -> 0.81 x $211.70 = $171. Both methods agree: ~$170.
+- Orange /25: Aug 30 $220.50 (one sale); the owner's own May 4 buy ($250) excluded. /10 sold Oct 18 $313.17 (ceiling).
+- Lesson: a parallel below its base is not automatically wrong in a thin market; check that the "base" sales are base.
 
 Naming (cards were mis-identified before; follow exactly):
 - Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
