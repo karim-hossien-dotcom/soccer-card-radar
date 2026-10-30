@@ -6,6 +6,7 @@ import type { SnipeData, BoardRow, Target, LiveListing, Decision } from "./load"
 import type { Budget } from "@/lib/budget";
 import TargetPanel from "./target-panel";
 import { findTarget, type SnipePrefill } from "@/lib/grading";
+import { GIXEN_URL, ebayItemNumber, maxText, reminderUrl } from "@/lib/gixen";
 import s from "./snipe.module.css";
 
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
@@ -218,6 +219,40 @@ function ScreenBadge({ s: x }: { s: NonNullable<LiveListing["screen"]> }) {
   );
 }
 
+/** C3b: copy text for the manual Gixen hand-off. Clipboard API, then a hidden-textarea fallback. */
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const copy = async () => {
+    let done = false;
+    try { await navigator.clipboard.writeText(text); done = true; } catch {
+      const ta = document.createElement("textarea");
+      ta.value = text; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      try { done = document.execCommand("copy"); } catch { done = false; }
+      ta.remove();
+    }
+    setState(done ? "copied" : "failed");
+    setTimeout(() => setState("idle"), 1500);
+  };
+  return <button className="btn" onClick={copy} aria-label={`Copy ${label}`}>{state === "copied" ? "Copied" : state === "failed" ? "Select and copy" : "Copy"}</button>;
+}
+
+/** C3b: approved bid -> item # and max to copy, Open Gixen, calendar reminder. Links only; nothing logs in to Gixen or bids. */
+function GixenHandoff({ listing: l, card, maxBid }: { listing: LiveListing; card: string; maxBid: number }) {
+  const item = ebayItemNumber(l.externalId);
+  const reminder = reminderUrl({ card: card || l.title, maxBid, endsAt: l.endsAt, url: l.url, itemNumber: item });
+  return (
+    <>
+      Approved, max {usd(maxBid)}. Enter it in Gixen or bid by hand.
+      <span>Item # <b>{item}</b> <CopyButton text={item} label="item number" /></span>
+      <span>Max <b>{maxText(maxBid)}</b> <CopyButton text={maxText(maxBid)} label="max bid" /></span>
+      <a href={GIXEN_URL} target="_blank" rel="noopener noreferrer">Open Gixen</a>
+      {reminder && <a href={reminder} target="_blank" rel="noopener noreferrer">Add reminder</a>}
+      {" "}
+    </>
+  );
+}
+
 /** C3: approve (with a max), skip, or cancel one auction. Records the decision only; nothing bids on eBay. */
 function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly = false }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision; onDecided: (id: string, d: Decision) => void; skipOnly?: boolean }) {
   const router = useRouter();
@@ -243,7 +278,7 @@ function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly =
   if (decision && decision.status !== "cancelled") {
     return (
       <span className={s.bid} onClick={(e) => e.stopPropagation()}>
-        {decision.status === "approved" ? <>Approved, max {usd(decision.maxBid)}. Enter it in Gixen or bid by hand. </> : <>{decision.status[0].toUpperCase() + decision.status.slice(1)}. </>}
+        {decision.status === "approved" ? <GixenHandoff listing={l} card={r.target.card} maxBid={decision.maxBid} /> : <>{decision.status[0].toUpperCase() + decision.status.slice(1)}. </>}
         {decision.status === "approved" || decision.status === "skipped" ? <button className="btn" disabled={busy} onClick={() => send("cancel")}>Undo</button> : null}
         {msg && <span className="loss"> {msg}</span>}
       </span>

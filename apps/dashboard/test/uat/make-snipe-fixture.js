@@ -19,7 +19,7 @@ const targets = [
 ];
 const now = Date.now(), h = (n) => new Date(now + n * 3600e3).toISOString(), seen = new Date().toISOString();
 let seq = 0;
-const L = (actionId, title, priceUSD, auctionEndsInH) => ({ externalId: 'v1|uat' + (++seq) + '|0', title, priceUSD, url: 'https://www.ebay.com/itm/' + (100000 + seq), actionId, lastSeenAt: seen, soldAt: null,
+const L = (actionId, title, priceUSD, auctionEndsInH) => ({ externalId: 'v1|' + (110000000000 + (++seq)) + '|0', title, priceUSD, url: 'https://www.ebay.com/itm/' + (110000000000 + seq), actionId, lastSeenAt: seen, soldAt: null,
   rawData: auctionEndsInH ? { isAuction: true, isBIN: false, itemEndDate: h(auctionEndsInH) } : { isAuction: false, isBIN: true, acceptsOffers: true } });
 const listings = [
   L('cristiano-ronaldo', '2014 Panini Prizm World Cup #161 Cristiano Ronaldo Portugal', 31, 5),
