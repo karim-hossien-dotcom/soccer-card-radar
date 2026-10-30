@@ -233,6 +233,52 @@ def analyse(flat_src, raking_src, flat_hint=None, raking_hint=None):
     return {"status": "measured", "why": None, "findings": finds, "overlay": overlay(raking, finds), "coverage": round(float(mask.mean()), 2)}
 
 
+LIGHTS = ("left", "top", "right", "bottom")
+
+
+def merge(per_light):
+    """Findings from several light directions -> one list. Two findings are the same defect when their centres are
+    within 4 mm (or half the larger one's size); the stronger one is kept and the lights that saw it are listed."""
+    out = []
+    for light, finds in per_light:
+        for f in finds:
+            x, y = f["x"] * 63, f["y"] * 88
+            same = next((o for o in out if np.hypot(x - o["x"] * 63, y - o["y"] * 88) < max(4.0, max(f["size_mm"], o["size_mm"]) / 2)), None)
+            if same is None:
+                out.append({**f, "lights": [light]})
+                continue
+            if light not in same["lights"]:
+                same["lights"].append(light)
+            if f["strength"] > same["strength"] or (f["kind"] == "crease" and same["kind"] != "crease"):
+                lights = same["lights"]
+                same.clear(); same.update({**f, "lights": lights})
+    out = _resolve(out)
+    out.sort(key=lambda f: (-len(f["lights"]), -f["strength"]))
+    return out[:MAX_FINDINGS]
+
+
+def analyse_lights(flat_src, rakings, flat_hint=None):
+    """rakings: [(light name, image src, hint)] - the same side lit from up to four directions. A fold running
+    parallel to the light barely shades, so each direction catches what the others miss."""
+    flat, e1 = straighten(flat_src, flat_hint)
+    if flat is None:
+        return {"status": "cant_judge", "why": f"straight-on photo: {e1}", "findings": [], "overlay": None, "lights": []}
+    per, used, why, first = [], [], [], None
+    for light, src, hint in rakings:
+        rk, e2 = straighten(src, hint)
+        if rk is None:
+            why.append(f"{light} light: {e2}"); continue
+        z, mask = anomaly_map(flat, rk)
+        if z is None:
+            why.append(f"{light} light: too much glare or black"); continue
+        per.append((light, findings_from(z))); used.append(light)
+        first = rk if first is None else first
+    if not per:
+        return {"status": "cant_judge", "why": "; ".join(why) or "no side-light photo", "findings": [], "overlay": None, "lights": []}
+    finds = merge(per)
+    return {"status": "measured", "why": "; ".join(why) or None, "findings": finds, "overlay": overlay(first, finds), "lights": used}
+
+
 def straight_jpeg(src, width=900, hint=None):
     """The straightened card as JPEG bytes, for the AI second look."""
     card, _ = straighten(src, hint)
