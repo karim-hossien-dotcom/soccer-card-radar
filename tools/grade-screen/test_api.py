@@ -56,12 +56,17 @@ def test_grade_by_url():
     chip = png(chips=8)
     seen = []
     orig = api.fetch, api.ask_gate
-    api.fetch = lambda url: (seen.append(url), chip)[1]
+    api.fetch = lambda url, cookie=None: (seen.append((url, cookie)), chip)[1]
     try:
         api.ask_gate = lambda key, img, mt: {"type": "raw", "straight_on": True, "all_edges_visible": True, "fills_frame": True}
         st, r = api.handle(site, b'{"imageUrl": "/cards/abc.webp"}', env={"ANTHROPIC_API_KEY": "k"})
         assert st == 200 and r["measured"] and r["verdict"] == "ceiling" and r["summary"].startswith("At best PSA 8"), r
-        assert seen[-1] == "https://cards.test/cards/abc.webp"
+        assert seen[-1] == ("https://cards.test/cards/abc.webp", None)
+        # behind the site lock: the session cookie (only that one) goes with the Vault photo request
+        api.handle({**site, "cookie": "other=1; cr_session=karimhossien.9.sig"}, b'{"imageUrl": "/cards/abc.webp"}', env={})
+        assert seen[-1] == ("https://cards.test/cards/abc.webp", "cr_session=karimhossien.9.sig")
+        api.handle({**site, "cookie": "cr_session=karimhossien.9.sig"}, b'{"imageUrl": "https://i.ebayimg.com/images/g/x/s-l225.jpg"}', env={})
+        assert seen[-1][1] is None  # never sent to eBay
         api.ask_gate = lambda key, img, mt: {"type": "holder", "straight_on": True, "all_edges_visible": True, "fills_frame": True}
         st, r = api.handle(site, b'{"imageUrl": "https://i.ebayimg.com/images/g/x/s-l225.jpg"}', env={"ANTHROPIC_API_KEY": "k"})
         assert st == 200 and not r["measured"] and r["summary"] == "Can't judge: card is in a toploader or holder", r
