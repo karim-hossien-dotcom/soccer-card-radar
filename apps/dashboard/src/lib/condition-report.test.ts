@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseReport, ceilingLine, centeringRows, wearFindings, checkFile, downscaleSize } from "./condition-report.ts";
+import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize } from "./condition-report.ts";
 
 const edge = (side: string, specks: number | null) => ({ side, judged_mm: 70, specks, specks_per_10cm: null, roughness_mm: null, waviness_mm: null, notches: null, note: specks === null ? "border too light to see whitening or chipping" : null });
 const corner = (corner: string, whitening_pct: number | null) => ({ corner, rounding_mm: null, whitening_pct, note: null, rounding_vs_others_mm: null });
@@ -67,4 +67,15 @@ test("checkFile and downscaleSize: 8 MB, jpg/png/webp, re-encode only large phot
   assert.equal(downscaleSize(4000, 3000, 1_000_000), null);
   assert.deepEqual(downscaleSize(4000, 3000, 6_000_000), { w: 3000, h: 2250 });
   assert.deepEqual(downscaleSize(2000, 1500, 6_000_000), { w: 2000, h: 1500 });
+});
+
+test("surfaceLines: measured findings are numbered like the overlay; Claude-only ones are not", () => {
+  const lines = surfaceLines({ side: "Front", status: "measured", why: null, ai: true, overlay: null, findings: [
+    { kind: "dent or dimple", where: "top right", source: "both", size_mm: 6.4 },
+    { kind: "scratch", where: "centre", source: "claude", note: "fine line" },
+    { kind: "crease", where: "middle left", source: "measured", size_mm: 24 },
+  ] });
+  assert.deepEqual(lines.map((l) => l.n), [1, null, 2]);
+  assert.equal(lines[0].text, "Dent or dimple, top right, about 6 mm: measured and seen by Claude");
+  assert.equal(lines[1].text, "Scratch, centre (fine line): seen by Claude only");
 });

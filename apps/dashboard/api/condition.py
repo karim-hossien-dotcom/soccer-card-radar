@@ -5,7 +5,9 @@ promises a grade. Open to the app's own pages (same-site Origin check); no login
 (JSON {"imageUrl"}): an eBay listing photo or a Vault photo, screened by the photo gate first when ANTHROPIC_API_KEY is set.
 
 Body: multipart/form-data with `front` (required), `back` (optional) image files (jpg, png or webp, 8 MB each)
-and `holder` ("1" when the card is in a sleeve, toploader, magnetic case or slab).
+and `holder` ("1" when the card is in a sleeve, toploader, magnetic case or slab). Optional `front_raking` /
+`back_raking`: the same side under low side light, for the surface check (dents, creases, scratches): look flags
+only, they never lower the ceiling.
 The vendored copy of the check lives in api/_grade_screen (kept identical by tools/grade-screen/sync_vercel.py).
 """
 import json, os, sys, urllib.parse
@@ -15,10 +17,11 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "_grade_screen"))
 import condition as cond  # noqa: E402
-from gate import ask_gate, fetch, media_type, summarize, usable  # noqa: E402
+import surface as surf  # noqa: E402
+from gate import ask_gate, ask_surface, combine_surface, fetch, media_type, summarize, usable  # noqa: E402
 
 MAX_IMAGE = 8 * 1024 * 1024
-MAX_BODY = 2 * MAX_IMAGE + 64 * 1024
+MAX_BODY = 4 * MAX_IMAGE + 64 * 1024
 
 
 def image_kind(b):
@@ -102,6 +105,7 @@ def handle(headers, body, env=os.environ):
         except Exception as e:
             return 502, {"error": f"Could not download the photo: {type(e).__name__}"}
         back, holder = b"", False
+        raking = {"front": b"", "back": b""}
         if not media_type(front):
             return 415, {"error": "That photo is not a jpg, png or webp"}
         key = env.get("ANTHROPIC_API_KEY")
@@ -115,9 +119,10 @@ def handle(headers, body, env=os.environ):
         if fields is None:
             return 400, {"error": "Send the photos as multipart/form-data"}
         front, back = fields.get("front") or b"", fields.get("back") or b""
+        raking = {s: fields.get(f"{s}_raking") or b"" for s in ("front", "back")}
         if not front:
             return 400, {"error": "Add a front photo"}
-        for label, data in (("Front", front), ("Back", back)):
+        for label, data in (("Front", front), ("Back", back), ("Front side-light", raking["front"]), ("Back side-light", raking["back"])):
             if not data:
                 continue
             if len(data) > MAX_IMAGE:
@@ -137,7 +142,36 @@ def handle(headers, body, env=os.environ):
     report["gate"] = gate
     report["verdict"], report["summary"] = summarize(gate, report)
     report["measured"] = True
+    if not holder and (raking["front"] or raking["back"]):
+        report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"))
+        for s in report["surface_scan"]:
+            for f in s["findings"]:
+                src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
+                report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src})")
     return 200, report
+
+
+def surface_scan(front, back, raking, key):
+    """Per side with a side-light photo: measured findings (surface.py), Claude's second look when a key is set, merged."""
+    out = []
+    for side, flat in (("front", front), ("back", back)):
+        rk = raking.get(side)
+        if not rk or not flat:
+            continue
+        try:
+            res = surf.analyse(flat, rk)
+        except Exception as e:
+            res = {"status": "cant_judge", "why": f"surface check failed: {type(e).__name__}", "findings": [], "overlay": None}
+        ai, ai_err = [], None
+        if key and res["status"] == "measured":
+            try:
+                ai = ask_surface(key, surf.straight_jpeg(flat), surf.straight_jpeg(rk))
+            except Exception as e:
+                ai_err = f"Claude second look failed: {type(e).__name__}"
+        out.append({"side": side.capitalize(), "status": res["status"], "why": res.get("why") or ai_err,
+                    "findings": combine_surface(res["findings"], ai) if res["status"] == "measured" else [],
+                    "overlay": res.get("overlay"), "ai": bool(key) and ai_err is None and res["status"] == "measured"})
+    return out
 
 
 class handler(BaseHTTPRequestHandler):

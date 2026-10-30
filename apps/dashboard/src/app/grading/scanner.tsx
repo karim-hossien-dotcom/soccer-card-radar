@@ -3,11 +3,31 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Scanner as ScanicScanner } from "scanic";
 import { parseReport, type ConditionReport } from "@/lib/condition-report";
-import { shape, pixels, moved, judge, LIMITS, CARD_RATIO, type Quad } from "@/lib/scan-checks";
+import { shape, pixels, moved, judge, signature, change, NEEDS_CHANGE, LIMITS, CARD_RATIO, type Quad } from "@/lib/scan-checks";
 import { shrink, ReportView } from "./check-panel";
 import s from "./scanner.module.css";
 
-type Step = "front" | "back" | "checking" | "done" | "error";
+type Shot = "front" | "light" | "back";
+type Step = Shot | "checking" | "done" | "error";
+const SHOTS: { step: Shot; tag: string; intro: string; skip?: string; grace: number }[] = [
+  { step: "front", tag: "1 of 3 · Front", intro: "Put the card on a dark, plain surface inside the frame", grace: 0 },
+  { step: "light", tag: "2 of 3 · Side light", intro: "Now light it from the side: hold a lamp or a second phone's flashlight low, beside the card, so the light skims across it", skip: "Skip side light", grace: -16 },
+  { step: "back", tag: "3 of 3 · Back", intro: "Flip the card over", skip: "Skip back", grace: -8 },
+];
+const isShot = (x: Step): x is Shot => x === "front" || x === "light" || x === "back";
+const UPLOAD_LONG_SIDE = 2400; // three photos must fit Vercel's 4.5 MB request limit; still ~25 px/mm on a card filling the frame
+
+/** Re-encode to a fixed long side so front, side-light and back always fit one request. */
+async function fit(b: Blob): Promise<Blob> {
+  const bmp = await createImageBitmap(b).catch(() => null);
+  if (!bmp) return shrink(b);
+  const k = Math.min(1, UPLOAD_LONG_SIDE / Math.max(bmp.width, bmp.height));
+  const c = document.createElement("canvas");
+  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close();
+  return new Promise((res) => c.toBlob((x) => res(x ?? b), "image/jpeg", 0.9));
+}
 const PREVIEW = 640; // long side of the frame the browser analyses; the captured photo is full resolution
 
 /** Full-resolution still: ImageCapture.takePhoto where the browser has it (Chrome Android, Safari 18.4+), else the video frame. */
@@ -42,8 +62,10 @@ function ScanView({ onClose }: { onClose: () => void }) {
   const scanner = useRef<ScanicScanner | null>(null);
   const prev = useRef<Quad | null>(null);
   const steady = useRef(0);
+  const sigNow = useRef<Float32Array | null>(null);   // card brightness grid in the latest frame
+  const sigShot = useRef<Float32Array | null>(null);  // ... when the last photo was taken
   const busy = useRef(false);
-  const shots = useRef<{ front?: Blob; back?: Blob }>({});
+  const shots = useRef<Partial<Record<Shot, Blob>>>({});
   const [step, setStep] = useState<Step>("front");
   const stepRef = useRef<Step>("front");
   const [hint, setHint] = useState("Starting the camera…");
@@ -59,8 +81,9 @@ function ScanView({ onClose }: { onClose: () => void }) {
     go("checking");
     try {
       const fd = new FormData();
-      fd.append("front", await shrink(shots.current.front!), "front.jpg");
-      if (shots.current.back) fd.append("back", await shrink(shots.current.back), "back.jpg");
+      fd.append("front", await fit(shots.current.front!), "front.jpg");
+      if (shots.current.light) fd.append("front_raking", await fit(shots.current.light), "front-side-light.jpg");
+      if (shots.current.back) fd.append("back", await fit(shots.current.back), "back.jpg");
       fd.append("holder", "0");
       const res = await fetch("/api/condition", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);
@@ -72,6 +95,15 @@ function ScanView({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
+  /** Move to the shot after `cur`, or check the photos when there is none. */
+  const next = useCallback(async (cur: Shot) => {
+    const i = SHOTS.findIndex((x) => x.step === cur);
+    const nx = SHOTS[i + 1];
+    if (!nx) { await submit(); return; }
+    go(nx.step); setHint(nx.intro);
+    steady.current = nx.grace; // time to flip the card or set up the light before the next auto-capture
+  }, [submit]);
+
   const capture = useCallback(async () => {
     const v = video.current;
     if (!v || busy.current) return;
@@ -80,20 +112,17 @@ function ScanView({ onClose }: { onClose: () => void }) {
     try {
       const blob = await still(v, stream.current?.getVideoTracks()[0] ?? null);
       setThumbs((t) => [...t, URL.createObjectURL(blob)]);
-      if (stepRef.current === "front") {
-        shots.current.front = blob;
-        go("back"); setHint("Flip the card over");
-        steady.current = -8; // give time to flip before the next auto-capture
-      } else {
-        shots.current.back = blob;
-        await submit();
-      }
+      const cur = stepRef.current;
+      if (!isShot(cur)) return;
+      shots.current[cur] = blob;
+      sigShot.current = sigNow.current;
+      await next(cur);
     } catch (e) {
       setErr((e as Error).message); go("error");
     } finally {
       busy.current = false;
     }
-  }, [submit]);
+  }, [next]);
 
   useEffect(() => {
     let live = true, timer = 0;
@@ -103,7 +132,7 @@ function ScanView({ onClose }: { onClose: () => void }) {
     const tick = async () => {
       if (!live) return;
       const v = video.current;
-      if (v && v.readyState >= 2 && scanner.current && !busy.current && (stepRef.current === "front" || stepRef.current === "back")) {
+      if (v && v.readyState >= 2 && scanner.current && !busy.current && isShot(stepRef.current)) {
         const k = PREVIEW / Math.max(v.videoWidth, v.videoHeight);
         const w = Math.round(v.videoWidth * k), h = Math.round(v.videoHeight * k);
         canvas.width = w; canvas.height = h;
@@ -113,12 +142,19 @@ function ScanView({ onClose }: { onClose: () => void }) {
         const q = r?.success && r.corners ? (r.corners as Quad) : null;
         const gray = new Uint8ClampedArray(w * h);
         if (q) for (let i = 0, j = 0; i < gray.length; i++, j += 4) gray[i] = (img.data[j] * 77 + img.data[j + 1] * 150 + img.data[j + 2] * 29) >> 8;
-        const verdict = q ? judge(q, shape(q, w, h), pixels(gray, w, h, q)) : judge(null, null, null);
+        const px = q ? pixels(gray, w, h, q) : null;
+        if (px && stepRef.current === "light") px.glare = 0; // side light is meant to make highlights
+        let verdict = q ? judge(q, shape(q, w, h), px) : judge(null, null, null);
+        sigNow.current = q ? signature(gray, w, h, q) : null;
+        // Don't re-shoot the same scene: the side-light shot needs the light changed, the back shot needs the card flipped.
+        const cur = stepRef.current;
+        if (verdict.ok && (cur === "light" || cur === "back") && sigNow.current && sigShot.current && change(sigNow.current, sigShot.current) < NEEDS_CHANGE[cur])
+          verdict = { ok: false, hint: cur === "light" ? "Turn the side light on: it should look different from the first photo" : "Flip the card over" };
         const still = !!q && (!prev.current || moved(prev.current, q, w, h) < LIMITS.steadyMove);
         prev.current = q;
         if (!live) return;
         setQuad(q ? { q, w, h, ok: verdict.ok } : null);
-        if (steady.current < 0) steady.current++; // grace period after the front shot, while the card is flipped
+        if (steady.current < 0) steady.current++; // grace period after a shot, while the card is flipped or lit
         else { steady.current = verdict.ok && still ? steady.current + 1 : 0; setHint(verdict.hint); }
         if (steady.current >= LIMITS.steadyFrames) { steady.current = 0; await capture(); }
       }
@@ -139,7 +175,7 @@ function ScanView({ onClose }: { onClose: () => void }) {
         const sc = new Scanner();
         await sc.initialize();
         scanner.current = sc;
-        setHint("Put the card on a dark, plain surface inside the frame");
+        setHint(SHOTS[0].intro);
         tick();
       } catch (e) {
         const m = (e as Error).name === "NotAllowedError" ? "Camera access was blocked. Allow it in the browser settings and try again." : (e as Error).message;
@@ -153,11 +189,14 @@ function ScanView({ onClose }: { onClose: () => void }) {
     };
   }, [capture]);
 
-  useEffect(() => () => thumbs.forEach((u) => URL.revokeObjectURL(u)), [thumbs]);
+  const thumbsRef = useRef<string[]>([]);
+  thumbsRef.current = thumbs;
+  useEffect(() => () => thumbsRef.current.forEach((u) => URL.revokeObjectURL(u)), []); // free photos when the scanner closes
 
   const close = () => { stream.current?.getTracks().forEach((t) => t.stop()); onClose(); };
-  const restart = () => { shots.current = {}; setThumbs([]); setReport(null); setErr(null); steady.current = 0; go("front"); setHint("Put the card on a dark, plain surface inside the frame"); };
-  const shooting = step === "front" || step === "back";
+  const restart = () => { thumbs.forEach((u) => URL.revokeObjectURL(u)); sigShot.current = null; shots.current = {}; setThumbs([]); setReport(null); setErr(null); steady.current = 0; go("front"); setHint(SHOTS[0].intro); };
+  const shooting = isShot(step);
+  const shot = SHOTS.find((x) => x.step === step);
 
   return (
     <div className={s.sheet} role="dialog" aria-modal="true" aria-label="Scan a card">
@@ -172,13 +211,13 @@ function ScanView({ onClose }: { onClose: () => void }) {
         )}
         {flash && <div className={s.flash} />}
         <div className={s.top}>
-          <span className={s.stepTag}>{step === "front" ? "1 of 2 · Front" : "2 of 2 · Back"}</span>
+          <span className={s.stepTag}>{shot?.tag}</span>
           <button type="button" className={s.x} onClick={close} aria-label="Close the scanner">✕</button>
         </div>
         <div className={s.bottom}>
           <p className={s.hint} data-ok={quad?.ok ?? false} aria-live="polite">{hint}</p>
           <div className={s.controls}>
-            {step === "back" ? <button type="button" className={s.ghost} onClick={submit}>Skip back</button> : <span />}
+            {shot?.skip ? <button type="button" className={s.ghost} onClick={() => next(shot.step)}>{shot.skip}</button> : <span />}
             <button type="button" className={s.shutter} onClick={capture} aria-label="Take the photo now" />
             <span className={s.thumbs}>{thumbs.map((u) => <img key={u} src={u} alt="" />)}</span>
           </div>
@@ -191,7 +230,7 @@ function ScanView({ onClose }: { onClose: () => void }) {
             <b>{step === "checking" ? "Checking the photos…" : step === "error" ? "Couldn't check that" : "Scan result"}</b>
             <button type="button" className={s.x} onClick={close} aria-label="Close the scanner">✕</button>
           </div>
-          {thumbs.length > 0 && <div className={s.shots}>{thumbs.map((u, i) => <img key={u} src={u} alt={i === 0 ? "Front" : "Back"} />)}</div>}
+          {thumbs.length > 0 && <div className={s.shots}>{thumbs.map((u, i) => <img key={u} src={u} alt={`Photo ${i + 1}`} />)}</div>}
           {step === "checking" && <p className={s.wait}>Measuring centering, edges and corners. This takes a few seconds.</p>}
           {step === "error" && <p className={s.err} role="alert">{err}</p>}
           {report && <ReportView report={report} />}

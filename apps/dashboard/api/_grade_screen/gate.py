@@ -71,15 +71,61 @@ def fetch(url):
         return res.read(9 * 1024 * 1024)
 
 
-def ask_gate(key, img, mtype):
-    body = {"model": MODEL, "max_tokens": 1024, "messages": [{"role": "user", "content": [
-        {"type": "image", "source": {"type": "base64", "media_type": mtype, "data": base64.b64encode(img).decode()}},
-        {"type": "text", "text": GATE_PROMPT}]}]}
+def _ask(key, images, prompt, max_tokens=1024):
+    """One Claude vision call: images = [(bytes, media_type)], returns the JSON object in the reply."""
+    content = [{"type": "image", "source": {"type": "base64", "media_type": mt, "data": base64.b64encode(b).decode()}} for b, mt in images]
+    body = {"model": MODEL, "max_tokens": max_tokens, "messages": [{"role": "user", "content": content + [{"type": "text", "text": prompt}]}]}
     r = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(), headers={
         "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
-    with urllib.request.urlopen(r, timeout=30) as res:
+    with urllib.request.urlopen(r, timeout=40) as res:
         d = json.loads(res.read())
     text = next(b["text"] for b in d["content"] if b.get("type") == "text")
     return json.loads(text[text.index("{"): text.rindex("}") + 1])
 
 
+def ask_gate(key, img, mtype):
+    return _ask(key, [(img, mtype)], GATE_PROMPT)
+
+
+AREAS = ("top left", "top centre", "top right", "middle left", "centre", "middle right", "bottom left", "bottom centre", "bottom right")
+SURFACE_PROMPT = """Two photos of the same trading card, straightened to the card's edges. Photo 1: lit straight on.
+Photo 2: lit from a low side angle (raking light), which makes dents, creases and scratches cast shadows.
+List surface defects you can clearly see, mostly from photo 2. Ignore the printed design, foil/refractor pattern,
+holographic sparkle and glare. Ignore the outer edges and corners (checked separately). Answer with JSON only:
+{"findings": [{"kind": "dent" | "crease" | "scratch" | "print line" | "stain" | "other",
+               "where": "top left" | "top centre" | "top right" | "middle left" | "centre" | "middle right" |
+                        "bottom left" | "bottom centre" | "bottom right",
+               "confidence": "clear" | "possible",
+               "note": "<8 words"}]}
+Empty list if you see none. Do not guess: only marks you can point to."""
+
+
+def ask_surface(key, flat_jpg, raking_jpg):
+    """Claude's second look at the straightened flat and raking photos. Returns a list of findings (may be empty)."""
+    out = _ask(key, [(flat_jpg, "image/jpeg"), (raking_jpg, "image/jpeg")], SURFACE_PROMPT)
+    finds = out.get("findings") if isinstance(out, dict) else None
+    return [f for f in (finds or []) if isinstance(f, dict) and f.get("where") in AREAS][:8]
+
+
+_SAME = {"dent or dimple": {"dent"}, "crease": {"crease", "print line", "scratch"}, "scratch or print line": {"scratch", "print line", "crease"}}
+
+
+def _next_to(a, b):
+    """Same or neighbouring area of the 3x3 grid."""
+    ra, ca = divmod(AREAS.index(a), 3)
+    rb, cb = divmod(AREAS.index(b), 3)
+    return abs(ra - rb) <= 1 and abs(ca - cb) <= 1
+
+
+def combine_surface(measured, ai):
+    """One list: measured findings, each marked 'both' when Claude saw the same kind nearby, plus Claude-only ones."""
+    used, out = set(), []
+    for m in measured:
+        hit = next((i for i, a in enumerate(ai) if i not in used and a.get("kind") in _SAME.get(m["kind"], ()) and _next_to(m["where"], a["where"])), None)
+        if hit is not None:
+            used.add(hit)
+        out.append({**m, "source": "both" if hit is not None else "measured"})
+    for i, a in enumerate(ai):
+        if i not in used and a.get("confidence") == "clear":
+            out.append({"kind": a.get("kind"), "where": a["where"], "note": a.get("note"), "source": "claude"})
+    return out

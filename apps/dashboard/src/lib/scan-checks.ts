@@ -99,3 +99,24 @@ export function judge(q: Quad | null, s: Shape | null, px: { glare: number; shar
   if (px && px.sharp < LIMITS.minSharp) return { ok: false, hint: "Hold still: the picture is blurry" };
   return { ok: true, hint: "Hold still…" };
 }
+
+/** Coarse 12x16 brightness grid of the card's bounding box: enough to tell "same shot again" from "relit" or "flipped". */
+export function signature(gray: Uint8ClampedArray | Uint8Array, w: number, h: number, q: Quad): Float32Array {
+  const p = [q.topLeft, q.topRight, q.bottomRight, q.bottomLeft];
+  const x0 = Math.max(0, Math.min(...p.map((c) => c.x))), x1 = Math.min(w - 1, Math.max(...p.map((c) => c.x)));
+  const y0 = Math.max(0, Math.min(...p.map((c) => c.y))), y1 = Math.min(h - 1, Math.max(...p.map((c) => c.y)));
+  const GX = 12, GY = 16, sum = new Float32Array(GX * GY), n = new Float32Array(GX * GY);
+  for (let y = Math.floor(y0); y <= y1; y += 2) {
+    for (let x = Math.floor(x0); x <= x1; x += 2) {
+      const c = Math.min(GY - 1, Math.floor(((y - y0) / (y1 - y0 + 1)) * GY)) * GX + Math.min(GX - 1, Math.floor(((x - x0) / (x1 - x0 + 1)) * GX));
+      sum[c] += gray[y * w + x]; n[c]++;
+    }
+  }
+  return sum.map((s, i) => (n[i] ? s / n[i] / 255 : 0));
+}
+
+/** Mean absolute difference between two signatures (0 = identical, 1 = opposite). */
+export const change = (a: Float32Array, b: Float32Array) => a.reduce((s, v, i) => s + Math.abs(v - b[i]), 0) / a.length;
+
+/** How different the scene must be from the previous shot before the next one is taken. */
+export const NEEDS_CHANGE = { light: 0.035, back: 0.05 };
