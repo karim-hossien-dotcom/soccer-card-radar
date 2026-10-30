@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { shape, judge, moved, pixels, CARD_RATIO, type Quad } from "./scan-checks.ts";
+import { shape, judge, moved, pixels, signature, change, NEEDS_CHANGE, CARD_RATIO, type Quad } from "./scan-checks.ts";
 
 const W = 1000, H = 1400;
 const rect = (x: number, y: number, w: number, h: number): Quad => ({
@@ -47,4 +47,16 @@ test("pixels: flat gray is blurry and glare-free; noise is sharp; white is glare
   // a blown patch over the top-left quarter -> about a quarter of the cells
   const patch = Uint8Array.from({ length: W2 * W2 }, (_, i) => ((i % W2) < 100 && Math.floor(i / W2) < 100 ? 255 : 90));
   assert.ok(Math.abs(pixels(patch, W2, W2, Q2).glare - 0.25) < 0.05);
+});
+
+test("signature: same scene ~0, relit or flipped clearly different", () => {
+  const w = 120, h = 160, q = rect(10, 10, 100, 140);
+  let seed = 3; const rnd = () => ((seed = (seed * 16807) % 2147483647) % 200) + 20;
+  const a = Uint8Array.from({ length: w * h }, rnd);
+  const relit = a.map((v, i) => Math.min(255, Math.round(v * (0.75 + 0.5 * ((i % w) / w)))));
+  const flipped = a.slice().reverse();
+  const sa = signature(a, w, h, q);
+  assert.ok(change(sa, signature(a, w, h, q)) < 1e-6);
+  assert.ok(change(sa, signature(relit, w, h, q)) > NEEDS_CHANGE.light);
+  assert.ok(change(sa, signature(flipped, w, h, q)) > 0.01);
 });

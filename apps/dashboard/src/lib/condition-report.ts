@@ -12,8 +12,11 @@ type Edge = { side: string; specks: number | null; specks_per_10cm: number | nul
 type Corner = { corner: string; whitening_pct: number | null; rounding_vs_others_mm: number | null; note: string | null };
 type Side = { px_per_mm: number; edges: Edge[]; corners: Corner[] } | null;
 type CentGrade = { split: string; psa: number; psa_tolerance: string | null; bgs: number; bgs_tolerance: string | null };
+export type SurfaceFinding = { kind: string; where: string; source: "both" | "measured" | "claude"; size_mm?: number; note?: string | null };
+export type SurfaceScan = { side: string; status: "measured" | "cant_judge"; why: string | null; findings: SurfaceFinding[]; overlay: string | null; ai: boolean };
 export type ConditionReport = {
   front: Side; back: Side; holder: boolean; note: string;
+  surface: SurfaceScan[];
   centering: Partial<Record<"front_lr" | "back_lr", string>>;
   centering_grades: Partial<Record<"front_lr" | "back_lr", CentGrade>>;
   ceiling: { psa: number | null; bgs: number | null; tag: number | null; why: string[]; look: string[] };
@@ -33,6 +36,7 @@ export function parseReport(x: unknown): ConditionReport {
     isObj(s) ? { px_per_mm: Number(s.px_per_mm), edges: Array.isArray(s.edges) ? (s.edges as Edge[]) : [], corners: Array.isArray(s.corners) ? (s.corners as Corner[]) : [] } : null;
   return {
     front: side(x.front), back: side(x.back), holder: x.holder === true, note: typeof x.note === "string" ? x.note : "",
+    surface: Array.isArray(x.surface_scan) ? (x.surface_scan as SurfaceScan[]).filter(isObj) : [],
     centering: x.centering as ConditionReport["centering"],
     centering_grades: (isObj(x.centering_grades) ? x.centering_grades : {}) as ConditionReport["centering_grades"],
     ceiling: { psa: c.psa as number | null, bgs: c.bgs as number | null, tag: c.tag as number | null, why: c.why as string[], look: c.look as string[] },
@@ -98,4 +102,16 @@ export function downscaleSize(w: number, h: number, bytes: number): { w: number;
   if (bytes <= UPLOAD_SOFT_LIMIT) return null;
   const k = Math.min(1, DOWNSCALE_LONG_SIDE / Math.max(w, h));
   return { w: Math.round(w * k), h: Math.round(h * k) };
+}
+
+const SOURCE: Record<SurfaceFinding["source"], string> = { both: "measured and seen by Claude", measured: "measured", claude: "seen by Claude only" };
+
+/** Surface lines with the number drawn on the overlay photo (measured findings are numbered in order; Claude-only ones are not drawn). */
+export function surfaceLines(s: SurfaceScan): { n: number | null; text: string; source: SurfaceFinding["source"] }[] {
+  let n = 0;
+  return s.findings.map((f) => {
+    const num = f.source === "claude" ? null : ++n;
+    const size = f.size_mm && f.source !== "claude" ? `, about ${Math.round(f.size_mm)} mm` : "";
+    return { n: num, text: `${f.kind[0].toUpperCase()}${f.kind.slice(1)}, ${f.where}${size}${f.note ? ` (${f.note})` : ""}: ${SOURCE[f.source]}`, source: f.source };
+  });
 }

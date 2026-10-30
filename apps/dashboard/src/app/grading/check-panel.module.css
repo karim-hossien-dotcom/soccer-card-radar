@@ -28,3 +28,8 @@
 .table th, .table td { text-align: left; padding: 8px 10px 8px 0; border-bottom: 1px solid #e8edf3; vertical-align: top; }
 .table th { color: var(--ink-3); font-weight: 600; border-bottom-color: var(--rule); }
 @media (max-width: 520px) { .hint { display: block; margin: 4px 0 0; } }
+.surface { display: grid; grid-template-columns: minmax(120px, 200px) 1fr; gap: 14px; align-items: start; margin: 8px 0 12px; }
+.surface img { width: 100%; border-radius: 8px; box-shadow: var(--shadow); }
+.surface li[data-source="claude"] { color: var(--ink-3); }
+.num { display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 6px; border-radius: 50%; background: #ffb020; color: #1b1300; font-size: 12px; }
+@media (max-width: 520px) { .surface { grid-template-columns: 1fr; } .surface img { max-width: 240px; } }

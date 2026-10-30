@@ -26,7 +26,7 @@ def png(**kw):
 
 
 def test_vendored_copy_matches_tools():
-    for f in ("condition.py", "centering.py"):
+    for f in ("condition.py", "centering.py", "surface.py"):
         assert open(os.path.join(HERE, f), "rb").read() == open(os.path.join(API, "_grade_screen", f), "rb").read(), f"run sync_vercel.py: {f} drifted"
 
 
@@ -97,3 +97,36 @@ if __name__ == "__main__":
     for k, f in list(globals().items()):
         if k.startswith("test_"):
             f(); print("ok", k)
+
+
+def test_side_light_photo_adds_surface_look_flags():
+    import test_surface as ts
+    flat = ts.enc(ts.place(ts.CARD))
+    dented = ts.enc(ts.place(ts.raking(ts.CARD, ts.height(dent=(0.6, 0.75))), 2.4))
+    s0, plain = api.handle(*form(front=flat), env={})
+    h, body = form(front=flat, front_raking=dented)
+    s1, rep = api.handle(h, body, env={})
+    assert s0 == s1 == 200, rep
+    scan = rep["surface_scan"][0]
+    assert scan["side"] == "Front" and scan["status"] == "measured" and scan["ai"] is False
+    assert [(f["kind"], f["where"], f["source"]) for f in scan["findings"]] == [("dent or dimple", "bottom centre", "measured")]
+    assert scan["overlay"].startswith("data:image/jpeg")
+    assert any("dent or dimple, bottom centre" in l for l in rep["ceiling"]["look"])
+    assert {k: rep["ceiling"][k] for k in ("psa", "bgs", "tag")} == {k: plain["ceiling"][k] for k in ("psa", "bgs", "tag")}  # never lowers
+
+
+def test_claude_second_look_is_merged():
+    import test_surface as ts
+    flat = ts.enc(ts.place(ts.CARD))
+    dented = ts.enc(ts.place(ts.raking(ts.CARD, ts.height(dent=(0.6, 0.75))), 2.4))
+    orig = api.ask_surface
+    api.ask_surface = lambda key, a, b: [{"kind": "dent", "where": "bottom right", "confidence": "clear"},
+                                         {"kind": "scratch", "where": "top left", "confidence": "clear"},
+                                         {"kind": "stain", "where": "centre", "confidence": "possible"}]
+    try:
+        h, body = form(front=flat, front_raking=dented)
+        _, rep = api.handle(h, body, env={"ANTHROPIC_API_KEY": "k"})
+    finally:
+        api.ask_surface = orig
+    got = [(f["kind"], f["where"], f["source"]) for f in rep["surface_scan"][0]["findings"]]
+    assert got == [("dent or dimple", "bottom centre", "both"), ("scratch", "top left", "claude")], got

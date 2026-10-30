@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { parseReport, ceilingLine, centeringRows, wearFindings, checkFile, downscaleSize, type ConditionReport } from "@/lib/condition-report";
+import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, type ConditionReport } from "@/lib/condition-report";
 import s from "./check-panel.module.css";
 
 /** Vercel caps a request at 4.5 MB: re-encode big photos as JPEG with the long side at 3000 px (still ~30 px/mm on a card). */
@@ -22,6 +22,7 @@ export async function shrink(f: Blob): Promise<Blob> {
 export default function CheckPanel({ initialReport = null }: { initialReport?: ConditionReport | null }) {
   const [front, setFront] = useState<File | null>(null);
   const [back, setBack] = useState<File | null>(null);
+  const [raking, setRaking] = useState<File | null>(null);
   const [holder, setHolder] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -41,6 +42,7 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
       const fd = new FormData();
       fd.append("front", await shrink(front), front.name);
       if (back) fd.append("back", await shrink(back), back.name);
+      if (raking) fd.append("front_raking", await shrink(raking), raking.name);
       fd.append("holder", holder ? "1" : "0");
       const res = await fetch("/api/condition", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);
@@ -68,6 +70,10 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
         <label className={s.field}>
           <span>Back photo <em>(optional)</em></span>
           <input type="file" accept="image/jpeg,image/png,image/webp" onChange={pick("Back", setBack)} disabled={busy} />
+        </label>
+        <label className={s.field}>
+          <span>Front, side light <em>(optional: lamp low at the side, for dents and creases)</em></span>
+          <input type="file" accept="image/jpeg,image/png,image/webp" onChange={pick("Front", setRaking)} disabled={busy} />
         </label>
         <label className={s.check}>
           <input type="checkbox" checked={holder} onChange={(e) => setHolder(e.target.checked)} disabled={busy} />
@@ -116,6 +122,25 @@ export function ReportView({ report }: { report: ConditionReport }) {
             </div>
           ))}
           {!report.front && !report.back && <p className={s.muted}>No usable photo.</p>}
+
+          {report.surface.length > 0 && (
+            <>
+              <h3 className={s.h}>Surface (side light)</h3>
+              <p className={s.muted}>Dents, creases and scratches from the side-light photo. Not yet counted in the grade ceiling: check each by eye.</p>
+              {report.surface.map((sc) => (
+                <div key={sc.side} className={s.surface}>
+                  {sc.overlay && <img src={sc.overlay} alt={`${sc.side} under side light, findings circled`} />}
+                  <div>
+                    <p className={s.sub}>{sc.side}{sc.ai ? "" : " (Claude second look off)"}</p>
+                    {sc.status !== "measured" ? <p className={s.muted}>Not judged: {sc.why}</p>
+                      : sc.findings.length === 0 ? <p className={s.muted}>Nothing found.</p>
+                      : <ul className={s.list}>{surfaceLines(sc).map((l) => <li key={l.text} data-source={l.source}>{l.n !== null && <b className={s.num}>{l.n}</b>}{l.text}</li>)}</ul>}
+                    {sc.status === "measured" && sc.why && <p className={s.muted}>{sc.why}</p>}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
 
           <h3 className={s.h}>Look flags</h3>
           {report.ceiling.look.length
