@@ -12,6 +12,8 @@ import s from "./snipe.module.css";
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
 /** C2: a live price above the engine's max bid is shown but greyed out. */
 const over = (price: number | null, max: number | null) => price !== null && max !== null && price > max;
+/** The max to compare a live listing against: the approved max when the auction has one (it can be hand-set above the engine max). */
+const maxFor = (decisions: Record<string, Decision>, l: LiveListing, r: BoardRow) => (decisions[l.externalId]?.status === "approved" ? decisions[l.externalId].maxBid : r.result.maxBid);
 const short = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 const agoShort = (iso: string) => {
   const h = Math.floor((Date.now() - new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z").getTime()) / 3600_000);
@@ -114,9 +116,9 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                   <td className="num">
                     {r.live.length ? (
                       <>
-                        <span className={over(r.livePrice, r.result.maxBid) ? "muted" : undefined}>{usd(r.livePrice)}</span>
+                        <span className={over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "muted" : undefined}>{usd(r.livePrice)}</span>
                         {r.live[0].screen && r.live[0].screen.verdict !== "error" && <span className={s.screenMini} data-verdict={r.live[0].screen.verdict}>{r.live[0].screen.verdict === "ceiling" ? r.live[0].screen.summary.split(":")[0] : r.live[0].screen.verdict === "no_issue" ? "No visible issue" : "Photo: can't judge"}</span>}
-                        <span className={s.small}>{over(r.livePrice, r.result.maxBid) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
+                        <span className={s.small}>{over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
                       </>
                     ) : <span className="muted">none live</span>}
                   </td>
@@ -173,8 +175,8 @@ function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRo
             {r.live.length ? (
               <ul className={s.live}>
                 {r.live.slice(0, 6).map((l, i) => (
-                  <li key={i} className={over(l.price, r.result.maxBid) ? "muted" : undefined}>
-                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, r.result.maxBid) ? ", over your max" : ""}
+                  <li key={i} className={over(l.price, maxFor(decisions, l, r)) ? "muted" : undefined}>
+                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, maxFor(decisions, l, r)) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
                     {l.screen && <ScreenBadge s={l.screen} />}
                     <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} skipOnly={l.kind !== "auction"} />

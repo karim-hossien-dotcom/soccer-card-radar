@@ -13,11 +13,13 @@ const OUT = process.env.SHOT_DIR || '/tmp';
   // Ronaldo #161 base: live auction $31, item v1|110000000001|0, ends in ~5h
   await p.click('text=2014 Panini Prizm World Cup #161 Cristiano Ronaldo (base)');
   const li = () => p.locator('li:has-text("Cristiano Ronaldo Portugal"):has(button:has-text("Approve"))');
+  ok((await li().textContent()).includes('over your max'), '$31 is over the engine max before approval');
   await li().locator('input').fill('40'); await li().locator('button:has-text("Approve")').click(); await p.waitForTimeout(3000);
   const line = p.locator('li:has-text("Approved, max $40")');
   ok(await line.count() === 1, 'approved line shown');
   ok((await line.textContent()).includes('Enter it in Gixen or bid by hand.'), 'existing line kept');
   ok((await line.textContent()).includes('Item # 110000000001'), 'item # stripped from v1|…|0');
+  ok(!(await line.textContent()).includes('over your max'), 'approved $40 max: $31 is not "over your max"');
   // copy: exactly the item # / max, and no network request
   const reqs = []; p.on('request', (r) => reqs.push(r.url()));
   await line.locator('button[aria-label="Copy item number"]').click();
