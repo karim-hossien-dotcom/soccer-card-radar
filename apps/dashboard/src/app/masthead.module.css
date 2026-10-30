@@ -5,6 +5,8 @@
 .mark svg { flex: none; }
 .nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
 .nav::-webkit-scrollbar { display: none; }
+.logoutForm { margin: 0 0 0 auto; display: flex; }
+.logoutForm button { border: 0; background: none; font: inherit; font-weight: 600; cursor: pointer; }
 .tab { position: relative; padding: 8px 12px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: var(--t-md); color: var(--on-navy-2); white-space: nowrap; transition: color .15s, background .15s; }
 .tab:hover { color: var(--on-navy); background: rgba(255, 255, 255, 0.06); }
 .tab[aria-current="page"] { color: var(--navy); background: var(--on-navy); }

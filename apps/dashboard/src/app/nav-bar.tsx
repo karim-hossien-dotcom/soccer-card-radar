@@ -13,6 +13,7 @@ const tabs = [
 
 export default function NavBar() {
   const pathname = usePathname();
+  if (pathname === "/login") return null;
   return (
     <nav className={m.nav} aria-label="Sections">
       {tabs.map((t) => {
@@ -23,6 +24,9 @@ export default function NavBar() {
           </Link>
         );
       })}
+      <form action="/api/logout" method="post" className={m.logoutForm}>
+        <button type="submit" className={m.tab}>Log out</button>
+      </form>
     </nav>
   );
 }
