@@ -97,7 +97,7 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
 }
 
 /** The condition report: grade ceiling first, then centering, wear, look flags and what a photo can't show. */
-export function ReportView({ report }: { report: ConditionReport }) {
+export function ReportView({ report, cardId }: { report: ConditionReport; cardId?: string }) {
   const ceil = ceilingLine(report);
   return (
         <div className={s.report}>
@@ -117,7 +117,7 @@ export function ReportView({ report }: { report: ConditionReport }) {
           </table>
           {(["front", "back"] as const).map((sd) => {
             const b = report[sd]?.borders;
-            return b ? <BorderConfirm key={sd} side={sd} borders={b} repeats={sd === "front" ? report.repeats : undefined} /> : null;
+            return b ? <BorderConfirm key={sd} side={sd} borders={b} cardId={cardId} repeats={sd === "front" ? report.repeats : undefined} /> : null;
           })}
 
           <h3 className={s.h}>Edges and corners</h3>

@@ -1,4 +1,5 @@
-import type { GradingData } from "./load";
+import type { GradingData, CentCheck } from "./load";
+import { centeringGrade, fmtSplit } from "@/lib/borders";
 import s from "./grading.module.css";
 import CheckPanel from "./check-panel";
 import GradePicker from "./grade-picker";
@@ -9,7 +10,37 @@ const usd = (n: number | null | undefined, d = 0) =>
 const signed = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `${n >= 0 ? "+" : "−"}${usd(Math.abs(n))}`);
 const tone = (n: number | null | undefined) => (n === null || n === undefined ? undefined : n >= 0 ? "gain" : "loss");
 
-export default function GradingView({ open, back, backTotals: t, vault, listings }: GradingData) {
+function CentChecks({ checks }: { checks: CentCheck[] }) {
+  if (!checks.length) return null;
+  const pct = (x: number | null) => (x === null ? "—" : fmtSplit(x));
+  return (
+    <section aria-labelledby="cal-h">
+      <h2 id="cal-h">Centering checks</h2>
+      <p className="muted">Lines you confirmed on scans linked to a card. When PSA grades the card, its grade shows here next to what the centering alone allowed: that is how the grader gets calibrated.</p>
+      <div className="sheet-wrap">
+        <table className="sheet" aria-label="Centering checks">
+          <thead><tr><th scope="col">Card</th><th scope="col">Side</th><th scope="col">L/R</th><th scope="col">T/B</th><th scope="col">Centering allows</th><th scope="col">PSA grade</th><th scope="col">Saved</th></tr></thead>
+          <tbody>
+            {checks.map((c) => {
+              const worst = Math.max(c.lr ?? 0.5, c.tb ?? 0.5);
+              const allows = c.lr === null && c.tb === null ? "—" : `PSA ${centeringGrade(worst, c.side === "back").psa}`;
+              return (
+                <tr key={c.cardId + c.side}>
+                  <td style={{ minWidth: 200 }}>{c.title}</td><td>{c.side === "front" ? "Front" : "Back"}</td><td>{pct(c.lr)}</td><td>{pct(c.tb)}</td>
+                  <td>{allows}</td>
+                  <td>{c.grade ?? (c.status === "at_grader" ? "At PSA" : "Not graded yet")}</td>
+                  <td style={{ whiteSpace: "nowrap" }}>{c.at}{c.adjusted ? " · adjusted" : ""}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+export default function GradingView({ open, back, backTotals: t, vault, listings, scanCards, checks }: GradingData) {
   const atPsa = open.reduce((n, x) => n + x.cards.length, 0);
   return (
     <>
@@ -19,13 +50,15 @@ export default function GradingView({ open, back, backTotals: t, vault, listings
       </header>
 
       <section aria-label="Check cards">
-        <div className={s.scanRow}><Scan /><span>On your phone: point at a card, it captures front and back and checks them.</span></div>
+        <div className={s.scanRow}><Scan cards={scanCards} /><span>On your phone: point at a card, it captures front and back and checks them.</span></div>
         <GradePicker vault={vault} listings={listings} />
         <details className={s.upload}>
           <summary>Check your own photo instead</summary>
           <CheckPanel />
         </details>
       </section>
+
+      <CentChecks checks={checks} />
 
       <section aria-labelledby="open-h">
         <h2 className="section" id="open-h">At PSA</h2>

@@ -34,3 +34,13 @@ Naming (cards were mis-identified before; follow exactly):
 - Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
 - Seller titles can't be trusted for the year; the card decides (e.g. 2024-25 Match Ball patches say "24/25"). Check the photo.
 - Confirm exact insert and parallel names on the official checklist before searching.
+
+Card Ladder rules (from its help centre, Oct 2026):
+- Search synonyms CL treats as equal: auto = autograph = signed = signature(s); refractor(s); x-fractor; rc = rookie; jsy = jersey = relic; rpa = rookie patch autograph; holo = holographic; die-cut; patch(es).
+  So "Auto" vs "Signature" in titles is not a different card; insert names and parallel colours are.
+- CL Value for a graded card with no ladder profile: exact card + grade + grader only (never other parallels or grades).
+  Sales from the last 6 months, narrowed to 3 months if more than 10; outliers removed with IQR (1.5x) on the newest 25;
+  the newest surviving sale is the value; if older than 2 weeks it is scaled by the player's index (sale price / index on
+  sale date x index today). Treat a CL value from a single old sale as weak and say so.
+- PSA's cert label is the authority for the card's name (e.g. "EMERGING STARS-AU-BLUE"): compare it with the Vault item.
+- Graded cards: search Card Ladder by the PSA cert number first (exact match via GemRate); then use the Same Grade / Same Grading Company views. Text search only when there is no cert.

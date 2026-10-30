@@ -25,7 +25,13 @@ export async function POST(req: Request) {
     adjusted: JSON.stringify(measured) !== JSON.stringify(confirmed),
     lr: s.lr.worst, tb: s.tb.worst, lrMid: s.lr.mid, tbMid: s.tb.mid,
   };
-  if (fixtureMode()) return Response.json({ saved: 1, row });
+  if (fixtureMode()) {
+    const { readFile, writeFile } = await import("node:fs/promises");
+    const f = process.env.COLLECTION_FIXTURE!, data = JSON.parse(await readFile(f, "utf8"));
+    data.centeringChecks = [...(data.centeringChecks ?? []), { ...row, createdAt: new Date().toISOString() }];
+    await writeFile(f, JSON.stringify(data));
+    return Response.json({ saved: 1, row });
+  }
   const { error } = await supabase.from("CenteringCheck").insert(row);
   if (error) return Response.json({ error: error.message }, { status: 400 });
   return Response.json({ saved: 1, row });

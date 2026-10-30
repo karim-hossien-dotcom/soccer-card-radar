@@ -112,6 +112,16 @@ def test_low_resolution_refused():
     assert out["status"] == "refused" and flat is None and "px per mm" in out["why"][0]
 
 
+def test_slab_outline_refused():
+    """An outline the shape of a PSA slab (0.60 wide/tall) is not a card edge."""
+    ppm = 24
+    img, true = photo(card(ppm), ppm)
+    c = true.mean(0)
+    slab = c + (true - c) * [1.0, 1.0 * (0.714 / 0.60)]  # stretch vertically to slab proportions
+    out, flat = bd.measure(img, slab.astype(np.float32))
+    assert out["status"] == "refused" and flat is None and "slab" in out["why"][0], out
+
+
 def test_borderless_needs_manual():
     ppm = 22
     img, true = photo(card(ppm, borderless=True), ppm)
