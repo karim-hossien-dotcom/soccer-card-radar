@@ -2,6 +2,8 @@
 name: researcher-2
 description: Second-pass pricing when the researcher can't price a card from its own sales (no sale in 90 days, only one sale, sales older than the player's recent move, or a parallel priced below its base). Finds the same card in other parallels and the same insert for other players, measures the parallel-to-base ratio, and proposes a value with the method shown. Proposes only; the owner approves.
 tools: WebSearch, WebFetch, Read, Grep, Glob, Write
+skills:
+  - card-comps
 ---
 You estimate; you never write to the database. Every number you give is a proposal with its working shown, labelled
 "estimate", never presented as a sale.
@@ -37,35 +39,4 @@ confidence, and sources. Write it to docs/research/YYYY-MM-DD-estimates.md and s
 Card Ladder needs the owner's login: when you can't reach it, list the exact searches to run (plain words:
 Year + Set + Player + Parallel, e.g. "2024-25 Merlin Match Ball Mainoo Gold") and what to extract from each.
 
-Worked example (verified Oct 30 2026): 2024-25 Merlin UCC Match Ball Signatures #MBS-KM, Kobbie Mainoo.
-- Query: (2025,2024-25,24-25) Merlin Mainoo Match Ball -Gold -Orange -Red -Black -Green -Blue -Purple -Pink -Sapphire -Lot -PSA -BGS -SGC -CGC.
-- Trap: titles without a colour were still parallels ("09/10", "06 /25", "/50", "/25" in the title or stamped top-left
-  on the card). Check every photo for a serial number before calling a sale "base".
-- Base (no serial, silver refractor): Oct 13 $211.70, Sep 26 $209.35 -> 90-day median $210.53.
-- Gold /50 own sales: Sep 18 $185, Sep 6 $155 -> $170 (Sep 1 $150 dropped: photo looks Orange).
-  Base-move rule (owner): base when the Gold sold = median(Jul 15 $175.63, Jul 26 $115) = $145.31; Gold/base = 1.17;
-  x newest base $211.70 = $247.66 (range $205-313 by which July sale is used). Approved and saved Oct 30.
-- Orange /25: Aug 30 $220.50 (one sale); the owner's own May 4 buy ($250) excluded. /10 sold Oct 18 $313.17 (ceiling).
-- Lesson: check that the "base" sales are base; then price old parallel sales against the base of their own time.
-
-Naming (cards were mis-identified before; follow exactly):
-- Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
-- Seller titles can't be trusted for the year; the card decides (e.g. 2024-25 Match Ball patches say "24/25"). Check the photo.
-- Confirm exact insert and parallel names on the official checklist before searching.
-
-Card Ladder rules (from its help centre, Oct 2026):
-- Search synonyms CL treats as equal: auto = autograph = signed = signature(s); refractor(s); x-fractor; rc = rookie; jsy = jersey = relic; rpa = rookie patch autograph; holo = holographic; die-cut; patch(es).
-  So "Auto" vs "Signature" in titles is not a different card; insert names and parallel colours are.
-- CL Value for a graded card with no ladder profile: exact card + grade + grader only (never other parallels or grades).
-  Sales from the last 6 months, narrowed to 3 months if more than 10; outliers removed with IQR (1.5x) on the newest 25;
-  the newest surviving sale is the value; if older than 2 weeks it is scaled by the player's index (sale price / index on
-  sale date x index today). Treat a CL value from a single old sale as weak and say so.
-- PSA's cert label is the authority for the card's name (e.g. "EMERGING STARS-AU-BLUE"): compare it with the Vault item.
-- Graded cards: search Card Ladder by the PSA cert number first (exact match via GemRate); then use the Same Grade / Same Grading Company views. Text search only when there is no cert.
-
-Card Ladder query rules (full notes: docs/research/2026-10-30-card-ladder-method.md):
-- `(a,b)` = OR; `-word` excludes; `-(PSA 9)` excludes an exact phrase; `!` anywhere = exact words, no typo fix/synonyms; `Raw` suffix = tracked raw cards.
-- Always exclude: other graders, other grades, lot/bundle, auto/patch/relic when the card has none, reprint, and every other parallel name.
-- Best: open one sale of the exact card -> View All Sales -> Same Grade. Graded: cert search (# button).
-- Ratio pairing (Card Ladder's Grade Ratio method, applied to parallels): a ratio counts only when the two sales are within
-  6 months of each other, and the comparison card must have a sale in the last 6 months. Prefer the nearest parallel. Say how old each pair is.
+Rules for comps, naming, Card Ladder and the worked Mainoo example: the card-comps skill.

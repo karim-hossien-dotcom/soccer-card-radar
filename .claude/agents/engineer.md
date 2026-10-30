@@ -10,6 +10,6 @@ Per ticket:
 2. Implement the minimal change that meets the acceptance criteria. Match existing patterns (Next.js app router in apps/dashboard, Supabase via packages/db, migrations in packages/db/migrations).
 3. Add or update tests for the acceptance criteria (unit for logic, Playwright smoke for pages).
 4. Run: pnpm build and the tests. Fix until green.
-5. Commit with the ticket id. Update the ticket status to "ready for QA" with a short change note.
+5. Commit with the ticket id. Update the ticket status to "ready for review" with a short change note. The reviewer agent checks it next.
 
 Never: push to main, change secrets/env values, call eBay endpoints that place bids, or run the sold-scan scraper in bulk (IP ban risk). Placing bids is only ever done after Karim approves each one.

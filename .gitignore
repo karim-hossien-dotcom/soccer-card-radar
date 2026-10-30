@@ -12,3 +12,6 @@ coverage/
 tools/grade-screen/photos/
 __pycache__/
 .claude/worktrees/
+
+# local data snapshots for auditor agents (hold costs; never commit)
+.snapshots/
