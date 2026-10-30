@@ -585,6 +585,18 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["PriceReference"]["Insert"]>;
         Relationships: [];
       };
+      CenteringCheck: {
+        Row: {
+          id: string; createdAt: string; cardId: string | null; side: string; imageHash: string; pxPerMm: number;
+          measured: Json; confirmed: Json; adjusted: boolean; lr: number | null; tb: number | null; lrMid: number | null; tbMid: number | null;
+        };
+        Insert: {
+          id?: string; createdAt?: string; cardId?: string | null; side: string; imageHash: string; pxPerMm: number;
+          measured: Json; confirmed: Json; adjusted: boolean; lr?: number | null; tb?: number | null; lrMid?: number | null; tbMid?: number | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["CenteringCheck"]["Insert"]>;
+        Relationships: [];
+      };
       AlertSent: {
         Row: {
           id: string;

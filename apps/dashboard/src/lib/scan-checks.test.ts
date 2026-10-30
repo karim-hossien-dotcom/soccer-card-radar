@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { shape, judge, moved, pixels, signature, change, smooth, toFractions, NEEDS_CHANGE, CARD_RATIO, type Quad } from "./scan-checks.ts";
+import { shape, judge, moved, pixels, signature, change, smooth, toFractions, cropBox, NEEDS_CHANGE, CARD_RATIO, type Quad } from "./scan-checks.ts";
 
 const W = 1000, H = 1400;
 const rect = (x: number, y: number, w: number, h: number): Quad => ({
@@ -66,4 +66,13 @@ test("smooth and toFractions", () => {
   assert.equal(smooth(a, b).topLeft.x, 5);
   assert.equal(smooth(null, b), b);
   assert.deepEqual(toFractions(rect(100, 140, 500, 700), W, H)[2], [0.6, 0.6]);
+});
+
+test("cropBox keeps the card at full resolution and maps its corners into the crop", () => {
+  const fr = [[0.25, 0.2], [0.75, 0.2], [0.75, 0.8], [0.25, 0.8]];
+  const b = cropBox(fr, 3000, 4000, 0.1);
+  assert.deepEqual([b.x, b.y, b.w, b.h], [600, 560, 1800, 2880]);
+  assert.ok(Math.abs(b.quad[0][0] - 150 / 1800) < 1e-9 && Math.abs(b.quad[2][1] - (3200 - 560) / 2880) < 1e-9);
+  const edge = cropBox([[0, 0], [0.5, 0], [0.5, 0.5], [0, 0.5]], 1000, 1000, 0.1); // clamped at the photo's edge
+  assert.equal(edge.x, 0); assert.equal(edge.w, 550);
 });

@@ -76,9 +76,23 @@ def test_report_with_chips_and_back():
     assert status == 200, r
     assert r["ceiling"]["psa"] <= 8 and r["holder"] is False
     assert r["front"]["file"] is None and r["back"] is not None
-    cg = r["centering_grades"]["front_lr"]
-    assert cg["split"] == r["centering"]["front_lr"] and cg["psa"] == 10 and cg["psa_tolerance"] == "55/45"
-    assert any(x["point"] == "top/bottom centering" for x in r["cant_judge"])
+    # this test card is under 20 px/mm: centering is refused, never guessed
+    assert r["centering"] == {} and r["front"]["borders"]["status"] == "refused"
+    assert any(x["point"] == "centering (border lines)" and "px per mm" in x["why"] for x in r["cant_judge"])
+
+
+def test_measured_borders_four_sides():
+    import cv2, test_borders as tb
+    img, true = tb.photo(tb.card(24, left=2.5, right=3.5, top=3.0, bottom=4.0), 24)
+    ok, jpg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    q = [[float(x / img.shape[1]), float(y / img.shape[0])] for x, y in true]
+    h, body = form(front=jpg.tobytes(), front_quad=api.json.dumps(q))
+    status, r = api.handle(h, body, env=ENV)
+    assert status == 200, r
+    bo = r["front"]["borders"]
+    assert bo["status"] == "ok" and bo["image"].startswith("data:image/jpeg;base64,"), bo["why"]
+    assert r["centering"]["front_lr"] == "58/42" and r["centering"]["front_tb"] == "57/43", r["centering"]
+    assert r["centering_grades"]["front_lr"]["psa"] == 9 and r["centering_grades"]["front_tb"]["psa"] == 9
 
 
 def test_holder_flag_means_no_ceiling():

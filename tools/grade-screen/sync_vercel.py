@@ -8,7 +8,7 @@ import os, shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DEST = os.path.join(HERE, "..", "..", "apps", "dashboard", "api", "_grade_screen")
-FILES = ("condition.py", "centering.py", "surface.py")
+FILES = ("condition.py", "centering.py", "surface.py", "borders.py")
 
 if __name__ == "__main__":
     os.makedirs(DEST, exist_ok=True)

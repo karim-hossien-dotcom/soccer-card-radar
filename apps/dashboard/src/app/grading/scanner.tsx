@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Scanner as ScanicScanner } from "scanic";
 import { parseReport, type ConditionReport } from "@/lib/condition-report";
-import { shape, pixels, moved, judge, signature, change, smooth, toFractions, NEEDS_CHANGE, LIMITS, CARD_RATIO, type Quad } from "@/lib/scan-checks";
+import { shape, pixels, moved, judge, signature, change, smooth, toFractions, cropBox, NEEDS_CHANGE, LIMITS, CARD_RATIO, type Quad } from "@/lib/scan-checks";
 import { shrink, ReportView } from "./check-panel";
 import s from "./scanner.module.css";
 
@@ -15,18 +15,23 @@ const SHOTS: { step: Shot; tag: string; intro: string; skip?: string; grace: num
   { step: "back", tag: "3 of 3 · Back", intro: "Flip the card over", skip: "Skip back", grace: -8 },
 ];
 const isShot = (x: Step): x is Shot => x === "front" || x === "light" || x === "back";
-const UPLOAD_LONG_SIDE = 2400; // three photos must fit Vercel's 4.5 MB request limit; still ~25 px/mm on a card filling the frame
+// Vercel caps a request at 4.5 MB: front and back cropped to the card at up to 2400 px (~24 px/mm, enough to measure
+// centering), side light at 1400 px (the surface check works at 12 px/mm). ~3 MB for all three.
+const UPLOAD_LONG_SIDE: Record<Shot, number> = { front: 2400, light: 1400, back: 2400 };
 
-/** Re-encode to a fixed long side so front, side-light and back always fit one request. */
-async function fit(b: Blob): Promise<Blob> {
+/** Crop to the card (keeping full resolution) when its corners are known, else shrink the whole photo.
+ * Returns the JPEG and the corners as fractions of what was sent. */
+async function fit(b: Blob, shot: Shot, quad?: number[][]): Promise<{ blob: Blob; quad?: number[][] }> {
   const bmp = await createImageBitmap(b).catch(() => null);
-  if (!bmp) return shrink(b);
-  const k = Math.min(1, UPLOAD_LONG_SIDE / Math.max(bmp.width, bmp.height));
+  if (!bmp) return { blob: await shrink(b), quad: undefined };
+  const box = quad ? cropBox(quad, bmp.width, bmp.height) : { x: 0, y: 0, w: bmp.width, h: bmp.height, quad };
+  const k = Math.min(1, UPLOAD_LONG_SIDE[shot] / Math.max(box.w, box.h));
   const c = document.createElement("canvas");
-  c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
-  c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+  c.width = Math.round(box.w * k); c.height = Math.round(box.h * k);
+  c.getContext("2d")!.drawImage(bmp, box.x, box.y, box.w, box.h, 0, 0, c.width, c.height);
   bmp.close();
-  return new Promise((res) => c.toBlob((x) => res(x ?? b), "image/jpeg", 0.9));
+  const out = await new Promise<Blob>((res) => c.toBlob((x) => res(x ?? b), "image/jpeg", 0.88));
+  return { blob: out, quad: box.quad };
 }
 const PREVIEW = 640; // long side of the frame the browser analyses; the captured photo is full resolution
 
@@ -108,11 +113,14 @@ function ScanView({ onClose }: { onClose: () => void }) {
     go("checking");
     try {
       const fd = new FormData();
-      fd.append("front", await fit(shots.current.front!), "front.jpg");
-      if (shots.current.light) fd.append("front_raking", await fit(shots.current.light), "front-side-light.jpg");
-      if (shots.current.back) fd.append("back", await fit(shots.current.back), "back.jpg");
-      const field: Record<Shot, string> = { front: "front_quad", light: "front_raking_quad", back: "back_quad" };
-      for (const [k, q] of Object.entries(quads.current)) if (q) fd.append(field[k as Shot], JSON.stringify(q));
+      const field: Record<Shot, [string, string, string]> = { front: ["front", "front.jpg", "front_quad"], light: ["front_raking", "front-side-light.jpg", "front_raking_quad"], back: ["back", "back.jpg", "back_quad"] };
+      for (const k of ["front", "light", "back"] as Shot[]) {
+        const b = shots.current[k];
+        if (!b) continue;
+        const f = await fit(b, k, quads.current[k]);
+        fd.append(field[k][0], f.blob, field[k][1]);
+        if (f.quad) fd.append(field[k][2], JSON.stringify(f.quad));
+      }
       fd.append("holder", "0");
       const res = await fetch("/api/condition", { method: "POST", body: fd });
       const body = await res.json().catch(() => null);

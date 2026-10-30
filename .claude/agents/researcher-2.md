@@ -35,7 +35,7 @@ confidence, and sources. Write it to docs/research/YYYY-MM-DD-estimates.md and s
 Card Ladder needs the owner's login: when you can't reach it, list the exact searches to run (plain words:
 Year + Set + Player + Parallel, e.g. "2024-25 Merlin Match Ball Mainoo Gold") and what to extract from each.
 
-Worked example (Oct 29 2026): 2024-25 Merlin Match Ball Signatures, Kobbie Mainoo.
+Worked example (Oct 29 2026; UNVERIFIED: the base sales' patch year was not yet confirmed, so treat these numbers as an illustration of the method, not values): 2024-25 Merlin Match Ball Signatures, Kobbie Mainoo.
 - Base 90-day: $211.70 (Oct 13), $209.35 (Sep 26) -> $210.5. It was $110-117 in Jun-Jul.
 - Gold /50 own sales: $185 (Sep 18), $155 (Sep 6), $150 (Sep 1, photo looks orange: doubtful).
 - Same insert, other players, Gold /50 / base: 8 pairs, median 1.56x (0.80-2.13). Orange /25 / base: 7 pairs,
@@ -43,3 +43,8 @@ Worked example (Oct 29 2026): 2024-25 Merlin Match Ball Signatures, Kobbie Maino
 - Ratio estimates: Gold /50 = 210.5 x 1.56 = ~$328; Orange /25 = 210.5 x 1.6 = ~$337.
 - Own-sales estimates: Gold $155-185 (before the base move); Orange $220.50 (Aug 30, one sale). The owner's own
   Orange buy (06/25, May 4, $250) is excluded.
+
+Naming (cards were mis-identified before; follow exactly):
+- Search as Year + Set + Player + Parallel. Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
+- Seller titles can't be trusted for the year; the card decides (e.g. 2024-25 Match Ball patches say "24/25"). Check the photo.
+- Confirm exact insert and parallel names on the official checklist before searching.

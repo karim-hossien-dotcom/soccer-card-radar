@@ -132,3 +132,15 @@ export function smooth(prev: Quad | null, q: Quad, k = 0.5): Quad {
 /** Corners as fractions of the frame, [[x, y] x 4] clockwise from top-left: what the server takes as `front_quad`. */
 export const toFractions = (q: Quad, w: number, h: number) =>
   [q.topLeft, q.topRight, q.bottomRight, q.bottomLeft].map((p) => [Math.min(1, Math.max(0, p.x / w)), Math.min(1, Math.max(0, p.y / h))]);
+
+/** Crop box around the card (corners as fractions of a w x h photo) with `pad` of the card's size on each side,
+ * clamped to the photo, plus the corners re-expressed as fractions of the crop. Cropping instead of shrinking keeps
+ * the card at the photo's full resolution (centering needs 20+ px per mm). */
+export function cropBox(fr: number[][], w: number, h: number, pad = 0.06) {
+  const xs = fr.map((p) => p[0] * w), ys = fr.map((p) => p[1] * h);
+  const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+  const px = (x1 - x0) * pad, py = (y1 - y0) * pad;
+  const x = Math.max(0, Math.floor(x0 - px)), y = Math.max(0, Math.floor(y0 - py));
+  const cw = Math.min(w, Math.ceil(x1 + px)) - x, ch = Math.min(h, Math.ceil(y1 + py)) - y;
+  return { x, y, w: cw, h: ch, quad: fr.map((p) => [(p[0] * w - x) / cw, (p[1] * h - y) / ch]) };
+}
