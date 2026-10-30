@@ -1,4 +1,4 @@
-import type { Borders } from "./borders";
+import type { Borders, Repeats } from "./borders";
 
 /**
  * G2: photo condition check. Parses the JSON from POST /api/condition (tools/grade-screen/condition.py via the
@@ -25,6 +25,7 @@ export type ConditionReport = {
   centering_grades: Partial<Record<CentKey, CentGrade>>;
   ceiling: { psa: number | null; bgs: number | null; tag: number | null; why: string[]; look: string[] };
   cant_judge: { point: string; graders: string; why: string }[];
+  repeats?: Repeats; // front centering from the 3 scanner stills (set by the scanner, not the API)
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);

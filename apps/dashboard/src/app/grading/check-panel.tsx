@@ -117,7 +117,7 @@ export function ReportView({ report }: { report: ConditionReport }) {
           </table>
           {(["front", "back"] as const).map((sd) => {
             const b = report[sd]?.borders;
-            return b ? <BorderConfirm key={sd} side={sd} borders={b} /> : null;
+            return b ? <BorderConfirm key={sd} side={sd} borders={b} repeats={sd === "front" ? report.repeats : undefined} /> : null;
           })}
 
           <h3 className={s.h}>Edges and corners</h3>

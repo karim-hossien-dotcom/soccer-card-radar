@@ -1,7 +1,7 @@
 "use client";
 /** G7: check the 8 centering lines on the straightened card, nudge any that are off, confirm, save. */
 import { useMemo, useRef, useState } from "react";
-import { SIDES, NUDGE_MM, initialLines, splits, nudge, linePx, fmtSplit, centeringGrade, type Borders, type Lines, type SideName } from "@/lib/borders";
+import { SIDES, NUDGE_MM, MAX_SPREAD_POINTS, repeatability, initialLines, splits, nudge, linePx, fmtSplit, centeringGrade, type Borders, type Lines, type SideName, type Repeats } from "@/lib/borders";
 import s from "./border-confirm.module.css";
 
 type Sel = { side: SideName; kind: "outer" | "inner" };
@@ -13,7 +13,19 @@ async function sha256(text: string) {
   return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export default function BorderConfirm({ side, borders, cardId }: { side: "front" | "back"; borders: Borders; cardId?: string }) {
+function RepeatLine({ r }: { r: Repeats }) {
+  const q = repeatability(r);
+  const list = (xs: (number | null)[]) => xs.map((x) => (x === null ? "—" : fmtSplit(x))).join(", ");
+  return (
+    <p className={s.repeat} data-ok={q.ok}>
+      {q.ok ? "Repeatable" : "Not repeatable"} over {r.lr.length} photos: L/R {list(r.lr)} · T/B {list(r.tb)}
+      {q.measured >= 2 && <> (spread {q.lr ?? "—"} / {q.tb ?? "—"} points)</>}
+      {!q.ok && <> — needs {MAX_SPREAD_POINTS} points or less on 3 photos: retake, or check the lines below by hand.</>}
+    </p>
+  );
+}
+
+export default function BorderConfirm({ side, borders, cardId, repeats }: { side: "front" | "back"; borders: Borders; cardId?: string; repeats?: Repeats }) {
   const measured = useMemo(() => initialLines(borders), [borders]);
   const [lines, setLines] = useState<Lines>(measured);
   const [sel, setSel] = useState<Sel>({ side: "left", kind: "inner" });
@@ -26,6 +38,7 @@ export default function BorderConfirm({ side, borders, cardId }: { side: "front"
       <div className={s.box}>
         <p className={s.title}>{side === "front" ? "Front" : "Back"} centering: can&apos;t measure</p>
         <ul className={s.why}>{borders.why.map((w) => <li key={w}>{w}</li>)}</ul>
+        {repeats && <RepeatLine r={repeats} />}
       </div>
     );
   }
@@ -111,6 +124,7 @@ export default function BorderConfirm({ side, borders, cardId }: { side: "front"
   return (
     <div className={s.box}>
       <p className={s.title}>{side === "front" ? "Front" : "Back"} centering: check the lines</p>
+      {repeats && <RepeatLine r={repeats} />}
       {borders.status === "needs_manual" && <ul className={s.why}>{borders.why.map((w) => <li key={w}>{w}</li>)}</ul>}
       <p className={s.help}>Blue dashed = cut edge, amber = printed border. Drag a line, or pick one and nudge it {NUDGE_MM} mm at a time. The magnifier shows the selected line.</p>
       <div className={s.grid}>

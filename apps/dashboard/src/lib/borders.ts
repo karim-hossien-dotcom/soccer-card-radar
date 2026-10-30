@@ -14,6 +14,7 @@ export type Borders = {
   px_per_mm: number;
   why: string[];
   inner: Partial<Record<SideName, InnerLine>>;
+  centering?: Partial<Record<"lr" | "tb", { mid: number; worst: number; wider: string }>>;
   alternates: Partial<Record<SideName, number[]>>;
   straight?: { px_per_mm: number; margin_px: number };
   image?: string | null;
@@ -92,4 +93,18 @@ export function linePx(L: Lines, side: SideName, kind: "outer" | "inner", R: num
     case "left": return [M + d[0] * R, M + along[0], M + d[1] * R, M + along[1]];
     default: return [M + W - d[0] * R, M + along[0], M + W - d[1] * R, M + along[1]];
   }
+}
+
+/** 3-shot repeatability: worst-point splits from each still of the same side. Spread in points (max - min);
+ * over 1.5 points the measurement isn't trustworthy. Shots that couldn't be measured are listed as null. */
+export const MAX_SPREAD_POINTS = 1.5;
+export type Repeats = { lr: (number | null)[]; tb: (number | null)[] };
+export function repeatability(r: Repeats): { lr: number | null; tb: number | null; ok: boolean; measured: number } {
+  const spread = (xs: (number | null)[]) => {
+    const v = xs.filter((x): x is number => x !== null && Number.isFinite(x));
+    return v.length >= 2 ? Math.round((Math.max(...v) - Math.min(...v)) * 1000) / 10 : null;
+  };
+  const lr = spread(r.lr), tb = spread(r.tb);
+  const measured = Math.min(r.lr.filter((x) => x !== null).length, r.tb.filter((x) => x !== null).length);
+  return { lr, tb, measured, ok: measured >= 3 && lr !== null && tb !== null && lr <= MAX_SPREAD_POINTS && tb <= MAX_SPREAD_POINTS };
 }

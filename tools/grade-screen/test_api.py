@@ -95,6 +95,17 @@ def test_measured_borders_four_sides():
     assert r["centering_grades"]["front_lr"]["psa"] == 9 and r["centering_grades"]["front_tb"]["psa"] == 9
 
 
+def test_centering_only_mode():
+    import cv2, test_borders as tb
+    img, true = tb.photo(tb.card(24), 24, seed=3)
+    ok, jpg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    q = [[float(x / img.shape[1]), float(y / img.shape[0])] for x, y in true]
+    h, body = form(front=jpg.tobytes(), front_quad=api.json.dumps(q), only="centering")
+    status, r = api.handle(h, body, env=ENV)
+    assert status == 200 and set(r) == {"borders"}, r
+    assert r["borders"]["status"] == "ok" and abs(r["borders"]["centering"]["lr"]["mid"] - 3.5 / 6) < 0.01
+
+
 def test_holder_flag_means_no_ceiling():
     h, body = form(front=png(chips=8), holder="1")
     status, r = api.handle(h, body, env=ENV)

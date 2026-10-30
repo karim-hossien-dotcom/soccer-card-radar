@@ -31,3 +31,5 @@
 .primary:disabled { opacity: .6; cursor: default; }
 .ghost { font: inherit; font-weight: 700; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--rule); background: transparent; color: var(--ink); cursor: pointer; }
 .err { color: var(--loss); font-weight: 650; font-size: 13px; }
+.repeat { margin: 0 0 10px; padding: 8px 10px; border-radius: 8px; font-size: 13px; font-weight: 650; background: #fde8e4; color: var(--loss); }
+.repeat[data-ok="true"] { background: #e3f7ee; color: #0a6b45; }

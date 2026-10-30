@@ -42,3 +42,10 @@ test("linePx places the left inner line 2.5 mm in", () => {
   const [x1, , x2] = linePx(initialLines(measured), "left", "inner", 20, 30);
   assert.equal(x1, 80); assert.equal(x2, 80);
 });
+
+test("repeatability: spread in points, needs 3 measured shots", async () => {
+  const { repeatability } = await import("./borders.ts");
+  assert.deepEqual(repeatability({ lr: [0.58, 0.583, 0.575], tb: [0.57, 0.57, 0.571] }), { lr: 0.8, tb: 0.1, measured: 3, ok: true });
+  assert.equal(repeatability({ lr: [0.58, 0.6, 0.575], tb: [0.57, 0.57, 0.57] }).ok, false); // 2.5 points
+  assert.equal(repeatability({ lr: [0.58, null, 0.58], tb: [0.57, null, 0.57] }).ok, false); // one shot unmeasured
+});

@@ -325,6 +325,15 @@ CANT_JUDGE = [
 ]
 
 
+def centering_only(path, hint=None):
+    """Borders and splits only (no image, no wear checks): the extra stills of the 3-shot repeatability check."""
+    img, q, err = locate(path, hint)
+    if q is None:
+        return {"status": "refused", "why": [err], "centering": {}}
+    out, _ = bd.measure(img, q)
+    return {k: out[k] for k in ("status", "why", "centering", "px_per_mm", "inner")}
+
+
 def side_report(path, hint=None, straight=None):
     """One side's checks. straight: a dict that receives the card straightened by the border check (for the
     confirm screen), keyed "img"."""
