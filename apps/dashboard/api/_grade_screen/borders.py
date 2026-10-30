@@ -21,7 +21,8 @@ MIN_PPM = 20.0          # below this a 0.1 mm border change is under 2 px: cente
 MIN_INLIERS = 0.6       # share of profiles that must agree on a line
 MAX_RMS_PX = 0.5        # outer edge line fit, inliers only
 MAX_TILT = 0.02         # inner line slope vs the cut edge (mm per mm): steeper is not a border line
-STEP_DE = 9.0           # minimum colour step (delta E) for an inner border candidate
+STEP_DE = 9.0
+MAX_ASPECT_ERR = 0.06    # outline width/height vs a real card (63.5/88.9); a PSA slab is ~0.60, a card 0.714           # minimum colour step (delta E) for an inner border candidate
 SIDES = ("top", "right", "bottom", "left")
 
 
@@ -271,6 +272,10 @@ def measure(img, quad):
     sides_px = [np.linalg.norm(q[(k + 1) % 4] - q[k]) for k in range(4)]
     ppm = float((sides_px[0] + sides_px[2]) / 2 / CARD_W + (sides_px[1] + sides_px[3]) / 2 / CARD_H) / 2
     out = {"status": "refused", "px_per_mm": round(ppm, 1), "outer": None, "inner": {}, "alternates": {}, "centering": {}, "why": []}
+    aspect = (sides_px[0] + sides_px[2]) / (sides_px[1] + sides_px[3])
+    if abs(aspect / (CARD_W / CARD_H) - 1) > MAX_ASPECT_ERR:
+        out["why"].append(f"outline is {aspect:.3f} wide/tall, a card is {CARD_W / CARD_H:.3f}: probably a slab, toploader or another object, not the card's cut edge")
+        return out, None
     if ppm < MIN_PPM:
         out["why"].append(f"photo has {ppm:.1f} px per mm; centering needs {MIN_PPM:.0f}+ (move closer or use the full-size photo)")
         return out, None
