@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import type { Target } from "./load";
 import c from "../collection/collection.module.css";
 
-const TOKEN_KEY = "scr.adminToken";
 const today = () => new Date().toISOString().slice(0, 10);
 type Field = { key: keyof Target; label: string; hint?: string; type?: "number" | "text" | "date" };
 const FIELDS: Field[] = [
@@ -50,14 +49,11 @@ export default function TargetPanel({ target, prefill = null, actions, onClose }
   const pricesChanged = !!target && (["raw", "psa9", "psa10"] as const).some((k) => String(target[k] ?? "") !== v[k]);
 
   const save = async () => {
-    let token = "";
-    try { token = localStorage.getItem(TOKEN_KEY) ?? ""; } catch { /* blocked */ }
-    if (!token) { setMsg("Add your admin token in Vault, Update comps, first."); return; }
     setBusy(true); setMsg(null);
     // New prices without a new date would keep the old "as of": stamp today unless the date was edited too.
     const compsAsOf = pricesChanged && v.compsAsOf === (target?.compsAsOf ?? "") ? today() : v.compsAsOf;
     const body = { ...v, compsAsOf, id: target?.id };
-    const res = await fetch("/api/snipe/targets", { method: "POST", headers: { "content-type": "application/json", "x-admin-token": token }, body: JSON.stringify(body) });
+    const res = await fetch("/api/snipe/targets", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) { setMsg(`Not saved: ${j.error ?? res.status}`); return; }

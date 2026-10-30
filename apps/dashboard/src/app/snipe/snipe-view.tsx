@@ -8,9 +8,7 @@ import TargetPanel from "./target-panel";
 import { findTarget, type SnipePrefill } from "@/lib/grading";
 import s from "./snipe.module.css";
 
-const TOKEN_KEY = "scr.adminToken";
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
-const token = () => { try { return localStorage.getItem(TOKEN_KEY) ?? ""; } catch { return ""; } };
 /** C2: a live price above the engine's max bid is shown but greyed out. */
 const over = (price: number | null, max: number | null) => price !== null && max !== null && price > max;
 const short = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
@@ -138,8 +136,6 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
         </table>
       </div>
 
-      <FormReview players={players} />
-
       {editing && <TargetPanel target={editing === "new" ? null : editing} prefill={editing === "new" ? draft : null} actions={actions} onClose={() => { setEditing(null); setDraft(null); }} />}
     </>
   );
@@ -222,60 +218,6 @@ function ScreenBadge({ s: x }: { s: NonNullable<LiveListing["screen"]> }) {
   );
 }
 
-function FormReview({ players }: { players: SnipeData["players"] }) {
-  const router = useRouter();
-  const [msg, setMsg] = useState("");
-  const decide = async (actionId: string, asOf: string, approved: boolean) => {
-    const t = token();
-    if (!t) { setMsg("Add your admin token in Vault, Update comps, first."); return; }
-    const res = await fetch("/api/snipe/form", { method: "POST", headers: { "content-type": "application/json", "x-admin-token": t }, body: JSON.stringify({ actionId, asOf, approved }) });
-    const j = await res.json().catch(() => ({}));
-    setMsg(res.ok ? "" : `Not saved: ${j.error ?? res.status}`);
-    if (res.ok) router.refresh();
-  };
-  const list = players.filter((p) => !p.legend);
-  const pending = list.filter((p) => p.latest && !p.latest.approved).length;
-  return (
-    <section aria-labelledby="form-h">
-      <h2 className="section" id="form-h">Player form</h2>
-      <p className={s.basis}>
-        Real-life stats from the researcher, this season. They only count in the score once you approve them{pending ? `; ${pending} waiting` : ""}. Legends (Ronaldo, Messi, Salah, Neymar, Lewandowski) are scored on signal and tier only.
-      </p>
-      {msg && <p className="notice" role="status">{msg}</p>}
-      <div className="sheet-wrap">
-        <table className={`sheet ${s.form}`}>
-          <thead>
-            <tr><th>Player</th><th className="num">Apps</th><th className="num">Min</th><th className="num">G</th><th className="num">A</th><th className="num">Rating</th><th className="num">Age</th><th>Status</th></tr>
-          </thead>
-          <tbody>
-            {list.map(({ action: a, latest: f }) => (
-              <tr key={a.id}>
-                <td>
-                  <strong>{a.player}</strong> <span className="muted">{a.signal}</span>
-                  {f && <div className="serif muted" style={{ fontSize: 13 }}>{f.club}{f.note ? `. ${f.note}` : ""} {f.sources[0] && <a href={f.sources[0]} target="_blank" rel="noopener noreferrer">Source</a>}</div>}
-                </td>
-                <td className="num">{f?.apps ?? "—"}</td>
-                <td className="num">{f?.minutes ?? "—"}</td>
-                <td className="num">{f?.goals ?? "—"}</td>
-                <td className="num">{f?.assists ?? "—"}</td>
-                <td className="num">{f?.avgRating ?? "—"}</td>
-                <td className="num">{f?.age ?? "—"}</td>
-                <td>
-                  {!f ? <span className="muted">No stats yet</span> : f.approved ? (
-                    <>Approved <button className="btn" style={{ padding: "2px 8px", marginLeft: 6 }} onClick={() => decide(a.id, f.asOf, false)}>Undo</button></>
-                  ) : (
-                    <button className="btn btn-primary" style={{ padding: "3px 10px" }} onClick={() => decide(a.id, f.asOf, true)}>Approve</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </section>
-  );
-}
-
 /** C3: approve (with a max), skip, or cancel one auction. Records the decision only; nothing bids on eBay. */
 function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly = false }: { listing: LiveListing; row: BoardRow; left: number; decision?: Decision; onDecided: (id: string, d: Decision) => void; skipOnly?: boolean }) {
   const router = useRouter();
@@ -286,11 +228,9 @@ function BidControls({ listing: l, row: r, left, decision, onDecided, skipOnly =
   if (!l.externalId) return null;
 
   const send = async (action: "approve" | "skip" | "cancel") => {
-    const t = token();
-    if (!t) { setMsg("Add your admin token first (Scan button, top of the page)."); return; }
     setBusy(true); setMsg(null);
     const res = await fetch("/api/snipe/bids", {
-      method: "POST", headers: { "content-type": "application/json", "x-admin-token": t },
+      method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ action, externalId: l.externalId, targetId: r.target.id, title: l.title, url: l.url, endsAt: l.endsAt, maxBid: Number(max) }),
     }).catch(() => null);
     setBusy(false);
