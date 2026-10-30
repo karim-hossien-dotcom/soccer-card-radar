@@ -20,3 +20,9 @@ Supersede an entry with a new one; never delete.
 | 2026-10-30 | Mainoo Inception renamed to PSA's label: "...Emerging Stars Auto Kobbie Mainoo Blue 19/49" | Card 94917cb5 |
 | 2026-10-30 | Agents: Claude coordinates; reviewer agent added between engineer and QA; one shared card-comps skill; auditors read a same-day snapshot file, not the database | CLAUDE.md, docs/WORKFLOW.md, .claude/ |
 | 2026-10-30 | Weekly snipe-target re-check (Thu) and monthly photo audit added as report-only scheduled tasks | docs/WORKFLOW.md |
+| 2026-10-30 | Max bid (C5): EV after 13% eBay + grading fee, / 2, capped at 80% of raw; owner max wins. Shipped | d73a329 |
+| 2026-10-30 | Karim set no Vault values: workbook_import "Value used" rows are old prices; only owner_set / ratio_to_base are owner values | vault-comp.ts, card-comps skill |
+| 2026-10-30 | Rookie radar added to the Monday player-form run (report only, Karim approves picks) | scheduled task |
+| 2026-10-30 | Mane Legends auto is true Gold Refractor 32/50 (pack pull); photo from Karim's listing; value = CL value $157.08 (no 90-day sale) | Card 417b5ecd |
+| 2026-10-30 | Salah 8-Bit Shots is Orange Foil 08/25 (only orange parallel); value $170 (one 90-day sale, Sep 8) | Card 73db66b4 |
+| 2026-10-30 | 13 fake "cert" numbers (2502..., not PSA certs) cleared from raw cards | Card |
