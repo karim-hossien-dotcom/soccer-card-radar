@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { shape, judge, moved, pixels, signature, change, NEEDS_CHANGE, CARD_RATIO, type Quad } from "./scan-checks.ts";
+import { shape, judge, moved, pixels, signature, change, smooth, toFractions, NEEDS_CHANGE, CARD_RATIO, type Quad } from "./scan-checks.ts";
 
 const W = 1000, H = 1400;
 const rect = (x: number, y: number, w: number, h: number): Quad => ({
@@ -59,4 +59,11 @@ test("signature: same scene ~0, relit or flipped clearly different", () => {
   assert.ok(change(sa, signature(a, w, h, q)) < 1e-6);
   assert.ok(change(sa, signature(relit, w, h, q)) > NEEDS_CHANGE.light);
   assert.ok(change(sa, signature(flipped, w, h, q)) > 0.01);
+});
+
+test("smooth and toFractions", () => {
+  const a = rect(0, 0, 100, 140), b = rect(10, 0, 100, 140);
+  assert.equal(smooth(a, b).topLeft.x, 5);
+  assert.equal(smooth(null, b), b);
+  assert.deepEqual(toFractions(rect(100, 140, 500, 700), W, H)[2], [0.6, 0.6]);
 });

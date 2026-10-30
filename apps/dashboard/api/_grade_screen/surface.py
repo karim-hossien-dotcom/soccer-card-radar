@@ -26,12 +26,14 @@ LINE_MIN_MM, CREASE_MM = 6.0, 20.0
 MAX_FINDINGS = 8
 
 
-def straighten(src):
-    """BGR image of the card warped to CW x CH, or (None, reason)."""
+def straighten(src, hint=None):
+    """BGR image of the card warped to CW x CH, or (None, reason). hint: phone-scanner corners (fractions)."""
     img = cond.read_image(src)
     if img is None:
         return None, "unreadable"
-    q = cen.find_card(img)
+    q = cond.quad_from_hint(img, hint) if hint is not None else None
+    if q is None:
+        q = cen.find_card(img)
     if q is None:
         return None, "card outline not found"
     m = cv2.getPerspectiveTransform(cen.order(q), np.float32([[0, 0], [CW, 0], [CW, CH], [0, CH]]))
@@ -217,10 +219,11 @@ def overlay(raking, finds, width=420):
     return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else None
 
 
-def analyse(flat_src, raking_src):
-    """flat_src / raking_src: paths or image bytes of the same card side, one straight-on and one under raking light."""
-    flat, e1 = straighten(flat_src)
-    raking, e2 = straighten(raking_src)
+def analyse(flat_src, raking_src, flat_hint=None, raking_hint=None):
+    """flat_src / raking_src: paths or image bytes of the same card side, one straight-on and one under raking light.
+    *_hint: phone-scanner corners (fractions of the photo)."""
+    flat, e1 = straighten(flat_src, flat_hint)
+    raking, e2 = straighten(raking_src, raking_hint)
     if flat is None or raking is None:
         return {"status": "cant_judge", "why": f"side-light photo: {e2 or e1}", "findings": [], "overlay": None}
     z, mask = anomaly_map(flat, raking)
@@ -230,9 +233,9 @@ def analyse(flat_src, raking_src):
     return {"status": "measured", "why": None, "findings": finds, "overlay": overlay(raking, finds), "coverage": round(float(mask.mean()), 2)}
 
 
-def straight_jpeg(src, width=900):
+def straight_jpeg(src, width=900, hint=None):
     """The straightened card as JPEG bytes, for the AI second look."""
-    card, _ = straighten(src)
+    card, _ = straighten(src, hint)
     if card is None:
         return None
     k = width / CW
