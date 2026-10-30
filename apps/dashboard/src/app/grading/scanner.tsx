@@ -71,20 +71,32 @@ async function cornersOf(blob: Blob, sc: ScanicScanner | null, v: HTMLVideoEleme
 }
 
 /** G5: live phone scan. The camera preview finds the card, says what to fix, and auto-captures front then back. */
-export default function Scan() {
+/** cards: raw Vault cards to link the scan to (centering lines are saved against the card, for calibration
+ * once PSA grades it). */
+export default function Scan({ cards = [] }: { cards?: { id: string; title: string }[] }) {
   const [open, setOpen] = useState(false);
+  const [cardId, setCardId] = useState("");
   return (
     <>
+      {cards.length > 0 && (
+        <label className={s.which}>
+          <span>Card</span>
+          <select value={cardId} onChange={(e) => setCardId(e.target.value)}>
+            <option value="">Not in the Vault / not saved to a card</option>
+            {cards.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+        </label>
+      )}
       <button type="button" className={s.launch} onClick={() => setOpen(true)}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" /><rect x="8.5" y="7" width="7" height="10" rx="1" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
         Scan a card with your camera
       </button>
-      {open && <ScanView onClose={() => setOpen(false)} />}
+      {open && <ScanView cardId={cardId || undefined} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-function ScanView({ onClose }: { onClose: () => void }) {
+function ScanView({ onClose, cardId }: { onClose: () => void; cardId?: string }) {
   const video = useRef<HTMLVideoElement>(null);
   const stream = useRef<MediaStream | null>(null);
   const scanner = useRef<ScanicScanner | null>(null);
@@ -308,7 +320,7 @@ function ScanView({ onClose }: { onClose: () => void }) {
           {thumbs.length > 0 && <div className={s.shots}>{thumbs.map((u, i) => <img key={u} src={u} alt={`Photo ${i + 1}`} />)}</div>}
           {step === "checking" && <p className={s.wait}>Measuring centering, edges and corners. This takes a few seconds.</p>}
           {step === "error" && <p className={s.err} role="alert">{err}</p>}
-          {report && <ReportView report={report} />}
+          {report && <ReportView report={report} cardId={cardId} />}
           {step !== "checking" && <button type="button" className={s.again} onClick={restart}>Scan another card</button>}
         </div>
       )}

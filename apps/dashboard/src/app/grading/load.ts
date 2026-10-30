@@ -9,7 +9,24 @@ export type GradePick = {
   value: number | null; cost: number | null; price: number | null; maxBid: number | null; url: string | null;
   hint: string | null; prior: { verdict: string; summary: string } | null;
 };
-export type GradingData = Grading & { fee: number | null; vault: GradePick[]; listings: GradePick[] };
+/** A saved centering check (confirm screen) joined to the card, for the calibration table. */
+export type CentCheck = {
+  cardId: string; title: string; side: "front" | "back"; at: string; lr: number | null; tb: number | null; adjusted: boolean;
+  status: string; grade: string | null; grader: string | null; // grade = "PSA 9" etc. once graded
+};
+export type ScanCard = { id: string; title: string };
+export type GradingData = Grading & { fee: number | null; vault: GradePick[]; listings: GradePick[]; scanCards: ScanCard[]; checks: CentCheck[] };
+
+async function fetchChecks(): Promise<{ cardId: string; side: string; createdAt: string; lr: number | null; tb: number | null; adjusted: boolean }[]> {
+  if (fixtureMode()) {
+    const { readFile } = await import("node:fs/promises");
+    const all = (JSON.parse(await readFile(process.env.COLLECTION_FIXTURE!, "utf8")).centeringChecks ?? []) as { cardId: string; side: string; createdAt: string; lr: number | null; tb: number | null; adjusted: boolean }[];
+    return all.filter((r) => r.cardId).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  }
+  const { data, error } = await supabase.from("CenteringCheck").select('"cardId", side, "createdAt", lr, tb, adjusted').not("cardId", "is", null).order("createdAt", { ascending: false }).limit(500);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as { cardId: string; side: string; createdAt: string; lr: number | null; tb: number | null; adjusted: boolean }[];
+}
 
 async function fetchSubs(): Promise<Submission[]> {
   if (fixtureMode()) {
@@ -22,7 +39,7 @@ async function fetchSubs(): Promise<Submission[]> {
 }
 
 export async function loadGrading(): Promise<GradingData> {
-  const [rows, subs, snipe] = await Promise.all([fetchRows(), fetchSubs(), loadSnipe().catch(() => null)]);
+  const [rows, subs, snipe, rawChecks] = await Promise.all([fetchRows(), fetchSubs(), loadSnipe().catch(() => null), fetchChecks().catch(() => [])]);
   const cards = buildCollection(rows);
   const fee = rows.assumptions.find((a) => a.key === "fee_to_grade_a_raw_in_hand_card")?.value ?? null;
   const vault: GradePick[] = cards
@@ -40,5 +57,16 @@ export async function loadGrading(): Promise<GradingData> {
       value: r.target.raw, cost: null, price: l.price, maxBid: r.result.maxBid, url: l.url, hint: r.target.card,
       prior: l.screen ? { verdict: l.screen.verdict, summary: l.screen.summary } : null,
     })));
-  return { ...buildGrading(cards, subs), fee: fee === null ? null : Number(fee), vault, listings };
+  const scanCards: ScanCard[] = cards.filter((c) => c.status === "raw").map((c) => ({ id: c.id, title: c.item })).sort((a, b) => a.title.localeCompare(b.title));
+  const byId = new Map(cards.map((c) => [c.id, c]));
+  const seen = new Set<string>();
+  const checks: CentCheck[] = [];
+  for (const r of rawChecks) { // newest first: keep the latest per card and side
+    const k = `${r.cardId}|${r.side}`, c = byId.get(r.cardId);
+    if (seen.has(k) || !c) continue;
+    seen.add(k);
+    checks.push({ cardId: r.cardId, title: c.item, side: r.side as "front" | "back", at: r.createdAt.slice(0, 10), lr: r.lr, tb: r.tb, adjusted: r.adjusted,
+      status: c.status, grade: c.status === "graded" ? c.gradeLabel : null, grader: null });
+  }
+  return { ...buildGrading(cards, subs), fee: fee === null ? null : Number(fee), vault, listings, scanCards, checks };
 }
