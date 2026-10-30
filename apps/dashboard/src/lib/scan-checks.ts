@@ -8,16 +8,17 @@ export type Quad = { topLeft: Pt; topRight: Pt; bottomRight: Pt; bottomLeft: Pt 
 export const CARD_RATIO = 63.5 / 88.9;
 
 export const LIMITS = {
-  minFill: 0.45, // card area / frame area: smaller and the edges are too few pixels to measure
+  minFill: 0.3, // card area / frame area: smaller and the edges are too few pixels to measure (still ~20 px/mm on a 12 MP photo)
   maxFill: 0.92, // bigger and an edge is probably cut off
-  ratioTol: 0.07, // allowed relative error vs CARD_RATIO (shape check: catches tilt and wrong objects)
-  maxAngleDev: 6, // degrees off 90 at any corner (tilt / keystone)
-  maxSkew: 0.05, // opposite sides must match within 5%: a phone held at an angle shrinks the far edge
+  ratioTol: 0.1, // allowed relative error vs CARD_RATIO (shape check: catches tilt and wrong objects)
+  maxAngleDev: 9, // degrees off 90 at any corner (tilt / keystone); hand-held phones need some slack
+  maxSkew: 0.08, // opposite sides must match within 8%: a phone held at an angle shrinks the far edge
   margin: 0.015, // corners must sit this far inside the frame (fraction of the short side)
   maxGlare: 0.02, // share of the card's area that is a solid blown-out patch (foil specks don't count)
-  minSharp: 60, // Laplacian variance on the preview frame
-  steadyMove: 0.012, // max corner movement between frames, fraction of the short side
-  steadyFrames: 6, // consecutive good frames before auto-capture
+  minSharp: 25, // Laplacian variance on the preview frame (phone video is softer than stills)
+  steadyMove: 0.025, // max movement of the smoothed corners between frames, fraction of the short side
+  steadyFrames: 5, // good frames before auto-capture (a couple of bad frames in between are forgiven)
+  forgive: 2, // bad frames tolerated before the count restarts
 };
 
 const dist = (a: Pt, b: Pt) => Math.hypot(a.x - b.x, a.y - b.y);
@@ -120,3 +121,14 @@ export const change = (a: Float32Array, b: Float32Array) => a.reduce((s, v, i) =
 
 /** How different the scene must be from the previous shot before the next one is taken. */
 export const NEEDS_CHANGE = { light: 0.035, back: 0.05 };
+
+/** Exponential smoothing of the corners: detection jitters a few pixels per frame on real video. */
+export function smooth(prev: Quad | null, q: Quad, k = 0.5): Quad {
+  if (!prev) return q;
+  const m = (a: Pt, b: Pt): Pt => ({ x: a.x + k * (b.x - a.x), y: a.y + k * (b.y - a.y) });
+  return { topLeft: m(prev.topLeft, q.topLeft), topRight: m(prev.topRight, q.topRight), bottomRight: m(prev.bottomRight, q.bottomRight), bottomLeft: m(prev.bottomLeft, q.bottomLeft) };
+}
+
+/** Corners as fractions of the frame, [[x, y] x 4] clockwise from top-left: what the server takes as `front_quad`. */
+export const toFractions = (q: Quad, w: number, h: number) =>
+  [q.topLeft, q.topRight, q.bottomRight, q.bottomLeft].map((p) => [Math.min(1, Math.max(0, p.x / w)), Math.min(1, Math.max(0, p.y / h))]);

@@ -7,7 +7,8 @@ promises a grade. Open to the app's own pages (same-site Origin check); no login
 Body: multipart/form-data with `front` (required), `back` (optional) image files (jpg, png or webp, 8 MB each)
 and `holder` ("1" when the card is in a sleeve, toploader, magnetic case or slab). Optional `front_raking` /
 `back_raking`: the same side under low side light, for the surface check (dents, creases, scratches): look flags
-only, they never lower the ceiling.
+only, they never lower the ceiling. Optional `front_quad` / `back_quad` / `*_raking_quad`: the card's corners as found
+by the phone scanner, JSON [[x, y] x 4] in fractions of the photo; used instead of searching for the outline.
 The vendored copy of the check lives in api/_grade_screen (kept identical by tools/grade-screen/sync_vercel.py).
 """
 import json, os, sys, urllib.parse
@@ -106,6 +107,7 @@ def handle(headers, body, env=os.environ):
             return 502, {"error": f"Could not download the photo: {type(e).__name__}"}
         back, holder = b"", False
         raking = {"front": b"", "back": b""}
+        hints = {}
         if not media_type(front):
             return 415, {"error": "That photo is not a jpg, png or webp"}
         key = env.get("ANTHROPIC_API_KEY")
@@ -120,6 +122,7 @@ def handle(headers, body, env=os.environ):
             return 400, {"error": "Send the photos as multipart/form-data"}
         front, back = fields.get("front") or b"", fields.get("back") or b""
         raking = {s: fields.get(f"{s}_raking") or b"" for s in ("front", "back")}
+        hints = {k: corner_hint(fields.get(f"{k}_quad")) for k in ("front", "back", "front_raking", "back_raking")}
         if not front:
             return 400, {"error": "Add a front photo"}
         for label, data in (("Front", front), ("Back", back), ("Front side-light", raking["front"]), ("Back side-light", raking["back"])):
@@ -134,7 +137,7 @@ def handle(headers, body, env=os.environ):
         verdict, summary = summarize(gate, None)
         return 200, {"gate": gate, "verdict": verdict, "summary": summary, "measured": False}
     try:
-        report, cent = cond.assess_with_centering(front, back or None, holder=holder)
+        report, cent = cond.assess_with_centering(front, back or None, holder=holder, hints=hints)
     except Exception as e:  # a corrupt image that decodes partway, etc.
         return 422, {"error": f"Could not analyse the photo: {type(e).__name__}"}
     report["centering_grades"] = centering_grades(cent)
@@ -143,7 +146,7 @@ def handle(headers, body, env=os.environ):
     report["verdict"], report["summary"] = summarize(gate, report)
     report["measured"] = True
     if not holder and (raking["front"] or raking["back"]):
-        report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"))
+        report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints)
         for s in report["surface_scan"]:
             for f in s["findings"]:
                 src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
@@ -151,21 +154,32 @@ def handle(headers, body, env=os.environ):
     return 200, report
 
 
-def surface_scan(front, back, raking, key):
+def corner_hint(raw):
+    """`front_quad` etc.: JSON [[x, y] x 4], fractions of the photo, from the phone scanner. None if absent or malformed."""
+    if not raw:
+        return None
+    try:
+        q = json.loads(raw)
+        return q if isinstance(q, list) and len(q) == 4 and all(isinstance(p, list) and len(p) == 2 and all(0 <= float(v) <= 1 for v in p) for p in q) else None
+    except (ValueError, TypeError):
+        return None
+
+
+def surface_scan(front, back, raking, key, hints=None):
     """Per side with a side-light photo: measured findings (surface.py), Claude's second look when a key is set, merged."""
-    out = []
+    out, hints = [], hints or {}
     for side, flat in (("front", front), ("back", back)):
         rk = raking.get(side)
         if not rk or not flat:
             continue
         try:
-            res = surf.analyse(flat, rk)
+            res = surf.analyse(flat, rk, hints.get(side), hints.get(f"{side}_raking"))
         except Exception as e:
             res = {"status": "cant_judge", "why": f"surface check failed: {type(e).__name__}", "findings": [], "overlay": None}
         ai, ai_err = [], None
         if key and res["status"] == "measured":
             try:
-                ai = ask_surface(key, surf.straight_jpeg(flat), surf.straight_jpeg(rk))
+                ai = ask_surface(key, surf.straight_jpeg(flat, hint=hints.get(side)), surf.straight_jpeg(rk, hint=hints.get(f"{side}_raking")))
             except Exception as e:
                 ai_err = f"Claude second look failed: {type(e).__name__}"
         out.append({"side": side.capitalize(), "status": res["status"], "why": res.get("why") or ai_err,

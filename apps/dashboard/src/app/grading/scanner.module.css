@@ -38,3 +38,4 @@
 @keyframes pulse { 50% { opacity: .5; } }
 .err { color: var(--loss); font-weight: 650; background: #fde8e4; border-radius: 8px; padding: 10px 12px; }
 .again { margin-top: 18px; font: inherit; font-weight: 700; padding: 12px 18px; border: 0; border-radius: 10px; background: var(--accent); color: #fff; cursor: pointer; }
+.debug { margin: -8px auto 12px; max-width: 46ch; text-align: center; font: 11px/1.4 ui-monospace, monospace; color: #cfe; background: rgba(0, 0, 0, .55); padding: 6px 8px; border-radius: 8px; }

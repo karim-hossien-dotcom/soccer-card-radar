@@ -49,14 +49,30 @@ def read_image(src):
     return cv2.imread(src)
 
 
-def load(path):
-    """Normalised card with a backdrop margin, plus how many real pixels per mm the photo had."""
+def quad_from_hint(img, hint):
+    """Corners found by the phone scanner, as fractions of the photo's width/height ([[x, y] x 4]), checked for shape.
+    None if missing or implausible (then the photo's own outline search runs)."""
+    try:
+        q = np.float32(hint).reshape(4, 2) * np.float32([img.shape[1], img.shape[0]])
+    except (TypeError, ValueError):
+        return None
+    if not np.isfinite(q).all() or cv2.contourArea(cen.order(q)) < 0.08 * img.shape[0] * img.shape[1]:
+        return None
+    (w, h) = sorted(cv2.minAreaRect(q)[1])
+    return q if h and 0.5 < w / h < 0.9 else None
+
+
+def load(path, hint=None):
+    """Normalised card with a backdrop margin, plus how many real pixels per mm the photo had.
+    hint: corners from the phone scanner (fractions); used instead of searching when they look like a card."""
     img = read_image(path)
     if img is None:
         return None, "unreadable", 0.0
-    q = cen.find_card(img)
-    if q is None or not cen.on_backdrop(img, q):
-        return None, "no clean outline on a plain backdrop (cropped, angled, in a holder or cluttered photo)", 0.0
+    q = quad_from_hint(img, hint) if hint is not None else None
+    if q is None:
+        q = cen.find_card(img)
+        if q is None or not cen.on_backdrop(img, q):
+            return None, "no clean outline on a plain backdrop (cropped, angled, in a holder or cluttered photo)", 0.0
     w = np.linalg.norm(cen.order(q)[1] - cen.order(q)[0])
     return warp_with_margin(img, q), None, w / 63.0
 
@@ -302,8 +318,8 @@ CANT_JUDGE = [
 ]
 
 
-def side_report(path):
-    card, err, ppm = load(path)
+def side_report(path, hint=None):
+    card, err, ppm = load(path, hint)
     if card is None:
         return None, err
     if ppm < 8:
@@ -313,17 +329,19 @@ def side_report(path):
             "edges": edge_checks(card), "corners": corner_checks(card), "surface": surface_checks(card)}, None
 
 
-def assess(front, back=None, border_mm=3.0, holder=False):
+def assess(front, back=None, border_mm=3.0, holder=False, hints=None):
     """front / back: file paths or raw image bytes (jpg, png, webp).
     holder=True: card photographed in a sleeve, toploader, magnetic case or slab. Plastic hides and fakes edge and
     corner detail, so only centering is reported."""
-    return assess_with_centering(front, back, border_mm, holder)[0]
+    return assess_with_centering(front, back, border_mm, holder, hints)[0]
 
 
-def assess_with_centering(front, back=None, border_mm=3.0, holder=False):
-    """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / back_lr."""
-    f, ferr = side_report(front)
-    b, berr = side_report(back) if back else (None, "no back photo")
+def assess_with_centering(front, back=None, border_mm=3.0, holder=False, hints=None):
+    """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / back_lr.
+    hints: {"front": corners, "back": corners} from the phone scanner (fractions of the photo)."""
+    hints = hints or {}
+    f, ferr = side_report(front, hints.get("front"))
+    b, berr = side_report(back, hints.get("back")) if back else (None, "no back photo")
     if holder:
         for r in (f, b):
             if r:

@@ -130,3 +130,21 @@ def test_claude_second_look_is_merged():
         api.ask_surface = orig
     got = [(f["kind"], f["where"], f["source"]) for f in rep["surface_scan"][0]["findings"]]
     assert got == [("dent or dimple", "bottom centre", "both"), ("scratch", "top left", "claude")], got
+
+
+def test_phone_corners_rescue_a_cluttered_background():
+    """A card on a busy table: the outline search gives up, the scanner's corners get it measured."""
+    import json as _j, numpy as np, cv2, test_surface as ts
+    rng = np.random.default_rng(1)
+    bg = rng.integers(40, 200, (2300, 1800, 3), dtype=np.uint8)   # wood-grain-like clutter, nothing like a plain mat
+    bg = cv2.GaussianBlur(bg, (0, 0), 3)
+    card = ts.CARD.copy(); cv2.rectangle(card, (0, 0), (ts.W - 1, ts.H - 1), (250, 250, 250), 60)  # white border
+    x0, y0 = (1800 - ts.W) // 2, (2300 - ts.H) // 2
+    bg[y0:y0 + ts.H, x0:x0 + ts.W] = card
+    img = cv2.imencode(".jpg", bg, [cv2.IMWRITE_JPEG_QUALITY, 92])[1].tobytes()
+    _, plain = api.handle(*form(front=img), env={})
+    assert plain["front"] is None, "expected the outline search to fail on clutter"
+    quad = [[x0 / 1800, y0 / 2300], [(x0 + ts.W) / 1800, y0 / 2300], [(x0 + ts.W) / 1800, (y0 + ts.H) / 2300], [x0 / 1800, (y0 + ts.H) / 2300]]
+    s, rep = api.handle(*form(front=img, front_quad=_j.dumps(quad)), env={})
+    assert s == 200 and rep["front"] is not None and rep["front"]["px_per_mm"] > 15, rep.get("cant_judge")
+    assert api.corner_hint("[[0,0],[1,0],[1,1]]") is None and api.corner_hint("nope") is None and api.corner_hint('[[0,0],[2,0],[1,1],[0,1]]') is None
