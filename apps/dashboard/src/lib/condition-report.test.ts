@@ -38,14 +38,18 @@ test("ceilingLine: capped, clean, and no-ceiling cases", () => {
   assert.deepEqual(none.reasons, ["in a holder: only centering checked, no condition ceiling"]);
 });
 
-test("centeringRows: tolerance met per side, unmeasured back, below the lowest band", () => {
+test("centeringRows: tolerance met per side and axis, unmeasured T/B, below the lowest band", () => {
+  const nm = (side: string) => ({ side, split: "—", psa: "not measured", bgs: "not measured" });
   assert.deepEqual(centeringRows(parseReport(raw())), [
-    { side: "Front", split: "51/49", psa: "PSA 10 (within 55/45)", bgs: "BGS 10 (within 52/48)" },
-    { side: "Back", split: "58/42", psa: "PSA 10 (within 75/25)", bgs: "BGS 10 (within 60/40)" },
+    { side: "Front L/R", split: "51/49", psa: "PSA 10 (within 55/45)", bgs: "BGS 10 (within 52/48)" },
+    nm("Front T/B"),
+    { side: "Back L/R", split: "58/42", psa: "PSA 10 (within 75/25)", bgs: "BGS 10 (within 60/40)" },
+    nm("Back T/B"),
   ]);
   const rows = centeringRows(parseReport(raw({ centering: { front_lr: "72/28" }, centering_grades: { front_lr: { split: "72/28", psa: 6, psa_tolerance: null, bgs: 7, bgs_tolerance: null } } })));
-  assert.deepEqual(rows[0], { side: "Front", split: "72/28", psa: "below PSA 7 tolerances", bgs: "below BGS 8 tolerances" });
-  assert.deepEqual(rows[1], { side: "Back", split: "—", psa: "not measured", bgs: "not measured" });
+  assert.deepEqual(rows[0], { side: "Front L/R", split: "72/28", psa: "below PSA 7 tolerances", bgs: "below BGS 8 tolerances" });
+  assert.deepEqual(rows[2], { side: "Back L/R", split: "—", psa: "not measured", bgs: "not measured" });
+  assert.equal(centeringRows(parseReport(raw({ back: null }))).length, 2); // no back photo: no back rows
 });
 
 test("wearFindings: chips, unjudged edges, whitening, holder", () => {

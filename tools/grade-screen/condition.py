@@ -25,6 +25,7 @@ import sys, json
 import cv2
 import numpy as np
 import centering as cen
+import borders as bd
 
 PX = 10            # px per mm in the normalised card
 CW, CH = 63 * PX, 88 * PX
@@ -62,17 +63,24 @@ def quad_from_hint(img, hint):
     return q if h and 0.5 < w / h < 0.9 else None
 
 
-def load(path, hint=None):
-    """Normalised card with a backdrop margin, plus how many real pixels per mm the photo had.
-    hint: corners from the phone scanner (fractions); used instead of searching when they look like a card."""
+def locate(path, hint=None):
+    """(photo, rough card corners in photo px, error). hint: corners from the phone scanner (fractions)."""
     img = read_image(path)
     if img is None:
-        return None, "unreadable", 0.0
+        return None, None, "unreadable"
     q = quad_from_hint(img, hint) if hint is not None else None
     if q is None:
         q = cen.find_card(img)
         if q is None or not cen.on_backdrop(img, q):
-            return None, "no clean outline on a plain backdrop (cropped, angled, in a holder or cluttered photo)", 0.0
+            return img, None, "no clean outline on a plain backdrop (cropped, angled, in a holder or cluttered photo)"
+    return img, q, None
+
+
+def load(path, hint=None):
+    """Normalised card with a backdrop margin, plus how many real pixels per mm the photo had."""
+    img, q, err = locate(path, hint)
+    if q is None:
+        return None, err, 0.0
     w = np.linalg.norm(cen.order(q)[1] - cen.order(q)[0])
     return warp_with_margin(img, q), None, w / 63.0
 
@@ -261,12 +269,11 @@ def grade_ceilings(front, back, cent):
         why.append(f"{reason} -> PSA {p}, BGS {b}, TAG {t}")
 
     # Centering
-    for label, worse, i in (("front L/R", cent.get("front_lr"), 1), ("back L/R", cent.get("back_lr"), 2)):
-        if worse is None:
-            continue
-        p, b = centering_grades(worse, back=i == 2)
+    for key, worse in cent.items():
+        side, axis = key.split("_")
+        p, b = centering_grades(worse, back=side == "back")
         if p < 10 or b < 10:
-            cap(p, b, min(p, b), f"{label} centering {round(worse*100)}/{round((1-worse)*100)}")
+            cap(p, b, min(p, b), f"{side} {'L/R' if axis == 'lr' else 'T/B'} centering {round(worse*100)}/{round((1-worse)*100)}")
 
     # Edges: chipping / whitening specks (checked by eye against the Ronaldo #161 test card). Caps the ceiling.
     look = []  # measured but not yet calibrated: shown for a human look, does not lower the ceiling
@@ -318,40 +325,56 @@ CANT_JUDGE = [
 ]
 
 
-def side_report(path, hint=None):
-    card, err, ppm = load(path, hint)
-    if card is None:
+def side_report(path, hint=None, straight=None):
+    """One side's checks. straight: a dict that receives the card straightened by the border check (for the
+    confirm screen), keyed "img"."""
+    img, q, err = locate(path, hint)
+    if q is None:
         return None, err
+    w = np.linalg.norm(cen.order(q)[1] - cen.order(q)[0])
+    card, ppm = warp_with_margin(img, q), w / 63.0
     if ppm < 8:
         return None, f"photo too small ({ppm:.1f} px per mm; need 8+) to judge corners and edges"
-    lr = cen.lr_offset_mm(card[MARGIN:MARGIN + CH, MARGIN:MARGIN + CW])
-    return {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "lr_offset_mm": round(lr[0], 2), "lr_symmetry": round(lr[1], 3),
+    borders, flat = bd.measure(img, q)
+    if straight is not None and flat is not None:
+        straight["img"] = flat
+    return {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders,
             "edges": edge_checks(card), "corners": corner_checks(card), "surface": surface_checks(card)}, None
 
 
-def assess(front, back=None, border_mm=3.0, holder=False, hints=None):
+def assess(front, back=None, border_mm=None, holder=False, hints=None):
     """front / back: file paths or raw image bytes (jpg, png, webp).
     holder=True: card photographed in a sleeve, toploader, magnetic case or slab. Plastic hides and fakes edge and
     corner detail, so only centering is reported."""
     return assess_with_centering(front, back, border_mm, holder, hints)[0]
 
 
-def assess_with_centering(front, back=None, border_mm=3.0, holder=False, hints=None):
-    """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / back_lr.
+def assess_with_centering(front, back=None, border_mm=None, holder=False, hints=None, straight=None):
+    """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / front_tb / back_lr / back_tb,
+    measured from the printed border lines (borders.py) at the worst point along each side. border_mm is unused (kept
+    for old callers). straight: optional dict that receives {"front": {"img"}, "back": {"img"}} straightened cards.
     hints: {"front": corners, "back": corners} from the phone scanner (fractions of the photo)."""
     hints = hints or {}
-    f, ferr = side_report(front, hints.get("front"))
-    b, berr = side_report(back, hints.get("back")) if back else (None, "no back photo")
+    straight = straight if straight is not None else {}
+    straight.setdefault("front", {}); straight.setdefault("back", {})
+    f, ferr = side_report(front, hints.get("front"), straight["front"])
+    b, berr = side_report(back, hints.get("back"), straight["back"]) if back else (None, "no back photo")
     if holder:
         for r in (f, b):
             if r:
                 r["edges"], r["corners"], r["surface"] = [], [], {}
         ferr = ferr or "in a holder: edges, corners and surface not judged (plastic hides wear and adds glare)"
-    cent = {}
-    for key, rep in (("front_lr", f), ("back_lr", b)):
-        if rep and rep["lr_symmetry"] >= 0.35:
-            left = min(max((border_mm + rep["lr_offset_mm"]) / (2 * border_mm), 0), 1)
-            cent[key] = max(left, 1 - left)
+    cent, cent_why = {}, []
+    for name, rep in (("front", f), ("back", b)):
+        if not rep:
+            continue
+        bo = rep["borders"]
+        for axis in ("lr", "tb"):
+            c = bo["centering"].get(axis)
+            if c and bo["status"] in ("ok", "needs_manual"):
+                cent[f"{name}_{axis}"] = c["worst"]  # graders judge the worst point
+        if bo["status"] != "ok":
+            cent_why.append(f"{name}: " + "; ".join(bo["why"]))
     if not f:
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front photo not usable: no ceiling"], "look": []}
     elif holder:  # centering alone says nothing about corners, edges or surface: no ceiling, centering reported below
@@ -359,7 +382,8 @@ def assess_with_centering(front, back=None, border_mm=3.0, holder=False, hints=N
     else:
         ceil = grade_ceilings(f, b, cent)
     cant = [{"point": p, "graders": g, "why": w} for p, g, w in CANT_JUDGE]
-    cant.append({"point": "top/bottom centering", "graders": "PSA, BGS, TAG", "why": "card designs are not top/bottom symmetric; measure with a centering tool"})
+    for w in cent_why:
+        cant.append({"point": "centering (border lines)", "graders": "PSA, BGS, TAG", "why": w + " - check or set the lines on the confirm screen"})
     if ferr: cant.append({"point": "front (all points)", "graders": "all", "why": ferr})
     if berr: cant.append({"point": "back (all points)", "graders": "all", "why": berr})
     return {"front": f, "back": b, "centering": {k: f"{round(v*100)}/{round((1-v)*100)}" for k, v in cent.items()},

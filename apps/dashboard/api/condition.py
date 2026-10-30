@@ -40,7 +40,7 @@ def centering_grades(cent):
     """Per side: the split, and the best PSA / BGS grade whose written tolerance it meets (plus that tolerance)."""
     out = {}
     for key, worse in cent.items():
-        back = key == "back_lr"
+        back = key.startswith("back")
         p, b = cond.centering_grades(worse, back=back)
         psa_lim = next((f if not back else bk for g, f, bk in cond.PSA_CENT if g == p), None)
         bgs_lim = next((f if not back else bk for g, f, bk in cond.BGS_CENT if g == b), None)
@@ -137,10 +137,15 @@ def handle(headers, body, env=os.environ):
         verdict, summary = summarize(gate, None)
         return 200, {"gate": gate, "verdict": verdict, "summary": summary, "measured": False}
     try:
-        report, cent = cond.assess_with_centering(front, back or None, holder=holder, hints=hints)
+        straight = {}
+        report, cent = cond.assess_with_centering(front, back or None, holder=holder, hints=hints, straight=straight)
     except Exception as e:  # a corrupt image that decodes partway, etc.
         return 422, {"error": f"Could not analyse the photo: {type(e).__name__}"}
     report["centering_grades"] = centering_grades(cent)
+    for side in ("front", "back"):  # straightened card for the confirm-the-lines screen
+        rep, img = report.get(side), straight.get(side, {}).get("img")
+        if rep and img is not None:
+            rep["borders"]["image"] = jpeg_data_url(img)
     report["holder"] = holder
     report["gate"] = gate
     report["verdict"], report["summary"] = summarize(gate, report)
@@ -152,6 +157,12 @@ def handle(headers, body, env=os.environ):
                 src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
                 report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src})")
     return 200, report
+
+
+def jpeg_data_url(img, quality=88):
+    import base64, cv2
+    ok, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else None
 
 
 def corner_hint(raw):

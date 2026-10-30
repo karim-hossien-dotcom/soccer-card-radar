@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, type ConditionReport } from "@/lib/condition-report";
 import s from "./check-panel.module.css";
+import BorderConfirm from "./border-confirm";
 
 /** Vercel caps a request at 4.5 MB: re-encode big photos as JPEG with the long side at 3000 px (still ~30 px/mm on a card). */
 export async function shrink(f: Blob): Promise<Blob> {
@@ -104,7 +105,8 @@ export function ReportView({ report }: { report: ConditionReport }) {
           <p className={s.ceiling} data-capped={ceil.capped}>{ceil.headline}</p>
           {ceil.reasons.length > 0 && <ul className={s.list}>{ceil.reasons.map((w) => <li key={w}>{w}</li>)}</ul>}
 
-          <h3 className={s.h}>Centering (left/right)</h3>
+          <h3 className={s.h}>Centering</h3>
+          <p className={s.muted}>Measured from the printed border lines, at the worst point along each side.</p>
           <table className={s.table}>
             <thead><tr><th scope="col">Side</th><th scope="col">Split</th><th scope="col">PSA</th><th scope="col">BGS</th></tr></thead>
             <tbody>
@@ -113,6 +115,10 @@ export function ReportView({ report }: { report: ConditionReport }) {
               ))}
             </tbody>
           </table>
+          {(["front", "back"] as const).map((sd) => {
+            const b = report[sd]?.borders;
+            return b ? <BorderConfirm key={sd} side={sd} borders={b} /> : null;
+          })}
 
           <h3 className={s.h}>Edges and corners</h3>
           {wearFindings(report).map((w) => (

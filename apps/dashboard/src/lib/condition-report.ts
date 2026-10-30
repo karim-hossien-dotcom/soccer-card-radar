@@ -1,3 +1,5 @@
+import type { Borders } from "./borders";
+
 /**
  * G2: photo condition check. Parses the JSON from POST /api/condition (tools/grade-screen/condition.py via the
  * Vercel Python function) into plain lines for the Grading tab. Reject filter only: never a grade promise.
@@ -10,15 +12,17 @@ export const DOWNSCALE_LONG_SIDE = 3000;
 
 type Edge = { side: string; specks: number | null; specks_per_10cm: number | null; notches: number | null; note: string | null };
 type Corner = { corner: string; whitening_pct: number | null; rounding_vs_others_mm: number | null; note: string | null };
-type Side = { px_per_mm: number; edges: Edge[]; corners: Corner[] } | null;
+type Side = { px_per_mm: number; edges: Edge[]; corners: Corner[]; borders: Borders | null } | null;
+export type CentKey = "front_lr" | "front_tb" | "back_lr" | "back_tb";
+export const CENT_KEYS: CentKey[] = ["front_lr", "front_tb", "back_lr", "back_tb"];
 type CentGrade = { split: string; psa: number; psa_tolerance: string | null; bgs: number; bgs_tolerance: string | null };
 export type SurfaceFinding = { kind: string; where: string; source: "both" | "measured" | "claude"; size_mm?: number; note?: string | null };
 export type SurfaceScan = { side: string; status: "measured" | "cant_judge"; why: string | null; findings: SurfaceFinding[]; overlay: string | null; ai: boolean };
 export type ConditionReport = {
   front: Side; back: Side; holder: boolean; note: string;
   surface: SurfaceScan[];
-  centering: Partial<Record<"front_lr" | "back_lr", string>>;
-  centering_grades: Partial<Record<"front_lr" | "back_lr", CentGrade>>;
+  centering: Partial<Record<CentKey, string>>;
+  centering_grades: Partial<Record<CentKey, CentGrade>>;
   ceiling: { psa: number | null; bgs: number | null; tag: number | null; why: string[]; look: string[] };
   cant_judge: { point: string; graders: string; why: string }[];
 };
@@ -33,7 +37,8 @@ export function parseReport(x: unknown): ConditionReport {
   if (!isObj(c) || !Array.isArray(c.why) || !Array.isArray(c.look) || !Array.isArray(x.cant_judge) || !isObj(x.centering))
     throw new Error("The check returned something unexpected");
   const side = (s: unknown): Side =>
-    isObj(s) ? { px_per_mm: Number(s.px_per_mm), edges: Array.isArray(s.edges) ? (s.edges as Edge[]) : [], corners: Array.isArray(s.corners) ? (s.corners as Corner[]) : [] } : null;
+    isObj(s) ? { px_per_mm: Number(s.px_per_mm), edges: Array.isArray(s.edges) ? (s.edges as Edge[]) : [], corners: Array.isArray(s.corners) ? (s.corners as Corner[]) : [],
+      borders: isObj(s.borders) && isObj(s.borders.inner) ? (s.borders as unknown as Borders) : null } : null;
   return {
     front: side(x.front), back: side(x.back), holder: x.holder === true, note: typeof x.note === "string" ? x.note : "",
     surface: Array.isArray(x.surface_scan) ? (x.surface_scan as SurfaceScan[]).filter(isObj) : [],
@@ -54,10 +59,11 @@ export function ceilingLine(r: ConditionReport): { capped: boolean; headline: st
 
 export type CentRow = { side: string; split: string; psa: string; bgs: string };
 
-/** Left/right centering per side with the best PSA and BGS tolerance it still meets. */
+/** Centering per side and axis (worst point along the side) with the best PSA and BGS tolerance it still meets. */
 export function centeringRows(r: ConditionReport): CentRow[] {
-  return (["front_lr", "back_lr"] as const).flatMap((k) => {
-    const side = k === "front_lr" ? "Front" : "Back";
+  return CENT_KEYS.flatMap((k) => {
+    if (k.startsWith("back") && !r.back) return [];
+    const side = `${k.startsWith("front") ? "Front" : "Back"} ${k.endsWith("lr") ? "L/R" : "T/B"}`;
     const g = r.centering_grades[k];
     const split = g?.split ?? r.centering[k];
     if (!split) return [{ side, split: "—", psa: "not measured", bgs: "not measured" }];
