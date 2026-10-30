@@ -26,3 +26,4 @@ Supersede an entry with a new one; never delete.
 | 2026-10-30 | Mane Legends auto is true Gold Refractor 32/50 (pack pull); photo from Karim's listing; value = CL value $157.08 (no 90-day sale) | Card 417b5ecd |
 | 2026-10-30 | Salah 8-Bit Shots is Orange Foil 08/25 (only orange parallel); value $170 (one 90-day sale, Sep 8) | Card 73db66b4 |
 | 2026-10-30 | 13 fake "cert" numbers (2502..., not PSA certs) cleared from raw cards | Card |
+| 2026-10-30 | Snipe targets from the eBay watch list: 6 exact cards watched more than once added (Messi Starball SD-10 Mini Diamond, Ronaldo 2026 Prizm #367 Silver, Ronaldo 2026 National Landmarks #7, Ronaldo 2015 Select #36, Messi 2015 Select #65, Messi 2018 Prizm Hyper #1); existing targets kept (all players on the list); one-off watched cards come via the watch-list sync | SnipeTarget |
