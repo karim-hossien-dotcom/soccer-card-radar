@@ -1,0 +1,220 @@
+[
+  {
+    "_meta": {
+      "checked": "2026-10-31",
+      "windows": "w1 = club season 2025-26 (Messi: MLS calendar 2025); wc = 2026 FIFA World Cup Jun 11 - Jul 19 2026; w3 = club season 2026-27 to Oct 31 2026 (Messi: MLS calendar 2026, includes pre-WC games)",
+      "goal_com_column_warning": "goal.com career pages show four numbers per row. The page legend says matches, minutes, goals, assists, but the 3rd number is ASSISTS and the 4th is GOALS. Verified against the WC Golden Boot table (Mbappe 10 G / 4 A, Messi 8 G / 4 A, Haaland 7 G, Bellingham 7 G, Vinicius 4 G: https://www.aljazeera.com/sports/2026/7/21/who-scored-the-most-goals-kept-clean-sheets-made-assists-fifa-world-cup-yellow-cards-saves). All goal.com figures below are recorded with that swap applied.",
+      "wc_results_src": ["https://www.cbssports.com/soccer/news/2026-fifa-world-cup-bracket-round-of-32-results-round-of-16-matchups-final/", "https://www.nbcsports.com/soccer/news/2026-world-cup-award-winners-golden-boot-golden-ball-best-young-player-golden-glove", "https://www.thescore.com/worldcup/news/3550006/rodri-takes-golden-ball-over-messi-mbappe-claims-golden-boot-again"],
+      "ballon_dor_src": "https://fourfourtwo.com/competition/ballon-dor-2026-the-full-standings",
+      "fbref_transfermarkt": "Transfermarkt and Wikipedia were not fetchable from this session (allowlist). FBref skipped as instructed.",
+      "note_on_count": "23 players were listed (the prompt said 26). All 23 are reported; none added."
+    }
+  },
+  {
+    "actionId": "lionel-messi", "player": "Lionel Messi", "country": "Argentina", "club_2526": "Inter Miami (MLS 2025 season)",
+    "w1": {"apps": 40, "minutes": 3421, "goals": 36, "assists": 25, "scope": "all comps, calendar 2025 (MLS 34 apps 35 G 23 A, Leagues Cup, Club World Cup)", "src": "https://www.goal.com/en-us/player/l-messi/career/c5ryhn04g9goikd0blmh83aol"},
+    "wc": {"played": true, "matches": 8, "minutes": 650, "goals": 8, "assists": 4, "team_finish": "Runner-up (lost final 0-1 aet to Spain)", "awards": ["Silver Ball"], "src": ["https://www.goal.com/en-us/player/l-messi/career/c5ryhn04g9goikd0blmh83aol", "https://www.nbcsports.com/soccer/news/2026-world-cup-award-winners-golden-boot-golden-ball-best-young-player-golden-glove"]},
+    "club_now": "Inter Miami",
+    "w3": {"apps": 28, "minutes": 2405, "goals": 25, "assists": 12, "scope": "all comps, calendar 2026 to date (MLS 26 apps 23 G 11 A; Leagues Cup 2 apps 2 G 1 A). Includes Feb-May pre-WC games; a post-WC-only split was not available", "src": "https://www.goal.com/en-us/player/l-messi/career/c5ryhn04g9goikd0blmh83aol"},
+    "events": "Silver Ball; 8 WC goals (2nd in Golden Boot), led WC in chances created (26) and dribbles (28). Ballon d'Or 2026: 5th.",
+    "notes": "WC chances/dribbles: https://www.planetfootball.com/stats-tables/2026-world-cup-stats-leaders-goals-assists-chances-created-dribbles. BdO: https://fourfourtwo.com/competition/ballon-dor-2026-the-full-standings. goal.com G/A swap applied."
+  },
+  {
+    "actionId": "cristiano-ronaldo", "player": "Cristiano Ronaldo", "country": "Portugal", "club_2526": "Al Nassr",
+    "w1": {"apps": 30, "minutes": 2601, "goals": 28, "assists": 2, "scope": "Saudi Pro League (only competition listed for 25/26)", "src": "https://www.goal.com/en/player/c-ronaldo/career/h17s3qts1dz1zqjw19jazzkl"},
+    "wc": {"played": true, "matches": 5, "minutes": 440, "goals": 3, "assists": 0, "team_finish": "Round of 16 (lost 0-1 to Spain)", "awards": [], "src": ["https://www.goal.com/en/player/c-ronaldo/career/h17s3qts1dz1zqjw19jazzkl", "https://chronicle.lu/category/football/62247-argentina-france-advance-as-brazil-portugal-exit-fifa-world-cup"]},
+    "club_now": "Al Nassr",
+    "w3": {"apps": 9, "minutes": 693, "goals": 5, "assists": 0, "scope": "all comps (SPL 7 apps 4 G; ACL Elite 2 apps 1 G)", "src": "https://www.goal.com/en/player/c-ronaldo/career/h17s3qts1dz1zqjw19jazzkl"},
+    "events": "Sixth World Cup; no goal in the R16 exit. No transfer. Not in Ballon d'Or top 30.",
+    "notes": "goal.com G/A swap applied. 3 WC goals not cross-checked against a second source (below the published top-10 scorer cut of 4)."
+  },
+  {
+    "actionId": "mohamed-salah", "player": "Mohamed Salah", "country": "Egypt", "club_2526": "Liverpool",
+    "w1": {"apps": 40, "minutes": 3054, "goals": 12, "assists": 11, "scope": "all comps (PL 27 apps 7 G 7 A; UCL 10 apps; FA Cup 3 apps)", "src": "https://www.goal.com/en/player/m-salah/career/5ilkkfbsss0bxd6ttdlqg0uz9"},
+    "wc": {"played": true, "matches": 5, "minutes": 394, "goals": 1, "assists": 2, "team_finish": "Round of 16 (lost 2-3 to Argentina)", "awards": [], "src": ["https://www.goal.com/en/player/m-salah/career/5ilkkfbsss0bxd6ttdlqg0uz9", "https://www.cbssports.com/soccer/news/2026-fifa-world-cup-bracket-round-of-32-results-round-of-16-matchups-final/"]},
+    "club_now": "Trabzonspor (free transfer, 2-year deal signed Aug 6 2026)",
+    "w3": {"apps": 13, "minutes": 1009, "goals": 10, "assists": 5, "scope": "all comps (Super Lig 9 apps 8 G 3 A; Conference League 2; Europa League qualifying 2)", "src": "https://www.goal.com/en/player/m-salah/career/5ilkkfbsss0bxd6ttdlqg0uz9"},
+    "events": "Left Liverpool at end of 2025-26 (announced Mar 24 2026); signed for Trabzonspor Aug 6 2026 after a Besiktas deal collapsed.",
+    "notes": "CONFLICT: FotMob lists 4 WC matches, 352 min, 1 G 1 A (https://www.fotmob.com/fr/players/292462) vs goal.com 5 / 394 / 1 G / 2 A. FotMob Super Lig line (4 apps 4 G 1 A) lags goal.com. Transfer: https://www.thenationalnews.com/sport/football/2026/08/06/mohamed-salah-signs-two-year-deal-with-trabzonspor/ ; exit: https://www.beinsports.com/en-us/soccer/premier-league/articles/salah-to-leave-liverpool-at-the-end-of-the-season-2026-03-24 ; https://egyptianstreets.com/2026/08/05/mohamed-salah-to-join-trabzonspor-after-besiktas-deal-collapses/. goal.com G/A swap applied."
+  },
+  {
+    "actionId": "kylian-mbappe", "player": "Kylian Mbappe", "country": "France", "club_2526": "Real Madrid",
+    "w1": {"apps": 42, "minutes": 3511, "goals": 40, "assists": 6, "scope": "all comps (LaLiga 31 apps 25 G 5 A; UCL 11 apps 15 G 1 A)", "src": "https://www.goal.com/en/player/k-mbappe/career/5e9ilgrz3tzg9kd1gk3yvrahh"},
+    "wc": {"played": true, "matches": 8, "minutes": 694, "goals": 10, "assists": 4, "team_finish": "4th (lost SF 0-2 to Spain; lost 3rd-place match 4-6 to England)", "awards": ["Golden Boot", "Bronze Ball"], "src": ["https://www.goal.com/en/player/k-mbappe/career/5e9ilgrz3tzg9kd1gk3yvrahh", "https://www.thescore.com/worldcup/news/3550006/rodri-takes-golden-ball-over-messi-mbappe-claims-golden-boot-again", "https://www.nbcsports.com/soccer/news/2026-world-cup-award-winners-golden-boot-golden-ball-best-young-player-golden-glove"]},
+    "club_now": "Real Madrid",
+    "w3": {"apps": 13, "minutes": 1160, "goals": 14, "assists": 3, "scope": "all comps (LaLiga 10 apps 11 G 2 A; UCL 3 apps 3 G 1 A)", "src": "https://www.goal.com/en/player/k-mbappe/career/5e9ilgrz3tzg9kd1gk3yvrahh"},
+    "events": "Golden Boot (10) and Bronze Ball; became the all-time World Cup top scorer (22). Ballon d'Or 2026: 2nd.",
+    "notes": "goal.com G/A swap applied; WC line matches Al Jazeera/NBC exactly."
+  },
+  {
+    "actionId": "erling-haaland", "player": "Erling Haaland", "country": "Norway", "club_2526": "Manchester City",
+    "w1": {"apps": 53, "minutes": 4187, "goals": 38, "assists": 9, "scope": "all comps (PL 35 apps 27 G 8 A)", "src": "https://www.goal.com/en/player/e-haaland/career/atzboo800gv7gic2rgvgo0kq1"},
+    "wc": {"played": true, "matches": 5, "minutes": 465, "goals": 7, "assists": 0, "team_finish": "Quarter-final (lost 1-2 aet to England)", "awards": [], "src": ["https://www.goal.com/en/player/e-haaland/career/atzboo800gv7gic2rgvgo0kq1", "https://www.cbssports.com/soccer/news/2026-fifa-world-cup-bracket-round-of-32-results-round-of-16-matchups-final/"]},
+    "club_now": "Manchester City",
+    "w3": {"apps": 10, "minutes": 889, "goals": 13, "assists": 0, "scope": "all comps (PL 8 apps 9 G; UCL 2 apps 4 G)", "src": "https://www.goal.com/en/player/e-haaland/career/atzboo800gv7gic2rgvgo0kq1"},
+    "events": "Norway's first WC since 1998; Haaland scored twice in the R16 win over Brazil. Ballon d'Or 2026: 8th.",
+    "notes": "R16 score conflict: CBS says Norway 2-0 Brazil, Chronicle.lu/beIN say 2-1 (https://chronicle.lu/category/football/62247-argentina-france-advance-as-brazil-portugal-exit-fifa-world-cup). goal.com G/A swap applied."
+  },
+  {
+    "actionId": "lamine-yamal", "player": "Lamine Yamal", "country": "Spain", "club_2526": "Barcelona",
+    "w1": {"apps": 38, "minutes": 3133, "goals": 22, "assists": 14, "scope": "all comps (LaLiga 28 apps 16 G 11 A; UCL 10 apps 6 G 3 A)", "src": "https://www.goal.com/en-us/player/l-yamal/career/abr79wsl0folgkyvl821ggs2c"},
+    "wc": {"played": true, "matches": 8, "minutes": 584, "goals": 1, "assists": 0, "team_finish": "Champions (beat Argentina 1-0 aet)", "awards": [], "src": ["https://www.goal.com/en-us/player/l-yamal/career/abr79wsl0folgkyvl821ggs2c", "https://www.nbcsports.com/soccer/news/2026-world-cup-award-winners-golden-boot-golden-ball-best-young-player-golden-glove"]},
+    "club_now": "Barcelona",
+    "w3": {"apps": 13, "minutes": 1098, "goals": 10, "assists": 10, "scope": "all comps (LaLiga 10 apps 8 G 6 A; UCL 3 apps 2 G 4 A)", "src": "https://www.goal.com/en-us/player/l-yamal/career/abr79wsl0folgkyvl821ggs2c"},
+    "events": "World Cup winner (low output: 1 G, but 27 dribbles, 2nd at the tournament). Ballon d'Or 2026: 3rd; Kopa Trophy winner. Best Young Player went to teammate Pau Cubarsi, not Yamal.",
+    "notes": "Dribbles: https://www.planetfootball.com/stats-tables/2026-world-cup-stats-leaders-goals-assists-chances-created-dribbles. goal.com G/A swap applied."
+  },
+  {
+    "actionId": "claudio-echeverri", "player": "Claudio Echeverri", "country": "Argentina", "club_2526": "Man City (loans: Bayer Leverkusen, then Girona)",
+    "w1": {"apps": 28, "minutes": 899, "goals": 1, "assists": 1, "scope": "sum of goal.com rows: Leverkusen 11 apps 275 min 0/0 + Girona 17 apps 624 min 1 G 1 A; Man City 0", "src": "https://www.goal.com/en/player/c-echeverri/career/b3sexumsdp9m96rkp5da0r47o"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in Argentina's 26 (Argentina: runner-up)", "awards": [], "src": ["https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/lionel-scaloni-s-official-argentina-squad-for-the-2026-fifa-world-cup-2026-05-28?c=us"]},
+    "club_now": "Benfica (loan from Man City)",
+    "w3": {"apps": 5, "minutes": 220, "goals": 0, "assists": 2, "scope": "all comps (Liga Portugal 2 apps 49 min; Europa League 2; League Cup 1)", "src": "https://www.goal.com/en/player/c-echeverri/career/b3sexumsdp9m96rkp5da0r47o"},
+    "events": "Summer 2026 loan to Benfica. Thin minutes all year.",
+    "notes": "Benfica move: https://www.goal.com/en/lists/i-spoke-with-ruben-dias-why-manchester-city-starlet-claudio-echeverri-chose-benfica-switch/blt140d0c0de73e432e. Repo doc docs/research/2026-10-31-rookie-radar.md says no minutes since Sep 13. goal.com G/A swap applied; 2 assists in 49 league minutes is unusual, so check before use."
+  },
+  {
+    "actionId": "cole-palmer", "player": "Cole Palmer", "country": "England", "club_2526": "Chelsea",
+    "w1": {"apps": 34, "minutes": 2432, "goals": 11, "assists": 3, "scope": "all comps (PL 26 apps 10 G 1 A; UCL 4; FA Cup 3; League Cup 1)", "src": "https://www.goal.com/en/player/c-palmer/career/dl10343h8yopcgerzur5samwa"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Left out of England's 26 (England: 3rd)", "awards": [], "src": ["https://www.espn.com/soccer/story/_/id/48823863/"]},
+    "club_now": "Chelsea",
+    "w3": {"apps": 10, "minutes": 836, "goals": 4, "assists": 3, "scope": "PL 8 apps 701 min 2 G 3 A + EFL Cup 2 apps 135 min 2 G (FotMob)", "src": "https://www.fotmob.com/players/1096353/cole-palmer"},
+    "events": "Dropped from the WC squad (May 22). Recalled by England in Sep 2026. Red card Oct 24 at Tottenham, so a suspension follows.",
+    "notes": "goal.com has no 26/27 rows yet, so W3 is from FotMob. Recall: https://www.beinsports.com/en-us/soccer/uefa-nations-league/articles/palmer-and-alexander-arnold-return-to-tuchels-england-squad-2026-09-18. Injury-hit 2025-26: https://lufkindailynews.com/anpa/sports/cole-palmer-has-minor-thigh-strain-in-latest-blow-in-injury-blighted-season/article_157fb61a-0dea-5f5d-aeaf-5b718d7cb199.html"
+  },
+  {
+    "actionId": "eli-junior-kroupi", "player": "Eli Junior Kroupi", "country": "France", "club_2526": "Bournemouth",
+    "w1": {"apps": null, "minutes": null, "goals": 13, "assists": null, "scope": "season total goals only", "src": "https://www.goal.com/en-us/lists/bournemouth-junior-kroupi-injury-ruled-out-premier-league/blta19d6423c6e1b7b2"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in France's 26 (France: 4th)", "awards": [], "src": ["https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/didier-deschamps-announces-france-s-official-squad-for-the-2026-fifa-world-cup-2026-05-14"]},
+    "club_now": "Bournemouth",
+    "w3": {"apps": 3, "minutes": 35, "goals": 0, "assists": 1, "scope": "PL 2 apps 25 min 1 A + League Cup 1 app 10 min (Opta)", "src": "https://theanalyst.com/players/5676/junior-kroupi"},
+    "events": "Foot surgery after a pre-season injury (Jul 29 2026; 3-4 months out). Back as a sub Oct 25, assist Oct 31 at Leeds. Kopa Trophy nominee (listed 8th). Portugal approached him about switching allegiance.",
+    "notes": "apps/minutes/assists for 2025-26 not found. FotMob Bournemouth spell row (Jul 2025-now) = 38 matches / 13 G, which includes the 3 apps of 26/27; not used as a 25/26 figure. Opta: 12 PL goals with 2 games left (https://theanalyst.com/articles/premier-league-young-player-of-the-season-2025-26-nominees). Recent matches: https://www.fotmob.com/players/1460534"
+  },
+  {
+    "actionId": "endrick", "player": "Endrick", "country": "Brazil", "club_2526": "Real Madrid, then Lyon on loan (Jan-Jun 2026)",
+    "w1": {"apps": null, "minutes": null, "goals": null, "assists": null, "scope": "Lyon loan only: 21 matches, 8 goals (FotMob career row). Real Madrid half-season figures not isolated (ESPN shows 0 LaLiga starts, 1 red card)", "src": "https://www.fotmob.com/players/1406729/endrick"},
+    "wc": {"played": true, "matches": 4, "minutes": 110, "goals": 0, "assists": 0, "team_finish": "Round of 16 (lost to Norway)", "awards": [], "src": ["https://theanalyst.com/players/1619/endrick/national", "https://www.si.com/soccer/brazil-2026-world-cup-roster-confirmed-full-list-players-one-thrilling-inclusion"]},
+    "club_now": "Real Madrid (returned from loan Jul 2026)",
+    "w3": {"apps": 4, "minutes": 106, "goals": 1, "assists": 0, "scope": "LaLiga 2 apps 73 min + UCL 2 apps 33 min 1 G (FotMob match log)", "src": "https://www.fotmob.com/players/1406729/endrick"},
+    "events": "All 4 WC appearances off the bench. Back at Real Madrid and mostly an unused sub (Sep 20, Oct 10, Oct 25). UCL goal vs Roma Oct 14.",
+    "notes": "goal.com 'Endrick' career page resolves to a different player (V-League), so not used. ESPN: https://www.espn.com/soccer/player/stats/_/id/346612"
+  },
+  {
+    "actionId": "ethan-nwaneri", "player": "Ethan Nwaneri", "country": "England", "club_2526": "Arsenal, then Marseille on loan",
+    "w1": {"apps": 21, "minutes": 845, "goals": 3, "assists": 1, "scope": "sum of goal.com rows: Arsenal 12 apps 521 min 1 G + Marseille 9 apps 324 min 2 G 1 A", "src": "https://www.goal.com/en-in/player/e-nwaneri/career/2lt2tw1qypl9hmlz529bo0sus"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in England's 26 (England: 3rd)", "awards": [], "src": ["https://www.espn.com/soccer/story/_/id/48823863/"]},
+    "club_now": "Borussia Dortmund (season-long loan from Arsenal, Sep 1 2026)",
+    "w3": {"apps": 9, "minutes": 417, "goals": 0, "assists": 0, "scope": "Bundesliga 6 apps 330 min; UCL 3 apps 87 min", "src": "https://www.goal.com/en-in/player/e-nwaneri/career/2lt2tw1qypl9hmlz529bo0sus"},
+    "events": "Deadline-day loan to Dortmund. No goal involvements yet; German press critical of his attitude.",
+    "notes": "Loan: https://www.bvb.de/de/en/news/news-overview/news.html/2026/9/1/BVB-signs-Ethan-Nwaneri-on-loan.html ; criticism: https://www.goal.com/en/news/other-players-have-given-much-more-which-face-is-england-s-record-appearance-holder-showing-at-borussia-dortmund/blt2c6f7b9e8898c5e6. goal.com G/A swap applied."
+  },
+  {
+    "actionId": "florian-wirtz", "player": "Florian Wirtz", "country": "Germany", "club_2526": "Liverpool",
+    "w1": {"apps": 48, "minutes": 3401, "goals": 7, "assists": 7, "scope": "all comps (PL 33 apps 5 G 3 A; UCL 11 apps 1 G 3 A; FA Cup 4 apps 1 G 1 A)", "src": "https://www.goal.com/en/player/f-wirtz/career/2k5g68ywtr79lc45wozvifqlm"},
+    "wc": {"played": true, "matches": 4, "minutes": 361, "goals": 0, "assists": 3, "team_finish": "Round of 32 (1-1 vs Paraguay, lost on penalties)", "awards": [], "src": ["https://www.goal.com/en/player/f-wirtz/career/2k5g68ywtr79lc45wozvifqlm", "https://www.cbssports.com/soccer/news/2026-fifa-world-cup-bracket-round-of-32-results-round-of-16-matchups-final/"]},
+    "club_now": "Liverpool",
+    "w3": {"apps": 8, "minutes": 624, "goals": 0, "assists": 2, "scope": "Premier League only (FotMob season summary). UCL not totalled; FotMob match log shows a UCL goal Oct 20 and an assist Oct 14", "src": "https://www.fotmob.com/players/1152455/florian-wirtz"},
+    "events": "Back injury Feb 2026. Germany out in the R32. Ankle twist Oct 25 2026 at Brighton; return date not given. Liverpool are now managed by Andoni Iraola.",
+    "notes": "goal.com 26/27 shows only 1 app (stale), so not used. Injury: https://www.empireofthekop.com/2026/10/26/iraola-wirtz-injury-update-liverpool-brighton/ ; Feb: https://wtop.com/sports/2026/02/liverpool-playmaker-florian-wirtz-still-sidelined-with-back-injury. goal.com G/A swap applied to W1/WC."
+  },
+  {
+    "actionId": "geovany-quenda", "player": "Geovany Quenda", "country": "Portugal", "club_2526": "Sporting CP",
+    "w1": {"apps": 29, "minutes": 1461, "goals": 6, "assists": 7, "scope": "all comps (Liga 20 apps; UCL 6; cups 3)", "src": "https://www.goal.com/en-in/player/g-quenda/career/S1HekisX22V_Ein2uDlLj"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in Portugal's 26 (Portugal: R16)", "awards": [], "src": ["https://www.vavel.com/en/international-football/2026/05/19/1261226-roberto-martinez-announces-portugal-squad-for-2026-world-cup.html"]},
+    "club_now": "Chelsea (pre-agreed move from Sporting, summer 2026)",
+    "w3": {"apps": 4, "minutes": 101, "goals": 0, "assists": 0, "scope": "Premier League", "src": "https://www.goal.com/en-in/player/g-quenda/career/S1HekisX22V_Ein2uDlLj"},
+    "events": "Joined Chelsea. Bit-part role so far (101 min).",
+    "notes": "Chelsea arrival: https://www.goal.com/en-us/lists/chelsea-confirm-arrival-geovany-quenda-long-term-deal-teenager-completes-transfer-sporting-cp/blta266497528347ac7. goal.com G/A swap applied."
+  },
+  {
+    "actionId": "jude-bellingham", "player": "Jude Bellingham", "country": "England", "club_2526": "Real Madrid",
+    "w1": {"apps": 37, "minutes": 2525, "goals": 8, "assists": 5, "scope": "all comps (LaLiga 28 apps 6 G 4 A; UCL 9 apps 2 G 1 A)", "src": "https://www.goal.com/en/player/j-bellingham/career/e83ula4wockmc2xid7185kcq2"},
+    "wc": {"played": true, "matches": 8, "minutes": 613, "goals": 7, "assists": 1, "team_finish": "3rd (lost SF to Argentina; beat France 6-4 in 3rd-place match)", "awards": [], "src": ["https://www.goal.com/en/player/j-bellingham/career/e83ula4wockmc2xid7185kcq2", "https://www.aljazeera.com/sports/2026/7/21/who-scored-the-most-goals-kept-clean-sheets-made-assists-fifa-world-cup-yellow-cards-saves"]},
+    "club_now": "Real Madrid",
+    "w3": {"apps": 13, "minutes": 1042, "goals": 3, "assists": 3, "scope": "all comps (LaLiga 10 apps 3 G 3 A; UCL 3 apps 0/0)", "src": "https://www.goal.com/en/player/j-bellingham/career/e83ula4wockmc2xid7185kcq2"},
+    "events": "7 WC goals (joint 3rd scorer). Ballon d'Or 2026: 11th.",
+    "notes": "goal.com G/A swap applied; WC goals match Al Jazeera."
+  },
+  {
+    "actionId": "kobbie-mainoo", "player": "Kobbie Mainoo", "country": "England", "club_2526": "Manchester United",
+    "w1": {"apps": 30, "minutes": 1813, "goals": 1, "assists": 3, "scope": "all comps (PL 28 apps 1662 min; FA Cup 1; League Cup 1)", "src": "https://www.goal.com/en/player/k-mainoo/career/cgm6zre07l5qauif32jtfqsk4"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "In England's 26 but played 0 minutes (England: 3rd)", "awards": [], "src": ["https://www.espn.com/soccer/story/_/id/48823863/", "https://www.fourfourtwo.com/person/player/kobbie-mainoo-world-cup-role-questioned-the-manchester-united-midfielder-hasnt-played-a-minute"]},
+    "club_now": "Manchester United",
+    "w3": {"apps": 8, "minutes": 533, "goals": 0, "assists": 1, "scope": "all comps (PL 6 apps 445 min; UCL 1; League Cup 1)", "src": "https://www.goal.com/en/player/k-mainoo/career/cgm6zre07l5qauif32jtfqsk4"},
+    "events": "Unused at the WC; Tuchel later said that was on him (Sep 18). Regular but not dominant at United.",
+    "notes": "Tuchel: https://thepeoplesperson.com/2026/09/18/tuchel-explains-why-kobbie-mainoo-didnt-play-a-single-minute-at-2026-world-cup-316515/. goal.com G/A swap applied (PL row reads 1 A / 2 G before the swap; check before use)."
+  },
+  {
+    "actionId": "lennart-karl", "player": "Lennart Karl", "country": "Germany", "club_2526": "Bayern Munich",
+    "w1": {"apps": 34, "minutes": 1745, "goals": 9, "assists": 7, "scope": "all comps (Bundesliga 26 apps 5 G 5 A; UCL 8 apps 4 G 2 A)", "src": "https://www.goal.com/de/spieler/l-karl/karriere/da5OjMYdE7BgObgXskR_u"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Named in Germany's 26, ruled out by thigh/muscle injury in training (Jun 5-8) (Germany: R32)", "awards": [], "src": ["https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/julian-nagelsmann-s-official-germany-squad-for-the-2026-fifa-world-cup-2026-05-21", "https://www.beinsports.com/en-au/football/fifa-world-cup-2026/articles/karl-ruled-out-of-world-cup-after-training-injury-2026-06-06"]},
+    "club_now": "Bayern Munich",
+    "w3": {"apps": 9, "minutes": 327, "goals": 1, "assists": 1, "scope": "all comps (Bundesliga 6 apps 248 min; UCL 3 apps 79 min)", "src": "https://www.goal.com/de/spieler/l-karl/karriere/da5OjMYdE7BgObgXskR_u"},
+    "events": "Missed the WC through injury. Minutes down in 26/27 (327). Kopa Trophy: listed 4th.",
+    "notes": "goal.com G/A swap applied."
+  },
+  {
+    "actionId": "mateus-mane", "player": "Mateus Mane", "country": "Portugal", "club_2526": "Wolves",
+    "w1": {"apps": 27, "minutes": null, "goals": 3, "assists": 1, "scope": "Premier League only (Opta)", "src": "https://theanalyst.com/players/13377/mateus-mane"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in Portugal's 26 (Portugal U21 only)", "awards": [], "src": ["https://www.vavel.com/en/international-football/2026/05/19/1261226-roberto-martinez-announces-portugal-squad-for-2026-world-cup.html"]},
+    "club_now": "Wolves (Championship)",
+    "w3": {"apps": 14, "minutes": 862, "goals": 0, "assists": 1, "scope": "Championship 12 apps 747 min 0 G 1 A + League Cup 2 apps 115 min", "src": "https://theanalyst.com/players/13377/mateus-mane"},
+    "events": "Wolves relegated Apr 20-21 2026; Mane stayed and plays in the Championship. No goals in 26/27.",
+    "notes": "Relegation: https://gulfnews.com/sport/wolves-relegated-from-the-premier-league-following-west-ham-draw-1.500514396 ; https://www.fotmob.com/players/1609213/mateus-mane"
+  },
+  {
+    "actionId": "nico-paz", "player": "Nico Paz", "country": "Argentina", "club_2526": "Como",
+    "w1": {"apps": 35, "minutes": 2876, "goals": 12, "assists": 6, "scope": "Serie A (only competition listed)", "src": "https://www.goal.com/en/player/n-paz/career/9i6hs8toyjwrh7ub04vow8wes"},
+    "wc": {"played": true, "matches": 2, "minutes": 70, "goals": 0, "assists": 0, "team_finish": "Runner-up (lost final 0-1 aet to Spain)", "awards": [], "src": ["https://www.goal.com/en/player/n-paz/career/9i6hs8toyjwrh7ub04vow8wes"]},
+    "club_now": "Como",
+    "w3": {"apps": 11, "minutes": 916, "goals": 5, "assists": 6, "scope": "all comps (Serie A 8 apps 3 G 3 A; UCL 3 apps 2 G 3 A)", "src": "https://www.goal.com/en/player/n-paz/career/9i6hs8toyjwrh7ub04vow8wes"},
+    "events": "WC runner-up medal (70 min). Still at Como, now in the Champions League. Real Madrid buy-back reports exist; a summer 2026 return was not confirmed.",
+    "notes": "goal.com G/A swap applied. Buy-back clause article (undated): https://www.goal.com/en-gh/lists/nico-paz-stays-como-agree-real-madrid-proposal-buy-back-clause/bltc61a82687acd6eb7"
+  },
+  {
+    "actionId": "santiago-castro", "player": "Santiago Castro", "country": "Argentina", "club_2526": "Bologna",
+    "w1": {"apps": 35, "minutes": null, "goals": 7, "assists": 2, "scope": "Serie A only (Opta)", "src": "https://theanalyst.com/players/4534/santiago-castro"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in Argentina's 26", "awards": [], "src": ["https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/lionel-scaloni-s-official-argentina-squad-for-the-2026-fifa-world-cup-2026-05-28?c=us"]},
+    "club_now": "Roma (from Bologna, Jul 30 2026, EUR 35m + bonuses, contract to 2031)",
+    "w3": {"apps": 7, "minutes": 283, "goals": 1, "assists": 2, "scope": "Serie A only (FotMob season summary)", "src": "https://www.fotmob.com/players/1282008/santiago-castro"},
+    "events": "Transfer to Roma. Mostly a sub; goal vs Genoa Oct 17. Senior Argentina cap (21 min) Oct 4.",
+    "notes": "CONFLICT: Opta 26/27 shows Serie A 5 apps 195 min 1 G 0 A + UCL 1 app 31 min (lagging). Fee: https://www.goal.com/en-za/lists/roma-official-santiago-castro-until-2031-the-details-of-the-deal/blt7070bfd0bf9d239e"
+  },
+  {
+    "actionId": "senny-mayulu", "player": "Senny Mayulu", "country": "France", "club_2526": "Paris Saint-Germain",
+    "w1": {"apps": 26, "minutes": null, "goals": 4, "assists": 4, "scope": "Ligue 1 only (Opta)", "src": "https://theanalyst.com/players/3537/senny-mayulu"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not in France's 26", "awards": [], "src": ["https://www.beinsports.com/en-us/soccer/fifa-world-cup-2026/articles/didier-deschamps-announces-france-s-official-squad-for-the-2026-fifa-world-cup-2026-05-14"]},
+    "club_now": "Paris Saint-Germain",
+    "w3": {"apps": 5, "minutes": 175, "goals": 2, "assists": 1, "scope": "all comps (goal.com labelled season table)", "src": "https://www.goal.com/en-gb/player/s-mayulu/54mv7lufwxcy2gih8owyr00lw"},
+    "events": "Back from injury in Oct; goal off the bench vs Lyon Oct 26.",
+    "notes": "CONFLICT: Opta shows 6 apps 104 min 1 G 0 A across Ligue 1, UCL, Trophee des Champions, Super Cup (https://theanalyst.com/players/3537/senny-mayulu). The injury note comes from repo doc docs/research/2026-10-31-rookie-radar.md, not re-verified here."
+  },
+  {
+    "actionId": "shea-lacey", "player": "Shea Lacey", "country": "England", "club_2526": "Manchester United (mostly U21)",
+    "w1": {"apps": 4, "minutes": null, "goals": null, "assists": null, "scope": "senior: PL 3 apps + FA Cup 1 app (11v11); goals not shown", "src": "https://www.11v11.com/players/shea-lacey-279538/"},
+    "wc": {"played": false, "matches": 0, "minutes": 0, "goals": 0, "assists": 0, "team_finish": "Not selected (England U20 level)", "awards": [], "src": ["https://www.espn.com/soccer/story/_/id/48823863/"]},
+    "club_now": "Manchester United",
+    "w3": {"apps": null, "minutes": null, "goals": null, "assists": null, "scope": "No reliable senior season total. FotMob match log shows cameos Sep 10 (18 min), Oct 21 (4), Oct 25 (12), League Cup Sep 16 (66 min, 1 G), and several unused-sub games", "src": "https://www.fotmob.com/players/1436260/shea-lacey"},
+    "events": "Fringe senior player; U21 scoring (PL2: 1 app, 2 G).",
+    "notes": "FotMob senior spell row (May 2025-now): 9 matches, 1 G, spanning both seasons."
+  },
+  {
+    "actionId": "viktor-gyokeres", "player": "Viktor Gyokeres", "country": "Sweden", "club_2526": "Arsenal",
+    "w1": {"apps": 56, "minutes": 3483, "goals": 21, "assists": 4, "scope": "all comps (PL 36 apps 14 G 1 A; UCL 13 apps 5 G 2 A; cups)", "src": "https://www.goal.com/en/player/v-gyoekeres/career/73xu8dfkmgivh8l71hkqfe6sp"},
+    "wc": {"played": true, "matches": 4, "minutes": 360, "goals": 1, "assists": 2, "team_finish": "Round of 32 (lost 0-3 to France)", "awards": [], "src": ["https://www.goal.com/en/player/v-gyoekeres/career/73xu8dfkmgivh8l71hkqfe6sp", "https://www.cbssports.com/soccer/news/2026-fifa-world-cup-bracket-round-of-32-results-round-of-16-matchups-final/"]},
+    "club_now": "Arsenal",
+    "w3": {"apps": 10, "minutes": 490, "goals": 1, "assists": 2, "scope": "all comps (PL 5 apps 151 min; UCL 3; League Cup 2)", "src": "https://www.goal.com/en/player/v-gyoekeres/career/73xu8dfkmgivh8l71hkqfe6sp"},
+    "events": "Lost his starting place in 26/27 (151 PL minutes).",
+    "notes": "goal.com G/A swap applied."
+  },
+  {
+    "actionId": "vinicius-junior", "player": "Vinicius Junior", "country": "Brazil", "club_2526": "Real Madrid",
+    "w1": {"apps": 50, "minutes": 3984, "goals": 21, "assists": 12, "scope": "all comps (LaLiga 36 apps 16 G 5 A; UCL 14 apps 5 G 7 A)", "src": "https://www.goal.com/en/player/vinicius-junior/career/b4witgokm49tidm1a83qcvbop"},
+    "wc": {"played": true, "matches": 5, "minutes": 440, "goals": 4, "assists": 1, "team_finish": "Round of 16 (lost to Norway)", "awards": [], "src": ["https://www.goal.com/en/player/vinicius-junior/career/b4witgokm49tidm1a83qcvbop", "https://www.aljazeera.com/sports/2026/7/21/who-scored-the-most-goals-kept-clean-sheets-made-assists-fifa-world-cup-yellow-cards-saves"]},
+    "club_now": "Real Madrid",
+    "w3": {"apps": 11, "minutes": 795, "goals": 1, "assists": 3, "scope": "all comps (LaLiga 8 apps 1 G 3 A; UCL 3 apps 0/0)", "src": "https://www.goal.com/en/player/vinicius-junior/career/b4witgokm49tidm1a83qcvbop"},
+    "events": "4 WC goals; Brazil out in R16. Slow 26/27 start (1 G in 11). Ballon d'Or 2026: 17th.",
+    "notes": "goal.com G/A swap applied; WC goals match Al Jazeera."
+  }
+]

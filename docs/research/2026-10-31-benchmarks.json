@@ -1,0 +1,154 @@
+{
+  "title": "Benchmark series for soccer-card portfolio comparison, Oct 2025 -> Oct 2026",
+  "checked_on": "2026-10-31",
+  "base_month": "2025-10",
+  "index_definition": "idx = value / Oct-2025 value x 100; pct_vs_base = idx - 100 (percent, 2 dp, computed from the cited values)",
+  "series": [
+    {
+      "name": "Gold price (USD)",
+      "unit": "USD per troy ounce",
+      "basis": "LBMA Gold Price PM month-end as published in World Gold Council monthly Gold Market Commentary / Weekly Markets Monitor; 2026-06 and 2026-10 are spot closes (no WGC/LBMA PM figure found) - basis mismatch flagged",
+      "source_urls": [
+        "https://www.gold.org/goldhub/research/gold-market-commentary-october-2025",
+        "https://www.gold.org/download/file/20312/WMM_1_December_2025_Season_to_be_tank_full.pdf",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-december-2025",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-january-2026",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-february-2026",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-march-2026",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-april-2026",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-may-2026",
+        "https://statmuse.com/money/ask/gold-price-per-ounce-monthly-past-6-months",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-july-2026",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-august-2026",
+        "https://www.gold.org/goldhub/research/gold-market-commentary-september-2026",
+        "https://tradingeconomics.com/commodity/gold"
+      ],
+      "points": [
+        {"month": "2025-10", "date": "2025-10-31", "value": 4012, "idx": 100.00, "pct_vs_base": 0.00, "basis": "LBMA PM", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-october-2025"},
+        {"month": "2025-11", "date": "2025-11-28", "value": 4191, "idx": 104.46, "pct_vs_base": 4.46, "basis": "LBMA PM (Friday 28 Nov = last trading day)", "src": "https://www.gold.org/download/file/20312/WMM_1_December_2025_Season_to_be_tank_full.pdf"},
+        {"month": "2025-12", "date": "2025-12-31", "value": 4368, "idx": 108.87, "pct_vs_base": 8.87, "basis": "LBMA PM", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-december-2025"},
+        {"month": "2026-01", "date": "2026-01-30", "value": 4982, "idx": 124.18, "pct_vs_base": 24.18, "basis": "LBMA PM", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-january-2026"},
+        {"month": "2026-02", "date": "2026-02-27", "value": 5222, "idx": 130.16, "pct_vs_base": 30.16, "basis": "LBMA PM", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-february-2026"},
+        {"month": "2026-03", "date": "2026-03-31", "value": 4608, "idx": 114.86, "pct_vs_base": 14.86, "basis": "LBMA PM", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-march-2026"},
+        {"month": "2026-04", "date": "2026-04-30", "value": 4611, "idx": 114.93, "pct_vs_base": 14.93, "basis": "WGC month-end (page does not name LBMA PM explicitly)", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-april-2026"},
+        {"month": "2026-05", "date": "2026-05-29", "value": 4546, "idx": 113.31, "pct_vs_base": 13.31, "basis": "WGC month-end (Bloomberg/WGC; LBMA PM not named)", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-may-2026"},
+        {"month": "2026-06", "date": "2026-06-30", "value": 4005.81, "idx": 99.85, "pct_vs_base": -0.15, "basis": "XAU spot monthly close (StatMuse) - NOT LBMA PM; no WGC June figure found", "src": "https://statmuse.com/money/ask/gold-price-per-ounce-monthly-past-6-months"},
+        {"month": "2026-07", "date": "2026-07-31", "value": 4027, "idx": 100.37, "pct_vs_base": 0.37, "basis": "WGC month-end (Bloomberg/WGC; LBMA PM not named)", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-july-2026"},
+        {"month": "2026-08", "date": "2026-08-31", "value": 4563, "idx": 113.73, "pct_vs_base": 13.73, "basis": "WGC month-end (Bloomberg/WGC; LBMA PM not named)", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-august-2026"},
+        {"month": "2026-09", "date": "2026-09-30", "value": 4176, "idx": 104.09, "pct_vs_base": 4.09, "basis": "WGC month-end (Bloomberg/WGC; LBMA PM not named)", "src": "https://www.gold.org/goldhub/research/gold-market-commentary-september-2026"},
+        {"month": "2026-10", "date": "2026-10-30", "value": 3875.84, "idx": 96.61, "pct_vs_base": -3.39, "basis": "spot close per Trading Economics - NOT LBMA PM (WGC October commentary not yet published)", "src": "https://tradingeconomics.com/commodity/gold"}
+      ],
+      "pct_change_total": -3.39,
+      "latest_month": "2026-10",
+      "cross_checks": [
+        "2026-10-30 spot: StatMuse 2026 YTD close $3,875.37 (https://www.statmuse.com/money/ask/gold-price-3-year) agrees with Trading Economics $3,875.84.",
+        "Same-basis spot alternative for the total: StatMuse Oct-2025 close $3,995.65 (https://www.statmuse.com/money/ask/gold-monthly-price-2025) -> $3,875.37 = -3.01%.",
+        "June: WGC July commentary gives July return 0.0% ending at $4,027, implying a June LBMA level near $4,027, vs StatMuse spot $4,005.81 (~0.5% gap). Not substituted; value left as the cited spot close.",
+        "Third-party spot tables (convextrade, pricegold.net) differ from WGC by up to ~3% on some months (e.g. Jan 2026 convextrade $4,713.9 vs WGC $4,982) because of different cut times; WGC used as primary."
+      ]
+    },
+    {
+      "name": "S&P 500 index (price index)",
+      "unit": "index points, month-end close",
+      "basis": "Last trading-day close of each month",
+      "source_urls": [
+        "https://www.statmuse.com/money/ask/sandp-500-history",
+        "https://statmuse.com/money/ask/s-and-p-500-monthly-closes-in-2025",
+        "https://www.itiger.com/news/2580166954",
+        "https://www-web.itiger.com/news/2614624098",
+        "https://www.itiger.com/news/2639672703",
+        "https://tradingeconomics.com/united-states/stock-market"
+      ],
+      "points": [
+        {"month": "2025-10", "date": "2025-10-31", "value": 6840.20, "idx": 100.00, "pct_vs_base": 0.00, "src": "https://www.itiger.com/news/2580166954"},
+        {"month": "2025-11", "date": "2025-11-28", "value": 6849.09, "idx": 100.13, "pct_vs_base": 0.13, "src": "https://statmuse.com/money/ask/s-and-p-500-monthly-closes-in-2025"},
+        {"month": "2025-12", "date": "2025-12-31", "value": 6845.50, "idx": 100.08, "pct_vs_base": 0.08, "src": "https://statmuse.com/money/ask/s-and-p-500-monthly-closes-in-2025"},
+        {"month": "2026-01", "date": "2026-01-30", "value": 6939.03, "idx": 101.44, "pct_vs_base": 1.44, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-02", "date": "2026-02-27", "value": 6878.88, "idx": 100.57, "pct_vs_base": 0.57, "src": "https://www-web.itiger.com/news/2614624098"},
+        {"month": "2026-03", "date": "2026-03-31", "value": 6528.52, "idx": 95.44, "pct_vs_base": -4.56, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-04", "date": "2026-04-30", "value": 7209.01, "idx": 105.39, "pct_vs_base": 5.39, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-05", "date": "2026-05-29", "value": 7580.06, "idx": 110.82, "pct_vs_base": 10.82, "src": "https://www.itiger.com/news/2639672703"},
+        {"month": "2026-06", "date": "2026-06-30", "value": 7499.36, "idx": 109.64, "pct_vs_base": 9.64, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-07", "date": "2026-07-31", "value": 7489.72, "idx": 109.50, "pct_vs_base": 9.50, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-08", "date": "2026-08-31", "value": 7686.14, "idx": 112.37, "pct_vs_base": 12.37, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-09", "date": "2026-09-30", "value": 7651.54, "idx": 111.86, "pct_vs_base": 11.86, "src": "https://www.statmuse.com/money/ask/sandp-500-history"},
+        {"month": "2026-10", "date": "2026-10-30", "value": 7580.07, "idx": 110.82, "pct_vs_base": 10.82, "src": "https://tradingeconomics.com/united-states/stock-market"}
+      ],
+      "pct_change_total": 10.82,
+      "latest_month": "2026-10",
+      "cross_checks": [
+        "Oct 2025, Feb 2026, May 2026 closes match Dow Jones 'Data Talk' month-end items (itiger links).",
+        "Oct 2026 close 7,580.07 on Fri Oct 30 (-1.82% on the day) from Trading Economics matches StatMuse. Monthly returns on https://steodose.github.io/macro-trends/SP500.html agree for Nov 2025-Sep 2026; its Oct figure (+1.2%) was partial, data to Oct 28 (7,743.98).",
+        "Rejected: ycharts I:SP500NM (Shiller monthly average, not month-end); convextrade SPY page (ETF, not the index)."
+      ]
+    },
+    {
+      "name": "S&P Cotality (CoreLogic) Case-Shiller U.S. National Home Price Index, SA (CSUSHPISA)",
+      "unit": "index, Jan 2000 = 100, seasonally adjusted, monthly",
+      "basis": "Monthly index value (Case-Shiller is a 3-month moving average of closings), not a month-end print",
+      "source_urls": [
+        "https://fred.stlouisfed.org/data/CSUSHPISA",
+        "https://fred.stlouisfed.org/series/CSUSHPISA"
+      ],
+      "points": [
+        {"month": "2025-10", "value": 328.861, "idx": 100.00, "pct_vs_base": 0.00, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2025-11", "value": 330.077, "idx": 100.37, "pct_vs_base": 0.37, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2025-12", "value": 331.171, "idx": 100.70, "pct_vs_base": 0.70, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-01", "value": 331.885, "idx": 100.92, "pct_vs_base": 0.92, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-02", "value": 332.163, "idx": 101.00, "pct_vs_base": 1.00, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-03", "value": 331.614, "idx": 100.84, "pct_vs_base": 0.84, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-04", "value": 331.434, "idx": 100.78, "pct_vs_base": 0.78, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-05", "value": 331.704, "idx": 100.86, "pct_vs_base": 0.86, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-06", "value": 332.360, "idx": 101.06, "pct_vs_base": 1.06, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-07", "value": 333.299, "idx": 101.35, "pct_vs_base": 1.35, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-08", "value": 334.227, "idx": 101.63, "pct_vs_base": 1.63, "src": "https://fred.stlouisfed.org/data/CSUSHPISA"},
+        {"month": "2026-09", "value": null, "idx": null, "pct_vs_base": null, "reason": "not yet published; FRED next release 2026-11-24", "src": "https://fred.stlouisfed.org/series/CSUSHPISA"},
+        {"month": "2026-10", "value": null, "idx": null, "pct_vs_base": null, "reason": "not yet published (~2-month lag; expected late Dec 2026)", "src": "https://fred.stlouisfed.org/series/CSUSHPISA"}
+      ],
+      "pct_change_total": 1.63,
+      "pct_change_total_period": "2025-10 -> 2026-08",
+      "latest_month": "2026-08",
+      "data_last_updated": "2026-10-27 (FRED)"
+    },
+    {
+      "name": "NAR median sales price of existing homes (FRED HOSMEDUSM052N)",
+      "unit": "USD, not seasonally adjusted, monthly median of closed sales",
+      "basis": "Monthly median, NSA - strong seasonal swing (spring/summer peak), so month-vs-October moves are partly seasonal",
+      "source_urls": [
+        "https://fred.stlouisfed.org/data/HOSMEDUSM052N",
+        "https://www.mortgagenewsdaily.com/news/10162026-existing-home-sales-nar-inventory-prices-appr",
+        "https://www.nar.realtor/newsroom/existing-home-sales-receded-4-1-in-october"
+      ],
+      "points": [
+        {"month": "2025-10", "value": 414900, "idx": 100.00, "pct_vs_base": 0.00, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2025-11", "value": 410000, "idx": 98.82, "pct_vs_base": -1.18, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2025-12", "value": 405100, "idx": 97.64, "pct_vs_base": -2.36, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-01", "value": 395000, "idx": 95.20, "pct_vs_base": -4.80, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-02", "value": 398000, "idx": 95.93, "pct_vs_base": -4.07, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-03", "value": 409100, "idx": 98.60, "pct_vs_base": -1.40, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-04", "value": 417500, "idx": 100.63, "pct_vs_base": 0.63, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-05", "value": 431200, "idx": 103.93, "pct_vs_base": 3.93, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-06", "value": 442800, "idx": 106.72, "pct_vs_base": 6.72, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-07", "value": 436400, "idx": 105.18, "pct_vs_base": 5.18, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-08", "value": 427700, "idx": 103.09, "pct_vs_base": 3.09, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-09", "value": 417500, "idx": 100.63, "pct_vs_base": 0.63, "src": "https://fred.stlouisfed.org/data/HOSMEDUSM052N"},
+        {"month": "2026-10", "value": null, "idx": null, "pct_vs_base": null, "reason": "not yet released (NAR publishes October data in late November)", "src": "https://www.nar.realtor/newsroom/existing-home-sales-receded-4-1-in-october"}
+      ],
+      "pct_change_total": 0.63,
+      "pct_change_total_period": "2025-10 -> 2026-09",
+      "latest_month": "2026-09",
+      "data_last_updated": "2026-10-13 (FRED)",
+      "cross_checks": [
+        "Sep 2026 $417,500 (+1.3% y/y) confirmed by Mortgage News Daily on the Oct 2026 NAR release."
+      ]
+    }
+  ],
+  "notes": [
+    "Fetch routes: fred.stlouisfed.org/graph/fredgraph.csv was blocked by the session allowlist; fred.stlouisfed.org/data/<SERIES> (the 'View All' table) worked for CSUSHPISA and HOSMEDUSM052N. FRED's SP500 CSV was blocked; S&P closes came from StatMuse, cross-checked against Dow Jones Data Talk (itiger) and Trading Economics. LBMA historical prices are no longer on gold.org (removed at IBA's request), so gold month-ends come from WGC's monthly commentaries.",
+    "Gold basis: 9 of 13 points are WGC-published month-ends (5 explicitly 'LBMA Gold Price PM'; 4 cite Bloomberg/WGC without naming LBMA PM). 2026-06 and 2026-10 are spot closes from other sources. The total (-3.39%) compares an LBMA PM start to a spot end; a spot-to-spot comparison (StatMuse) gives -3.01%.",
+    "Gold Oct 2026 uses Fri Oct 30 (Oct 31 is a Saturday). Trading Economics reports gold at its lowest since Oct 2025 that day.",
+    "Housing series are monthly measures, not month-end prints. Case-Shiller runs to 2026-08 (Sep and Oct missing); NAR runs to 2026-09 (Oct missing). Their totals cover shorter periods than gold and the S&P.",
+    "Benchmarks are price-only: S&P excludes dividends (total return would be higher); gold excludes storage and dealer spread; housing excludes rent, costs and leverage. Card portfolio comparisons should state whether card values are net of fees and grading costs.",
+    "No figure here is estimated; every value is a cited published number. idx/pct fields are arithmetic on those numbers."
+  ]
+}
