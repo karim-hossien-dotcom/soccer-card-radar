@@ -53,6 +53,13 @@ export function flagsWithCrops(lines: string[], ev: (Evidence | null)[]): Flag[]
   });
 }
 
+/** Snipe board mini-badge for a listing's grade screen: the summary's lead, so it never claims more than was measured (G9c). */
+export function screenMiniText(verdict: string, summary: string): string {
+  if (verdict === "ceiling") return summary.split(":")[0];
+  if (verdict === "no_issue") return summary.split(/[;(]/)[0].trim() || "No visible issue";
+  return "Photo: can't judge";
+}
+
 /** Throws with a readable message when the response is not a condition report. */
 export function parseReport(x: unknown): ConditionReport {
   if (!isObj(x)) throw new Error("Empty response from the check");

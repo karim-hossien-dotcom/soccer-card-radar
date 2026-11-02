@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, flagsWithCrops, parseEvidence } from "./condition-report.ts";
+import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, flagsWithCrops, parseEvidence, screenMiniText } from "./condition-report.ts";
 
 const edge = (side: string, specks: number | null) => ({ side, judged_mm: 70, specks, specks_per_10cm: null, roughness_mm: null, waviness_mm: null, notches: null, note: specks === null ? "border too light to see whitening or chipping" : null });
 const corner = (corner: string, whitening_pct: number | null) => ({ corner, rounding_mm: null, whitening_pct, note: null, rounding_vs_others_mm: null });
@@ -116,4 +116,11 @@ test("G9c headline: no cap but look flags is not 'no visible issue'", () => {
   const h = ceilingLine(parseReport(raw({ ceiling: { psa: 10, bgs: 10, tag: 10, why: [], look: ["front edges: chipping specks (not calibrated yet: does not lower the ceiling)"] } })));
   assert.equal(h.capped, false);
   assert.match(h.headline, /^No ceiling from what was measured/);
+});
+
+test("G9c review: Snipe mini-badge says what the screen measured, not 'No visible issue' for every no_issue", () => {
+  assert.equal(screenMiniText("no_issue", "No ceiling from what was measured (centering 55/45); 2 flag(s) to look at"), "No ceiling from what was measured");
+  assert.equal(screenMiniText("no_issue", "No visible issue (centering 55/45)"), "No visible issue");
+  assert.equal(screenMiniText("ceiling", "At best PSA 8: front L/R centering 66/34 -> PSA 8, BGS 8, TAG 8"), "At best PSA 8");
+  assert.equal(screenMiniText("cant_judge", "Can't judge: card is in a sleeve or holder: take it out and retake"), "Photo: can't judge");
 });

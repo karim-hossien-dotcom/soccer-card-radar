@@ -24,6 +24,8 @@ def test_summaries_from_reports():
     assert v == "no_issue" and s.startswith("No ceiling from what was measured"), s  # G9c: chipping is look-only until calibrated
     v, s = scr.summarize(None, scr.cond.assess(clean))  # no key: ungated, measured anyway
     assert v == "no_issue" and s.startswith("No visible issue"), s
+    v, s = scr.summarize(RAW, scr.cond.assess(t.glare_card(6)))  # G9c review: surface not judged (glare) is named too
+    assert v == "no_issue" and s.startswith("No ceiling from what was measured") and "not judged: front surface" in s, s
     assert scr.summarize(RAW, {"front": None, "ceiling": {}})[0] == "cant_judge"
 
 
