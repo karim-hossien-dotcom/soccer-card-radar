@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, type ConditionReport } from "@/lib/condition-report";
+import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, flagsWithCrops, type ConditionReport, type Flag } from "@/lib/condition-report";
 import s from "./check-panel.module.css";
 import BorderConfirm from "./border-confirm";
 
@@ -96,6 +96,11 @@ export default function CheckPanel({ initialReport = null }: { initialReport?: C
   );
 }
 
+/** One flag line, with its zoomed crop in front when the check sent one (G9c). */
+function FlagItem({ f }: { f: Flag }) {
+  return <li className={f.crop ? s.withCrop : undefined}>{f.crop && <img className={s.crop} src={f.crop} alt={f.alt} />}<span>{f.text}</span></li>;
+}
+
 /** The condition report: grade ceiling first, then centering, wear, look flags and what a photo can't show. */
 export function ReportView({ report, cardId }: { report: ConditionReport; cardId?: string }) {
   const ceil = ceilingLine(report);
@@ -103,7 +108,7 @@ export function ReportView({ report, cardId }: { report: ConditionReport; cardId
         <div className={s.report}>
           <h3 className={s.h}>Grade ceiling</h3>
           <p className={s.ceiling} data-capped={ceil.capped}>{ceil.headline}</p>
-          {ceil.reasons.length > 0 && <ul className={s.list}>{ceil.reasons.map((w) => <li key={w}>{w}</li>)}</ul>}
+          {ceil.reasons.length > 0 && <ul className={s.list}>{flagsWithCrops(ceil.reasons, report.ceiling.why_evidence).map((f) => <FlagItem key={f.text} f={f} />)}</ul>}
 
           <h3 className={s.h}>Centering</h3>
           <p className={s.muted}>Measured from the printed border lines, at the worst point along each side.</p>
@@ -140,7 +145,7 @@ export function ReportView({ report, cardId }: { report: ConditionReport; cardId
                     <p className={s.sub}>{sc.side}{sc.lights?.length ? ` · light from ${sc.lights.join(", ")}` : ""}{sc.ai ? "" : " (Claude second look off)"}</p>
                     {sc.status !== "measured" ? <p className={s.muted}>Not judged: {sc.why}</p>
                       : sc.findings.length === 0 ? <p className={s.muted}>Nothing found.</p>
-                      : <ul className={s.list}>{surfaceLines(sc).map((l) => <li key={l.text} data-source={l.source}>{l.n !== null && <b className={s.num}>{l.n}</b>}{l.text}</li>)}</ul>}
+                      : <ul className={s.list}>{surfaceLines(sc).map((l) => <li key={l.text} data-source={l.source} className={l.crop ? s.withCrop : undefined}>{l.crop && <img className={s.crop} src={l.crop} alt={`${sc.side}: close-up of this finding`} />}<span>{l.n !== null && <b className={s.num}>{l.n}</b>}{l.text}</span></li>)}</ul>}
                     {sc.status === "measured" && sc.why && <p className={s.muted}>{sc.why}</p>}
                   </div>
                 </div>
@@ -150,7 +155,7 @@ export function ReportView({ report, cardId }: { report: ConditionReport; cardId
 
           <h3 className={s.h}>Look flags</h3>
           {report.ceiling.look.length
-            ? <><p className={s.muted}>Measured, not yet allowed to lower the ceiling: check these by eye.</p><ul className={s.list}>{report.ceiling.look.map((l) => <li key={l}>{l}</li>)}</ul></>
+            ? <><p className={s.muted}>Measured, not yet allowed to lower the ceiling: check these by eye.</p><ul className={s.list}>{flagsWithCrops(report.ceiling.look, report.ceiling.look_evidence).map((f) => <FlagItem key={f.text} f={f} />)}</ul></>
             : <p className={s.muted}>None.</p>}
 
           <h3 className={s.h}>Can&apos;t judge from a photo</h3>

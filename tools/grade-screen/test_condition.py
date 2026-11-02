@@ -196,6 +196,38 @@ def test_big_hotspot_makes_the_surface_cant_judge():
     assert not any("stain" in l for l in d["ceiling"]["look"])
 
 
+def crop_size(url):
+    import base64
+    assert url.startswith("data:image/jpeg;base64,"), url[:40]
+    im = cv2.imdecode(np.frombuffer(base64.b64decode(url.split(",", 1)[1]), np.uint8), cv2.IMREAD_COLOR)
+    return im.shape[1], im.shape[0]
+
+
+def test_every_flag_carries_side_bbox_and_a_crop():
+    """G9c: each look / why line (centering excepted) has side, bbox on the straightened card and a zoomed crop."""
+    d = c.assess(fake(chips=8, corner_white=True), glare_card(3, stain=True))
+    ceil = d["ceiling"]
+    assert len(ceil["look_evidence"]) == len(ceil["look"]) >= 3 and len(ceil["why_evidence"]) == len(ceil["why"]), ceil
+    by = dict(zip(ceil["look"], ceil["look_evidence"]))
+    chip = next(e for l, e in by.items() if "chipping" in l)
+    x, y, w, h = chip["bbox"]
+    assert chip["side"] == "front" and chip["px_per_mm"] == c.PX and abs(x + w / 2 - c.MARGIN) < 3 and h > w, chip["bbox"]  # on the left cut edge
+    corner = next(e for l, e in by.items() if "whitening" in l)
+    assert corner["bbox"][:2] == [c.MARGIN - c.PX, c.MARGIN - c.PX]  # top-left
+    stain = next(e for l, e in by.items() if "stain" in l)
+    assert stain["side"] == "back", stain
+    for e in (chip, corner, stain):
+        assert max(crop_size(e["crop"])) == c.CROP_PX
+    old = dict(c.CALIBRATED)
+    try:
+        c.CALIBRATED["edges_chipping"] = True
+        d = c.assess(fake(chips=8))
+    finally:
+        c.CALIBRATED.clear(); c.CALIBRATED.update(old)
+    assert d["ceiling"]["why_evidence"][0]["crop"].startswith("data:image/jpeg"), d["ceiling"]["why_evidence"]
+    assert "_card" not in d["front"]  # the straightened card is not sent back
+
+
 def mat_photo():
     """G9a: card on a black mat (0.819 wide/tall) with light dust near the mat's edge, on a light table. The mat is the
     outline found (and the one a phone hint can give); before the fix its dust read as chipping and capped PSA 8."""

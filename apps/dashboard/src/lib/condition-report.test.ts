@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize } from "./condition-report.ts";
+import { parseReport, ceilingLine, centeringRows, wearFindings, surfaceLines, checkFile, downscaleSize, flagsWithCrops, parseEvidence } from "./condition-report.ts";
 
 const edge = (side: string, specks: number | null) => ({ side, judged_mm: 70, specks, specks_per_10cm: null, roughness_mm: null, waviness_mm: null, notches: null, note: specks === null ? "border too light to see whitening or chipping" : null });
 const corner = (corner: string, whitening_pct: number | null) => ({ corner, rounding_mm: null, whitening_pct, note: null, rounding_vs_others_mm: null });
@@ -89,4 +89,31 @@ test("surfaceLines: says which side lights saw a finding when several were used"
     findings: [{ kind: "crease", where: "centre", source: "measured" as const, size_mm: 35.4, lights: ["top", "bottom"] }] };
   assert.equal(surfaceLines(sc)[0].text.includes("seen under top, bottom light"), true);
   assert.equal(surfaceLines({ ...sc, lights: ["left"] })[0].text.includes("seen under"), false);
+});
+
+const JPG = "data:image/jpeg;base64,/9j/4AAQ";
+
+test("G9c evidence: crops line up with their look / why lines; junk and non-JPEG crops are dropped", () => {
+  const r = parseReport(raw({ ceiling: { psa: 10, bgs: 10, tag: 10, why: [], look: ["front edges: chipping specks along 1 side(s), 8 total", "front: whitening at 1 corner(s)", "Front: dent"],
+    look_evidence: [{ side: "front", bbox: [10, 111, 40, 160], px_per_mm: 10, crop: JPG }, null, { side: "front", bbox: [1, 2, 3], crop: JPG }] } }));
+  assert.equal(r.ceiling.look_evidence.length, 3);
+  assert.deepEqual(r.ceiling.look_evidence[0], { side: "front", bbox: [10, 111, 40, 160], px_per_mm: 10, crop: JPG });
+  assert.equal(r.ceiling.look_evidence[2], null); // bbox must have 4 numbers
+  const f = flagsWithCrops(r.ceiling.look, r.ceiling.look_evidence);
+  assert.deepEqual(f.map((x) => x.crop), [JPG, null, null]);
+  assert.equal(f[0].alt, "front: close-up of what this flag is about");
+  assert.equal(parseEvidence({ side: "front", bbox: [0, 0, 1, 1], crop: "https://evil.example/x.jpg" })?.crop, null);
+  assert.deepEqual(parseReport(raw()).ceiling.why_evidence, [null]); // older responses: no evidence, no crash
+});
+
+test("G9c evidence: side-light findings keep their crop", () => {
+  const r = parseReport(raw({ surface_scan: [{ side: "Front", status: "measured", why: null, ai: false, overlay: null,
+    findings: [{ kind: "dent or dimple", where: "top right", source: "measured", size_mm: 6, crop: JPG }, { kind: "scratch", where: "centre", source: "claude", crop: "javascript:x" }] }] }));
+  assert.deepEqual(surfaceLines(r.surface[0]).map((l) => l.crop), [JPG, null]);
+});
+
+test("G9c headline: no cap but look flags is not 'no visible issue'", () => {
+  const h = ceilingLine(parseReport(raw({ ceiling: { psa: 10, bgs: 10, tag: 10, why: [], look: ["front edges: chipping specks (not calibrated yet: does not lower the ceiling)"] } })));
+  assert.equal(h.capped, false);
+  assert.match(h.headline, /^No ceiling from what was measured/);
 });

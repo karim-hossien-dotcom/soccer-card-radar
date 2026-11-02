@@ -135,6 +135,15 @@ def test_glare_on_the_straight_on_photo_is_cant_judge():
     assert res["status"] == "cant_judge" and "glare covers" in res["why"] and "retake with the light at an angle" in res["why"], res
 
 
+def test_findings_carry_bbox_and_crop():
+    import test_condition as tc
+    r = run(height(dent=(0.75, 0.2)))
+    f = r["findings"][0]
+    x, y, w, h = f["bbox"]
+    assert f["px_per_mm"] == sf.PX and abs((x + w / 2) / sf.CW - f["x"]) < 0.01 and abs((y + h / 2) / sf.CH - f["y"]) < 0.01, f
+    assert max(tc.crop_size(f["crop"])) == 120
+
+
 def test_no_card_is_cant_judge():
     blank = enc(np.full((800, 600, 3), 30, np.uint8))
     assert sf.analyse_lights(blank, [("left", blank, None)])["status"] == "cant_judge"

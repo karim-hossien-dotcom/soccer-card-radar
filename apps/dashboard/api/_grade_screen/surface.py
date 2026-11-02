@@ -261,7 +261,7 @@ def analyse_lights(flat_src, rakings, flat_hint=None):
     if share > cond.GLARE_MAX_SHARE:
         return {"status": "cant_judge", "why": "straight-on photo: " + cond.GLARE_RETAKE.format(pct=round(100 * share)),
                 "findings": [], "overlay": None, "lights": []}
-    per, used, why, first = [], [], [], None
+    per, used, why, first, lit = [], [], [], None, {}
     for light, src, hint in rakings:
         rk, e2 = straighten(src, hint)
         if rk is None:
@@ -271,11 +271,14 @@ def analyse_lights(flat_src, rakings, flat_hint=None):
             why.append(f"{light} light: too much glare or black"); continue
         glare = flat_glare | cond.glare_mask(rk, PX, ref=flat)  # a hotspot's halo shades like a dent: drop what sits in it
         finds = [f for f in findings_from(z) if not cond.in_glare(glare, *glare_box(f))]
-        per.append((light, finds)); used.append(light)
+        per.append((light, finds)); used.append(light); lit[light] = rk
         first = rk if first is None else first
     if not per:
         return {"status": "cant_judge", "why": "; ".join(why) or "no side-light photo", "findings": [], "overlay": None, "lights": []}
     finds = merge(per)
+    for f in finds:  # G9c evidence: box on the straightened card and a zoomed crop from the first light that saw it
+        x, y, w, h = glare_box(f)
+        f.update(bbox=[int(x), int(y), int(w), int(h)], px_per_mm=PX, crop=cond.crop_url(lit[f["lights"][0]], (x, y, w, h), PX))
     return {"status": "measured", "why": "; ".join(why) or None, "findings": finds, "overlay": overlay(first, finds), "lights": used}
 
 

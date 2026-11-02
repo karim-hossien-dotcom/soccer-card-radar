@@ -21,7 +21,7 @@ Grading points covered (sources, accessed 2026-10-29):
        edge surface wear, notches, lifting, roughness, waviness, tears. TAG publishes no per-defect
        point costs, so TAG ceilings here are the band the matching PSA/BGS description falls in.
 """
-import sys, json
+import base64, sys, json
 import cv2
 import numpy as np
 import centering as cen
@@ -158,6 +158,7 @@ def edge_checks(card, skip=()):
         adj = cv2.dilate(np.ascontiguousarray(inner_band(L, side, 0.9, 1.3).max(axis=0), dtype=np.float32).reshape(1, -1), np.ones((1, 5), np.uint8)).ravel()
         sp = (prof > 22) & (top - hi > 15) & (prof - smooth(prof, 81) > 15) & (top > 55) & (chroma < 15) & (top - adj > 15) & dark
         n = runs(sp) if judged_mm >= 10 else None
+        starts = np.flatnonzero(sp & ~np.concatenate([[False], sp[:-1]])) if n else []
         # Cut line, only where card and backdrop differ clearly
         gin = smooth(np.median(inner_band(g, side, 0.5, 1.5), axis=0)); gout = smooth(np.median(outside_band(g, side), axis=0))
         contrast = np.abs(gin - gout)
@@ -178,6 +179,7 @@ def edge_checks(card, skip=()):
                 wave = round(float(np.ptp(cv2.blur(resid.reshape(1, -1), (31, 1)).ravel())) / PX, 3)
                 notches = runs(cv2.erode((resid > 0.5 * PX).astype(np.uint8).reshape(1, -1), np.ones((1, 5), np.uint8)).ravel() > 0)  # >= 0.5 mm deep and 0.5 mm wide
         out.append({"side": side, "judged_mm": round(judged_mm), "specks": n,
+                    "speck_along_px": [int(MARGIN + 4 * PX + i) for i in starts],  # G9c evidence: x (top/bottom) or y (left/right) in card px
                     "specks_per_10cm": None if n is None else round(n / judged_mm * 100, 1),
                     "roughness_mm": rough, "waviness_mm": wave, "notches": notches,
                     "note": ("border too light to see whitening or chipping" if n is None else None) if rough is not None else
@@ -354,11 +356,19 @@ def surface_checks(card):
         stain = light & (B - b_ref > 12) & (A > -5)
         stain = cv2.morphologyEx(stain.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         n, _, st, _ = cv2.connectedComponentsWithStats(stain)
-        out["stain_spots"] = int(sum(1 for i in range(1, n) if st[i, cv2.CC_STAT_AREA] >= PX * PX and not in_glare(glare, *st[i, :4])))  # >= 1 mm^2
+        kept = [i for i in range(1, n) if st[i, cv2.CC_STAT_AREA] >= PX * PX and not in_glare(glare, *st[i, :4])]  # >= 1 mm^2
+        out["stain_spots"] = len(kept)
+        off = MARGIN + 4 * PX  # G9c evidence: boxes in card px (the inner face starts 4 mm in)
+        out["stain_boxes"] = [[int(st[i, 0] + off), int(st[i, 1] + off), int(st[i, 2]), int(st[i, 3])] for i in kept]
         lap = cv2.Laplacian(cv2.GaussianBlur(L, (3, 3), 0), cv2.CV_32F)
         spot = light & (lap > 25)
         n2, _, st2, _ = cv2.connectedComponentsWithStats(spot.astype(np.uint8))
-        out["print_spots"] = int(sum(1 for i in range(1, n2) if 2 <= st2[i, cv2.CC_STAT_AREA] <= 30 and not in_glare(glare, *st2[i, :4])))
+        ps = [i for i in range(1, n2) if 2 <= st2[i, cv2.CC_STAT_AREA] <= 30 and not in_glare(glare, *st2[i, :4])]
+        out["print_spots"] = len(ps)
+        if ps:
+            x0, y0 = min(st2[i, 0] for i in ps), min(st2[i, 1] for i in ps)
+            x1, y1 = max(st2[i, 0] + st2[i, 2] for i in ps), max(st2[i, 1] + st2[i, 3] for i in ps)
+            out["print_spot_box"] = [int(x0 + off), int(y0 + off), int(x1 - x0), int(y1 - y0)]
     else:
         out["stain_spots"] = out["print_spots"] = None
     # Registration: shift between red and blue channel edge maps.
@@ -381,19 +391,23 @@ def grade_ceilings(front, back, cent):
     checks switched on in CALIBRATED may lower it; the rest are look flags, with the cap they would set kept in
     would_cap (PSA grade per check, for calibrate.py)."""
     psa, bgs, tag, why, look = 10, 10, 10, [], []
+    why_ev, look_ev = [], []  # G9c: per line, {side, bbox, px_per_mm} on the straightened card (None for centering)
     would = {k: None for k in CALIBRATED}
 
-    def cap(p, b, t, reason):
+    def cap(p, b, t, reason, ev=None):
         nonlocal psa, bgs, tag
         psa, bgs, tag = min(psa, p), min(bgs, b), min(tag, t)
-        why.append(f"{reason} -> PSA {p}, BGS {b}, TAG {t}")
+        why.append(f"{reason} -> PSA {p}, BGS {b}, TAG {t}"); why_ev.append(ev)
 
-    def gated(check, p, b, t, reason):
+    def flag(text, ev):
+        look.append(text); look_ev.append(ev)
+
+    def gated(check, p, b, t, reason, ev):
         would[check] = p if would[check] is None else min(would[check], p)
         if CALIBRATED[check]:
-            cap(p, b, t, reason)
+            cap(p, b, t, reason, ev)
         else:
-            look.append(f"{reason} ({UNCALIBRATED})")
+            flag(f"{reason} ({UNCALIBRATED})", ev)
 
     # Centering
     for key, worse in cent.items():
@@ -406,41 +420,81 @@ def grade_ceilings(front, back, cent):
         if not res:
             continue
         # Edges: chipping / whitening specks (checked by eye against the Ronaldo #161 test card only: gated)
+        ev = lambda box: {"side": side_name, "bbox": [int(v) for v in box], "px_per_mm": PX}
         sp = [e["specks"] for e in res["edges"] if e["specks"] is not None]
         sides_hit = sum(1 for s in sp if s >= 3)
         total = sum(sp)
         if total >= 1:
+            worst = max((e for e in res["edges"] if e["specks"]), key=lambda e: e["specks"])
+            at = worst.get("speck_along_px") or [MARGIN + 4 * PX]
+            chip_ev = ev(_edge_box(worst["side"], at[0] - 2 * PX, min(at[-1], at[0] + 12 * PX) + 2 * PX))
             if sides_hit == 0 and total <= 6:
-                gated("edges_chipping", 9, 9, 9, f"{side_name} edges: {total} scattered speck(s) of chipping")
+                gated("edges_chipping", 9, 9, 9, f"{side_name} edges: {total} scattered speck(s) of chipping", chip_ev)
             elif sides_hit <= 2:
-                gated("edges_chipping", 8, 8.5, 8, f"{side_name} edges: chipping specks along {sides_hit} side(s), {total} total")
+                gated("edges_chipping", 8, 8.5, 8, f"{side_name} edges: chipping specks along {sides_hit} side(s), {total} total", chip_ev)
             else:
-                gated("edges_chipping", 8, 8, 8, f"{side_name} edges: chipping specks along {sides_hit} sides, {total} total")
+                gated("edges_chipping", 8, 8, 8, f"{side_name} edges: chipping specks along {sides_hit} sides, {total} total", chip_ev)
         worn = [c for c in res["corners"] if (c["whitening_pct"] or 0) > 3]
         if worn:
             n = len(worn)
             gated("corners_whitening", 9 if n == 1 else 8, 9 if n == 1 else 8.5, 9 if n == 1 else 8,
-                  f"{side_name}: whitening at {n} corner(s) ({', '.join(c['corner'] for c in worn)})")
+                  f"{side_name}: whitening at {n} corner(s) ({', '.join(c['corner'] for c in worn)})", ev(_corner_box(worn[0]["corner"])))
         # Look flags (TAG notches/waviness/roughness, corner dings)
         for e in res["edges"]:
+            whole = ev(_edge_box(e["side"], MARGIN + 4 * PX, MARGIN + (CW if e["side"] in ("top", "bottom") else CH) - 4 * PX))
             if e["notches"]:
-                look.append(f"{side_name} {e['side']} edge: {e['notches']} possible notch(es) 0.5 mm+ (TAG notches; PSA/BGS edges)")
+                flag(f"{side_name} {e['side']} edge: {e['notches']} possible notch(es) 0.5 mm+ (TAG notches; PSA/BGS edges)", whole)
             if e["waviness_mm"] is not None and e["waviness_mm"] > 0.5:
-                look.append(f"{side_name} {e['side']} edge: cut line wavy by {e['waviness_mm']} mm (TAG waviness)")
+                flag(f"{side_name} {e['side']} edge: cut line wavy by {e['waviness_mm']} mm (TAG waviness)", whole)
             if e["roughness_mm"] is not None and e["roughness_mm"] > 0.08:
-                look.append(f"{side_name} {e['side']} edge: rough cut ({e['roughness_mm']} mm) (TAG roughness, fill/fray)")
+                flag(f"{side_name} {e['side']} edge: rough cut ({e['roughness_mm']} mm) (TAG roughness, fill/fray)", whole)
         for c in res["corners"]:
             if (c["rounding_vs_others_mm"] or 0) > 0.35:
-                look.append(f"{side_name} {c['corner']} corner blunter than the others by {c['rounding_vs_others_mm']} mm (PSA sharp corners, BGS corners, TAG squareness)")
+                flag(f"{side_name} {c['corner']} corner blunter than the others by {c['rounding_vs_others_mm']} mm (PSA sharp corners, BGS corners, TAG squareness)", ev(_corner_box(c["corner"])))
         # Surface from the straight-on photo (stains, print spots, registration): gated
         s = res["surface"]
+        face = [MARGIN + 4 * PX, MARGIN + 4 * PX, CW - 8 * PX, CH - 8 * PX]
         if s.get("stain_spots"):
-            gated("surface", 9, 9, 9, f"{side_name}: {s['stain_spots']} possible stain(s) on light areas (PSA staining / wax stain, BGS surface)")
+            x, y, w, h = s["stain_boxes"][0]
+            gated("surface", 9, 9, 9, f"{side_name}: {s['stain_spots']} possible stain(s) on light areas (PSA staining / wax stain, BGS surface)",
+                  ev([x - PX, y - PX, w + 2 * PX, h + 2 * PX]))
         if s.get("print_spots") is not None and s["print_spots"] > 8:
-            gated("surface", 9, 9, 9, f"{side_name}: {s['print_spots']} print specks on light areas (BGS print spots, PSA print imperfection)")
+            gated("surface", 9, 9, 9, f"{side_name}: {s['print_spots']} print specks on light areas (BGS print spots, PSA print imperfection)", ev(s.get("print_spot_box") or face))
         if s.get("registration_mm") is not None and s["registration_mm"] > 0.2:
-            gated("surface", 7, 7, 7, f"{side_name}: colour out of register by {s['registration_mm']} mm (PSA 7 'out of register', BGS registration)")
-    return {"psa": psa, "bgs": bgs, "tag": tag, "why": why, "look": look, "would_cap": would}
+            gated("surface", 7, 7, 7, f"{side_name}: colour out of register by {s['registration_mm']} mm (PSA 7 'out of register', BGS registration)", ev(face))
+    return {"psa": psa, "bgs": bgs, "tag": tag, "why": why, "look": look, "why_evidence": why_ev, "look_evidence": look_ev, "would_cap": would}
+
+
+def _edge_box(side, a, b, depth=2 * PX):
+    """Box (x, y, w, h, card px) straddling the cut edge `side`, from a to b along it."""
+    if side == "top": return [a, MARGIN - depth, b - a, 2 * depth]
+    if side == "bottom": return [a, MARGIN + CH - depth, b - a, 2 * depth]
+    if side == "left": return [MARGIN - depth, a, 2 * depth, b - a]
+    return [MARGIN + CW - depth, a, 2 * depth, b - a]
+
+
+def _corner_box(name, size=4 * PX):
+    """4 mm box on a corner, 1 mm of it outside the card."""
+    x = MARGIN - PX if "left" in name else MARGIN + CW + PX - size
+    y = MARGIN - PX if "top" in name else MARGIN + CH + PX - size
+    return [x, y, size, size]
+
+
+CROP_PX, MAX_CROPS = 120, 16  # G9c evidence crops: long side in px, and how many per report (the rest: bbox only)
+
+
+def crop_url(img, bbox, px, size=CROP_PX):
+    """Small zoomed JPEG (data URL) of bbox (x, y, w, h) plus 1 mm around it, long side `size` px. None if empty."""
+    x, y, w, h = bbox
+    x0, y0 = max(0, int(x - px)), max(0, int(y - px))
+    x1, y1 = min(img.shape[1], int(x + w + px)), min(img.shape[0], int(y + h + px))
+    if x1 - x0 < 2 or y1 - y0 < 2:
+        return None
+    sub = img[y0:y1, x0:x1]
+    k = size / max(sub.shape[:2])
+    sub = cv2.resize(sub, (max(1, round(sub.shape[1] * k)), max(1, round(sub.shape[0] * k))), interpolation=cv2.INTER_CUBIC if k > 1 else cv2.INTER_AREA)
+    ok, buf = cv2.imencode(".jpg", sub, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else None
 
 
 CANT_JUDGE = [
@@ -473,7 +527,7 @@ def side_report(path, hint=None, straight=None, holder_guard=True):
     if ppm < 8:
         return None, f"photo too small ({ppm:.1f} px per mm; need 8+) to judge corners and edges"
     borders, flat = bd.measure(img, q)
-    rep = {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders}
+    rep = {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders, "_card": card}
     shape = bd.outline_shape_error(q)
     sleeve = None if shape or not holder_guard else holder_signs(card)
     if shape:  # G9a: the outline is a mat, shadow or holder, not the cut edge: edges/corners/stains on it are meaningless
@@ -537,6 +591,13 @@ def assess_with_centering(front, back=None, holder=False, hints=None, straight=N
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front outline isn't the card's edge: no ceiling"], "look": []}
     else:
         ceil = grade_ceilings(f, b, cent)
+    ceil.setdefault("why_evidence", [None] * len(ceil["why"])); ceil.setdefault("look_evidence", [None] * len(ceil["look"]))
+    cards = {n: r.pop("_card", None) for n, r in (("front", f), ("back", b)) if r}
+    n_crops = 0
+    for e in ceil["why_evidence"] + ceil["look_evidence"]:  # G9c: a zoomed crop next to each flag
+        if e is not None:
+            e["crop"] = crop_url(cards[e["side"]], e["bbox"], PX) if n_crops < MAX_CROPS and cards.get(e["side"]) is not None else None
+            n_crops += e["crop"] is not None
     cant = [{"point": p, "graders": g, "why": w} for p, g, w in CANT_JUDGE]
     for name, rep in (("front", f), ("back", b)):
         if rep and rep.get("outline_error"):

@@ -187,6 +187,8 @@ def handle(headers, body, env=os.environ):
                 if flash:
                     lit += " (phone flash, not calibrated)"
                 report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src}{lit})")
+                report["ceiling"]["look_evidence"].append({"side": s["side"].lower(), "bbox": f["bbox"], "px_per_mm": f["px_per_mm"], "crop": f.get("crop")}
+                                                          if f.get("bbox") else None)  # G9c: Claude-only findings have no box
     return 200, report
 
 

@@ -210,6 +210,9 @@ def test_side_light_photo_adds_surface_look_flags():
     assert [(f["kind"], f["where"], f["source"]) for f in scan["findings"]] == [("dent or dimple", "bottom centre", "measured")]
     assert scan["overlay"].startswith("data:image/jpeg")
     assert any("dent or dimple, bottom centre" in l for l in rep["ceiling"]["look"])
+    ev = rep["ceiling"]["look_evidence"][rep["ceiling"]["look"].index(next(l for l in rep["ceiling"]["look"] if "dent or dimple" in l))]
+    assert ev["side"] == "front" and len(ev["bbox"]) == 4 and ev["crop"].startswith("data:image/jpeg"), ev  # G9c
+    assert len(rep["ceiling"]["look_evidence"]) == len(rep["ceiling"]["look"])
     assert {k: rep["ceiling"][k] for k in ("psa", "bgs", "tag")} == {k: plain["ceiling"][k] for k in ("psa", "bgs", "tag")}  # never lowers
 
 

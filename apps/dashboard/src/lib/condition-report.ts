@@ -16,19 +16,42 @@ type Side = { px_per_mm: number; edges: Edge[]; corners: Corner[]; borders: Bord
 export type CentKey = "front_lr" | "front_tb" | "back_lr" | "back_tb";
 export const CENT_KEYS: CentKey[] = ["front_lr", "front_tb", "back_lr", "back_tb"];
 type CentGrade = { split: string; psa: number; psa_tolerance: string | null; bgs: number; bgs_tolerance: string | null };
-export type SurfaceFinding = { kind: string; where: string; source: "both" | "measured" | "claude"; size_mm?: number; note?: string | null; lights?: string[] };
+export type SurfaceFinding = { kind: string; where: string; source: "both" | "measured" | "claude"; size_mm?: number; note?: string | null; lights?: string[]; crop?: string | null };
+/** G9c: where a flag was seen: side, box (x, y, w, h) in px on the straightened card, and a small zoomed crop. */
+export type Evidence = { side: string; bbox: [number, number, number, number]; px_per_mm: number; crop: string | null };
+export type Flag = { text: string; crop: string | null; alt: string };
 export type SurfaceScan = { side: string; status: "measured" | "cant_judge"; why: string | null; findings: SurfaceFinding[]; overlay: string | null; ai: boolean; lights?: string[] };
 export type ConditionReport = {
   front: Side; back: Side; holder: boolean; note: string;
   surface: SurfaceScan[];
   centering: Partial<Record<CentKey, string>>;
   centering_grades: Partial<Record<CentKey, CentGrade>>;
-  ceiling: { psa: number | null; bgs: number | null; tag: number | null; why: string[]; look: string[] };
+  ceiling: { psa: number | null; bgs: number | null; tag: number | null; why: string[]; look: string[]; why_evidence: (Evidence | null)[]; look_evidence: (Evidence | null)[] };
   cant_judge: { point: string; graders: string; why: string }[];
   repeats?: Repeats; // front centering from the 3 scanner stills (set by the scanner, not the API)
 };
 
 const isObj = (x: unknown): x is Record<string, unknown> => typeof x === "object" && x !== null && !Array.isArray(x);
+
+/** Only inline JPEG crops are shown: never a URL from the response. */
+const cropOf = (x: unknown): string | null => (typeof x === "string" && x.startsWith("data:image/jpeg;base64,") ? x : null);
+
+/** One evidence entry, or null when it is missing or malformed. */
+export function parseEvidence(x: unknown): Evidence | null {
+  if (!isObj(x) || typeof x.side !== "string" || !Array.isArray(x.bbox) || x.bbox.length !== 4 || !x.bbox.every((v) => Number.isFinite(v))) return null;
+  return { side: x.side, bbox: x.bbox as Evidence["bbox"], px_per_mm: Number(x.px_per_mm) || 0, crop: cropOf(x.crop) };
+}
+
+/** Evidence aligned with its lines (same index); missing entries are null. */
+const evidenceFor = (lines: unknown[], ev: unknown): (Evidence | null)[] => lines.map((_, i) => (Array.isArray(ev) ? parseEvidence(ev[i]) : null));
+
+/** Lines with the crop to show next to each (G9c). */
+export function flagsWithCrops(lines: string[], ev: (Evidence | null)[]): Flag[] {
+  return lines.map((text, i) => {
+    const e = ev[i];
+    return { text, crop: e?.crop ?? null, alt: e ? `${e.side}: close-up of what this flag is about` : "" };
+  });
+}
 
 /** Throws with a readable message when the response is not a condition report. */
 export function parseReport(x: unknown): ConditionReport {
@@ -42,10 +65,13 @@ export function parseReport(x: unknown): ConditionReport {
       borders: isObj(s.borders) && isObj(s.borders.inner) ? (s.borders as unknown as Borders) : null } : null;
   return {
     front: side(x.front), back: side(x.back), holder: x.holder === true, note: typeof x.note === "string" ? x.note : "",
-    surface: Array.isArray(x.surface_scan) ? (x.surface_scan as SurfaceScan[]).filter(isObj) : [],
+    surface: Array.isArray(x.surface_scan)
+      ? (x.surface_scan as SurfaceScan[]).filter(isObj).map((sc) => ({ ...sc, findings: Array.isArray(sc.findings) ? sc.findings.map((f) => ({ ...f, crop: cropOf(f.crop) })) : [] }))
+      : [],
     centering: x.centering as ConditionReport["centering"],
     centering_grades: (isObj(x.centering_grades) ? x.centering_grades : {}) as ConditionReport["centering_grades"],
-    ceiling: { psa: c.psa as number | null, bgs: c.bgs as number | null, tag: c.tag as number | null, why: c.why as string[], look: c.look as string[] },
+    ceiling: { psa: c.psa as number | null, bgs: c.bgs as number | null, tag: c.tag as number | null, why: c.why as string[], look: c.look as string[],
+      why_evidence: evidenceFor(c.why, c.why_evidence), look_evidence: evidenceFor(c.look, c.look_evidence) },
     cant_judge: x.cant_judge as ConditionReport["cant_judge"],
   };
 }
@@ -54,7 +80,10 @@ export function parseReport(x: unknown): ConditionReport {
 export function ceilingLine(r: ConditionReport): { capped: boolean; headline: string; reasons: string[] } {
   const { psa, bgs, tag, why } = r.ceiling;
   if (psa === null || bgs === null || tag === null) return { capped: false, headline: "No ceiling from this photo", reasons: why };
-  if (psa === 10 && bgs === 10 && tag === 10) return { capped: false, headline: "No visible issue: PSA 10 / BGS 10 / TAG 10 not ruled out", reasons: why };
+  if (psa === 10 && bgs === 10 && tag === 10)
+    return { capped: false, reasons: why, headline: r.ceiling.look.length
+      ? "No ceiling from what was measured: PSA 10 / BGS 10 / TAG 10 not ruled out. Check the look flags below." // G9c: uncalibrated findings are flags
+      : "No visible issue: PSA 10 / BGS 10 / TAG 10 not ruled out" };
   return { capped: true, headline: `At best PSA ${psa} · BGS ${bgs} · TAG ${tag}`, reasons: why };
 }
 
@@ -114,12 +143,12 @@ export function downscaleSize(w: number, h: number, bytes: number): { w: number;
 const SOURCE: Record<SurfaceFinding["source"], string> = { both: "measured and seen by Claude", measured: "measured", claude: "seen by Claude only" };
 
 /** Surface lines with the number drawn on the overlay photo (measured findings are numbered in order; Claude-only ones are not drawn). */
-export function surfaceLines(s: SurfaceScan): { n: number | null; text: string; source: SurfaceFinding["source"] }[] {
+export function surfaceLines(s: SurfaceScan): { n: number | null; text: string; source: SurfaceFinding["source"]; crop: string | null }[] {
   let n = 0;
   return s.findings.map((f) => {
     const num = f.source === "claude" ? null : ++n;
     const size = f.size_mm && f.source !== "claude" ? `, about ${Math.round(f.size_mm)} mm` : "";
     const lit = s.lights && s.lights.length > 1 && f.lights?.length ? `, seen under ${f.lights.join(", ")} light` : "";
-    return { n: num, text: `${f.kind[0].toUpperCase()}${f.kind.slice(1)}, ${f.where}${size}${lit}${f.note ? ` (${f.note})` : ""}: ${SOURCE[f.source]}`, source: f.source };
+    return { n: num, text: `${f.kind[0].toUpperCase()}${f.kind.slice(1)}, ${f.where}${size}${lit}${f.note ? ` (${f.note})` : ""}: ${SOURCE[f.source]}`, source: f.source, crop: f.crop ?? null };
   });
 }
