@@ -21,16 +21,16 @@ Every agent reports first and changes nothing (data, money, bids, live site) wit
 
 UAT environment: local (`pnpm --filter @soccer-card-radar/dashboard dev`, port 3100) with Playwright.
 
-## Scheduled (report-only unless noted)
+## Scheduled (run on Karim's computer so Card Ladder in Chrome works; reports saved to the card-mcp project)
 | When (ET) | What | Runs as |
 |---|---|---|
-| Daily 11:47 UTC (7:47am EDT) | eBay auction scan for the Snipe board | Vercel cron /api/scan |
-| Daily 12:17 UTC (8:17am EDT) | Log paid wins | Vercel cron /api/snipe/wins |
-| Sun 7:43pm | Vault comps refresh (inserts new CardComp rows by the card-comps rules; proposals for anything uncertain) | scheduled task |
-| Sun 10:17pm | Price audit | scheduled task |
-| Mon 1:23pm | Player form (unapproved rows for Karim to approve) | scheduled task |
-| Thu | Snipe targets / watchlist re-check with 90-day comps | scheduled task |
-| 1st of month | Photo audit | scheduled task |
+| Daily 11:47 UTC | eBay auction scan for the Snipe board | Vercel cron /api/scan |
+| Daily 12:17 UTC | Log paid wins | Vercel cron /api/snipe/wins |
+| Sun 7:43pm | Prices: Vault comps (writes by the card-comps rules) + snipe-target comps and rule max bids + audit checks -> audits/<date>-prices.md | scheduled task |
+| Mon 1:23pm | Players: player form (unapproved rows) + rookie radar with Card Ladder prices -> research/<date>-players.md | scheduled task |
+| 1st of month 8:19pm | Photos audit -> audits/<date>-photos.md | scheduled task |
+
+Every job closes its gaps (retry by another route, then a verifier agent) before reporting; first line Complete / Incomplete: N open.
 
 Hard rules: CLAUDE.md. Owner decisions: docs/decisions.md.
 

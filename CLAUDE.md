@@ -12,6 +12,10 @@ behind a login), Supabase Postgres (project zsubyufjenapkgkwpqzv). The repo is P
 - Never invent a price. Card values follow the card-comps skill (.claude/skills/card-comps/SKILL.md).
 - No bulk eBay scraping (IP bans). No duplicate UI: extend what exists instead of adding a second control/page.
 - Vault photos show only the card. Graded cards use PSA's cert-page scan of Karim's own slab.
+- Rules Karim has approved (comps, base-move, max bid incl. 80% of raw when no graded comps) are applied without asking him.
+  Ask only about what no rule covers (a missing cost, a card that can't be identified).
+- A job is not done while items are open: retry blocked or conflicting items by another route, then a verifier agent;
+  the report's first line says "Complete" or "Incomplete: N items open" with the reason for each.
 
 ## Coordinator (main Claude session)
 Splits Karim's request into tasks, hands each to the right agent, checks the result, and brings back one plan.

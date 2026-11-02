@@ -32,3 +32,6 @@ Supersede an entry with a new one; never delete.
 | 2026-10-30 | C3b Gixen hand-off shipped (copy item #/max, Open Gixen, calendar reminder) | e325620 |
 | 2026-10-30 | soccerdata not adopted for the Monday run: FBref, Sofascore, WhoScored and SoFIFA block the cloud runner (403); only Understat and ESPN answer | scheduled task unchanged |
 | 2026-11-02 | Snipe targets added from the young-player read: Castro Merlin Auto Gold Mojo /50 (raw $46.99), Mayulu Chrome UCC RC Auto Orange /25 ($45.37, one sale), Palmer Prizm WC Penmanship Gold Auto /10 ($310); confidence Low, no max bid until Karim sets one | SnipeTarget |
+| 2026-11-02 | Approved rules are applied without asking; max bid = 80% of raw when a target has no graded comps (set for Castro $37.59, Mayulu $36.30, Palmer $248, Ronaldo 2026 #367 $28, Messi Starball $8.42) | SnipeTarget, CLAUDE.md |
+| 2026-11-02 | Scheduled jobs cut from 5 to 3 (Prices Sun, Players Mon, Photos monthly), run on Karim's computer, reports saved to the card-mcp project; old comps refresh, price audit, snipe re-check, player form and photo audit tasks disabled | docs/WORKFLOW.md |
+| 2026-11-02 | Completion rule: no job reports done with open items; retry by another route, then a verifier agent, then list what's still open with the reason | scheduled tasks, CLAUDE.md |
