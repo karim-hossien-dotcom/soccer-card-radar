@@ -32,6 +32,13 @@ CW, CH = 63 * PX, 88 * PX
 MARGIN = 3 * PX    # keep 3 mm of backdrop around the card so cut edges and corners can be inspected
 PROVISIONAL = "thresholds provisional until calibrated against returned PSA grades"
 OUTLINE_RETAKE = "outline isn't the card's edge: retake on a plain contrasting background with all four edges visible"
+HOLDER_RETAKE = "card is in a sleeve or holder: take it out and retake"
+EDGE_RETAKE = "cut edge not found on this side: retake with that edge clear against the background"
+# G9c calibration gate. A check may lower the ceiling only after it agreed with returned PSA grades (calibrate.py; pass
+# bar in CALIBRATION.md) and Karim approved switching it on. While off, its findings are look flags only; centering is
+# the only check that sets a ceiling.
+CALIBRATED = {"edges_chipping": False, "corners_whitening": False, "surface": False}
+UNCALIBRATED = "not calibrated yet: does not lower the ceiling"
 
 # Centering tolerances: worse side of the larger split, front / back.
 PSA_CENT = [(10, 0.55, 0.75), (9, 0.60, 0.90), (8, 0.65, 0.90), (7, 0.70, 0.90)]
@@ -123,13 +130,16 @@ def smooth(v, k=41):
     return cv2.blur(np.ascontiguousarray(v, dtype=np.float32).reshape(1, -1), (k, 1)).ravel()
 
 
-def edge_checks(card):
+def edge_checks(card, skip=()):
     """Per side: chipping / whitening specks where the border is dark enough to show them (judged against the
-    border colour at that spot), and cut-line roughness, waviness and notches where the border stands out from the backdrop."""
+    border colour at that spot), and cut-line roughness, waviness and notches where the border stands out from the backdrop.
+    skip: sides whose cut edge was not found (G9c): not measured at all."""
     L = lab(card)[:, :, 0] * 100 / 255
     g = cv2.cvtColor(card, cv2.COLOR_BGR2GRAY).astype(np.float32)
     out = []
     for side in ("top", "bottom", "left", "right"):
+        if side in skip:
+            continue
         inner = inner_band(L, side)
         ref = smooth(np.median(inner, axis=0))                    # local border lightness along the edge
         hi = smooth(np.percentile(inner, 97, axis=0))             # brightest dots the printed pattern itself has there
@@ -175,9 +185,10 @@ def edge_checks(card):
     return out
 
 
-def corner_checks(card):
+def corner_checks(card, skip=()):
     """Per corner: whitening (light pixels in the 1.5 mm corner vs the border right next to it) and rounding
-    (backdrop inside the ideal square corner), the latter only where border and backdrop differ clearly."""
+    (backdrop inside the ideal square corner), the latter only where border and backdrop differ clearly.
+    skip: sides whose cut edge was not found (G9c): their two corners are not measured."""
     L = lab(card)[:, :, 0] * 100 / 255
     g = cv2.cvtColor(card, cv2.COLOR_BGR2GRAY).astype(np.float32)
     r = int(1.5 * PX)
@@ -185,6 +196,8 @@ def corner_checks(card):
     ring = (np.add.outer(np.arange(3 * r), np.arange(3 * r)) >= 2 * r) & (np.add.outer(np.arange(3 * r), np.arange(3 * r)) < 3 * r)
     out = []
     for name in ("top-left", "top-right", "bottom-left", "bottom-right"):
+        if any(sd in name.split("-") for sd in skip):
+            continue
         y0 = MARGIN if "top" in name else MARGIN + CH - 3 * r
         x0 = MARGIN if "left" in name else MARGIN + CW - 3 * r
         fy = slice(None) if "top" in name else slice(None, None, -1)
@@ -211,6 +224,81 @@ def corner_checks(card):
     for c in out:  # factory corners are not perfectly square: a ding is a corner clearly worse than the others
         c["rounding_vs_others_mm"] = None if base is None or c["rounding_mm"] is None else round(c["rounding_mm"] - base, 2)
     return out
+
+
+def _to_top(img, side):
+    """The straightened card turned so `side` is at the top (the MARGIN of backdrop stays on every side)."""
+    return {"top": img, "right": np.rot90(img, 1), "bottom": np.rot90(img, 2), "left": np.rot90(img, 3)}[side]
+
+
+def _first_run(mask, min_len, start_max):
+    """(start, end) of the first True run of min_len+ that starts at or before start_max, else None."""
+    d = np.diff(np.concatenate([[0], mask.astype(np.int8), [0]]))
+    for a, b in zip(np.flatnonzero(d == 1), np.flatnonzero(d == -1)):
+        if a > start_max:
+            return None
+        if b - a >= min_len:
+            return int(a), int(b)
+    return None
+
+
+SLEEVE_GAP_DE, CARD_DE = 20.0, 35.0  # backdrop seen through plastic vs the backdrop outside; the card inside vs the backdrop
+HOLDER_SIDES = 3                      # sides that must show it (a sleeve's open end can hide one)
+
+
+def holder_signs(card):
+    """G9c: why the traced outline looks like a sleeve or toploader, not the card's cut edge; None if it doesn't.
+    Profiles from the outline inward, 30 per side, 6 mm clear of the corners. Two signs:
+      gap: a run of 0.5 mm+ starting within 2.5 mm of the outline whose colour is the backdrop's (seen through clear
+           plastic), then the card further in: a second, nested outline.
+      rim: a bright, colourless band 0.2-1.2 mm wide at the outline (the plastic's edge catching the light) with
+           something much darker right inside it. A white card border is wider than 1.2 mm, so it does not count.
+    Either sign on HOLDER_SIDES+ sides (60% of the profiles on each) -> holder."""
+    Lab = lab(card) * np.float32([100 / 255, 1, 1]) - np.float32([0, 128, 128])
+    gap_sides, rim_sides, depth = [], [], []
+    for side in ("top", "right", "bottom", "left"):
+        t = _to_top(Lab, side)
+        cols = np.linspace(MARGIN + 6 * PX, t.shape[1] - MARGIN - 6 * PX, 30).astype(int)
+        back = np.median(t[MARGIN - int(2.5 * PX): MARGIN - PX][:, cols].reshape(-1, 3), axis=0)
+        prof = t[MARGIN: MARGIN + 8 * PX][:, cols]                     # depth x profiles x Lab
+        de = np.linalg.norm(prof - back, axis=2)
+        L, chroma = prof[..., 0], np.hypot(prof[..., 1], prof[..., 2])
+        gaps = rims = 0
+        for j in range(len(cols)):
+            r = _first_run(de[2:, j] < SLEEVE_GAP_DE, int(0.5 * PX), int(2.5 * PX))
+            if r:
+                inner = np.flatnonzero(de[2 + r[1]:, j] > CARD_DE)
+                if inner.size:
+                    gaps += 1; depth.append((2 + r[1] + inner[0]) / PX)
+            r = _first_run((L[:, j] > 80) & (chroma[:, j] < 12), 2, int(0.5 * PX))
+            if r and r[1] - r[0] <= int(1.2 * PX) and r[1] + 3 < L.shape[0] and L[r[1] + 3, j] < L[r[0]:r[1], j].mean() - 30:
+                rims += 1
+        if gaps >= 0.6 * len(cols): gap_sides.append(side)
+        if rims >= 0.6 * len(cols): rim_sides.append(side)
+    if len(gap_sides) >= HOLDER_SIDES:
+        return f"second card edge {np.median(depth):.1f} mm inside the traced outline on {len(gap_sides)} sides, backdrop showing between"
+    if len(rim_sides) >= HOLDER_SIDES:
+        return f"thin bright plastic edge around the card on {len(rim_sides)} sides"
+    return None
+
+
+def nested_card(img):
+    """Largest outline with a card's proportions (within borders.MAX_ASPECT_ERR) in the photo, as corners in photo px,
+    or None. For PSA cert-page scans (calibrate.py), where the largest outline is the slab, not the card inside it."""
+    g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+    area = img.shape[0] * img.shape[1]
+    best, best_a = None, 0.0
+    for lo, hi in ((30, 100), (60, 180), (100, 250)):
+        cnts, _ = cv2.findContours(cv2.dilate(cv2.Canny(g, lo, hi), np.ones((3, 3), np.uint8)), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+        for c in sorted(cnts, key=cv2.contourArea, reverse=True)[:30]:
+            h = cv2.convexHull(c)
+            a = cv2.contourArea(h)
+            if a < 0.08 * area or a <= best_a:
+                continue
+            q = cv2.approxPolyDP(h, 0.02 * cv2.arcLength(h, True), True)
+            if len(q) == 4 and bd.outline_shape_error(q.reshape(4, 2)) is None:
+                best, best_a = q.reshape(4, 2).astype(np.float32), a
+    return best
 
 
 def surface_checks(card):
@@ -247,13 +335,23 @@ def centering_grades(worse, back=False):
 
 
 def grade_ceilings(front, back, cent):
-    """Map every finding to the highest grade each company's written standard still allows."""
-    psa, bgs, tag, why = 10, 10, 10, []
+    """Map every finding to the highest grade each company's written standard still allows. Only centering and the
+    checks switched on in CALIBRATED may lower it; the rest are look flags, with the cap they would set kept in
+    would_cap (PSA grade per check, for calibrate.py)."""
+    psa, bgs, tag, why, look = 10, 10, 10, [], []
+    would = {k: None for k in CALIBRATED}
 
     def cap(p, b, t, reason):
         nonlocal psa, bgs, tag
         psa, bgs, tag = min(psa, p), min(bgs, b), min(tag, t)
         why.append(f"{reason} -> PSA {p}, BGS {b}, TAG {t}")
+
+    def gated(check, p, b, t, reason):
+        would[check] = p if would[check] is None else min(would[check], p)
+        if CALIBRATED[check]:
+            cap(p, b, t, reason)
+        else:
+            look.append(f"{reason} ({UNCALIBRATED})")
 
     # Centering
     for key, worse in cent.items():
@@ -262,26 +360,26 @@ def grade_ceilings(front, back, cent):
         if p < 10 or b < 10:
             cap(p, b, min(p, b), f"{side} {'L/R' if axis == 'lr' else 'T/B'} centering {round(worse*100)}/{round((1-worse)*100)}")
 
-    # Edges: chipping / whitening specks (checked by eye against the Ronaldo #161 test card). Caps the ceiling.
-    look = []  # measured but not yet calibrated: shown for a human look, does not lower the ceiling
     for side_name, res in (("front", front), ("back", back)):
         if not res:
             continue
+        # Edges: chipping / whitening specks (checked by eye against the Ronaldo #161 test card only: gated)
         sp = [e["specks"] for e in res["edges"] if e["specks"] is not None]
         sides_hit = sum(1 for s in sp if s >= 3)
         total = sum(sp)
         if total >= 1:
             if sides_hit == 0 and total <= 6:
-                cap(9, 9, 9, f"{side_name} edges: {total} scattered speck(s) of chipping")
+                gated("edges_chipping", 9, 9, 9, f"{side_name} edges: {total} scattered speck(s) of chipping")
             elif sides_hit <= 2:
-                cap(8, 8.5, 8, f"{side_name} edges: chipping specks along {sides_hit} side(s), {total} total")
+                gated("edges_chipping", 8, 8.5, 8, f"{side_name} edges: chipping specks along {sides_hit} side(s), {total} total")
             else:
-                cap(8, 8, 8, f"{side_name} edges: chipping specks along {sides_hit} sides, {total} total")
+                gated("edges_chipping", 8, 8, 8, f"{side_name} edges: chipping specks along {sides_hit} sides, {total} total")
         worn = [c for c in res["corners"] if (c["whitening_pct"] or 0) > 3]
         if worn:
             n = len(worn)
-            cap(9 if n == 1 else 8, 9 if n == 1 else 8.5, 9 if n == 1 else 8, f"{side_name}: whitening at {n} corner(s) ({', '.join(c['corner'] for c in worn)})")
-        # Look flags (TAG notches/waviness/roughness, corner dings, stains, print spots, registration)
+            gated("corners_whitening", 9 if n == 1 else 8, 9 if n == 1 else 8.5, 9 if n == 1 else 8,
+                  f"{side_name}: whitening at {n} corner(s) ({', '.join(c['corner'] for c in worn)})")
+        # Look flags (TAG notches/waviness/roughness, corner dings)
         for e in res["edges"]:
             if e["notches"]:
                 look.append(f"{side_name} {e['side']} edge: {e['notches']} possible notch(es) 0.5 mm+ (TAG notches; PSA/BGS edges)")
@@ -292,14 +390,15 @@ def grade_ceilings(front, back, cent):
         for c in res["corners"]:
             if (c["rounding_vs_others_mm"] or 0) > 0.35:
                 look.append(f"{side_name} {c['corner']} corner blunter than the others by {c['rounding_vs_others_mm']} mm (PSA sharp corners, BGS corners, TAG squareness)")
+        # Surface from the straight-on photo (stains, print spots, registration): gated
         s = res["surface"]
         if s.get("stain_spots"):
-            look.append(f"{side_name}: {s['stain_spots']} possible stain(s) on light areas (PSA staining / wax stain, BGS surface)")
+            gated("surface", 9, 9, 9, f"{side_name}: {s['stain_spots']} possible stain(s) on light areas (PSA staining / wax stain, BGS surface)")
         if s.get("print_spots") is not None and s["print_spots"] > 8:
-            look.append(f"{side_name}: {s['print_spots']} print specks on light areas (BGS print spots, PSA print imperfection)")
+            gated("surface", 9, 9, 9, f"{side_name}: {s['print_spots']} print specks on light areas (BGS print spots, PSA print imperfection)")
         if s.get("registration_mm") is not None and s["registration_mm"] > 0.2:
-            look.append(f"{side_name}: colour out of register by {s['registration_mm']} mm (PSA 7 'out of register', BGS registration)")
-    return {"psa": psa, "bgs": bgs, "tag": tag, "why": why, "look": look}
+            gated("surface", 7, 7, 7, f"{side_name}: colour out of register by {s['registration_mm']} mm (PSA 7 'out of register', BGS registration)")
+    return {"psa": psa, "bgs": bgs, "tag": tag, "why": why, "look": look, "would_cap": would}
 
 
 CANT_JUDGE = [
@@ -321,9 +420,9 @@ def centering_only(path, hint=None):
     return {k: out[k] for k in ("status", "why", "centering", "px_per_mm", "inner")}
 
 
-def side_report(path, hint=None, straight=None):
+def side_report(path, hint=None, straight=None, holder_guard=True):
     """One side's checks. straight: a dict that receives the card straightened by the border check (for the
-    confirm screen), keyed "img"."""
+    confirm screen), keyed "img". holder_guard=False skips the sleeve/toploader detection (calibrate.py on slab scans)."""
     img, q, err = locate(path, hint)
     if q is None:
         return None, err
@@ -332,14 +431,20 @@ def side_report(path, hint=None, straight=None):
     if ppm < 8:
         return None, f"photo too small ({ppm:.1f} px per mm; need 8+) to judge corners and edges"
     borders, flat = bd.measure(img, q)
-    if straight is not None and flat is not None:
-        straight["img"] = flat
     rep = {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders}
     shape = bd.outline_shape_error(q)
+    sleeve = None if shape or not holder_guard else holder_signs(card)
     if shape:  # G9a: the outline is a mat, shadow or holder, not the cut edge: edges/corners/stains on it are meaningless
         rep.update(edges=[], corners=[], surface={}, outline_error=shape)
-    else:
-        rep.update(edges=edge_checks(card), corners=corner_checks(card), surface=surface_checks(card))
+    elif sleeve:  # G9c: the outline is the plastic; centering from it would be wrong too
+        rep.update(edges=[], corners=[], surface={}, holder=sleeve)
+        borders.update(status="refused", centering={}, why=[f"{HOLDER_RETAKE} ({sleeve})"])
+        flat = None
+    else:  # G9c per-edge guard: a side without a found cut edge (and its two corners) is not measured at all
+        miss = borders.get("edges_missing") or []
+        rep.update(edges=edge_checks(card, miss), corners=corner_checks(card, miss), surface=surface_checks(card), edges_missing=miss)
+    if straight is not None and flat is not None:
+        straight["img"] = flat
     return rep, None
 
 
@@ -350,16 +455,21 @@ def assess(front, back=None, holder=False, hints=None):
     return assess_with_centering(front, back, holder, hints)[0]
 
 
-def assess_with_centering(front, back=None, holder=False, hints=None, straight=None):
+def assess_with_centering(front, back=None, holder=False, hints=None, straight=None, holder_guard=True):
     """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / front_tb / back_lr / back_tb,
     measured from the printed border lines (borders.py) at the worst point along each side.
     straight: optional dict that receives {"front": {"img"}, "back": {"img"}} straightened cards.
-    hints: {"front": corners, "back": corners} from the phone scanner (fractions of the photo)."""
+    hints: {"front": corners, "back": corners} from the phone scanner (fractions of the photo).
+    holder_guard: detect a sleeve/toploader from the photo (G9c); False only for calibrate.py on slab scans.
+    A detected holder on either side takes the same path as holder=True."""
     hints = hints or {}
     straight = straight if straight is not None else {}
     straight.setdefault("front", {}); straight.setdefault("back", {})
-    f, ferr = side_report(front, hints.get("front"), straight["front"])
-    b, berr = side_report(back, hints.get("back"), straight["back"]) if back else (None, "no back photo")
+    guard = holder_guard and not holder
+    f, ferr = side_report(front, hints.get("front"), straight["front"], guard)
+    b, berr = side_report(back, hints.get("back"), straight["back"], guard) if back else (None, "no back photo")
+    seen = [(n, r["holder"]) for n, r in (("front", f), ("back", b)) if r and r.get("holder")]
+    holder = holder or bool(seen)
     if holder:
         for r in (f, b):
             if r:
@@ -374,12 +484,13 @@ def assess_with_centering(front, back=None, holder=False, hints=None, straight=N
             c = bo["centering"].get(axis)
             if c and bo["status"] in ("ok", "needs_manual"):
                 cent[f"{name}_{axis}"] = c["worst"]  # graders judge the worst point
-        if bo["why"]:
+        if bo["why"] and not rep.get("holder"):
             cent_why.append(f"{name}: " + "; ".join(bo["why"]))
     if not f:
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front photo not usable: no ceiling"], "look": []}
     elif holder:  # centering alone says nothing about corners, edges or surface: no ceiling, centering reported below
-        ceil = {"psa": None, "bgs": None, "tag": None, "why": ["in a holder: only centering checked, no condition ceiling"], "look": []}
+        ceil = {"psa": None, "bgs": None, "tag": None, "look": [],
+                "why": [f"{HOLDER_RETAKE}: no condition ceiling" if seen else "in a holder: only centering checked, no condition ceiling"]}
     elif f.get("outline_error"):  # nothing on the front was measured on the card itself
         ceil = {"psa": None, "bgs": None, "tag": None, "why": ["front outline isn't the card's edge: no ceiling"], "look": []}
     else:
@@ -388,12 +499,16 @@ def assess_with_centering(front, back=None, holder=False, hints=None, straight=N
     for name, rep in (("front", f), ("back", b)):
         if rep and rep.get("outline_error"):
             cant.append({"point": f"{name} edges, corners and stains", "graders": "PSA, BGS, TAG", "why": OUTLINE_RETAKE + f" ({rep['outline_error']})"})
+        for sd in (rep or {}).get("edges_missing") or []:
+            cant.append({"point": f"{name} {sd} edge and its corners", "graders": "PSA, BGS, TAG", "why": EDGE_RETAKE})
+    for name, why in seen:
+        cant.append({"point": f"{name}: sleeve or holder", "graders": "PSA, BGS, TAG", "why": f"{HOLDER_RETAKE} ({why})"})
     for w in cent_why:
         cant.append({"point": "centering (border lines)", "graders": "PSA, BGS, TAG", "why": w + " - check or set the lines on the confirm screen"})
     if ferr: cant.append({"point": "front (all points)", "graders": "all", "why": ferr})
     if berr: cant.append({"point": "back (all points)", "graders": "all", "why": berr})
     return {"front": f, "back": b, "centering": {k: f"{round(v*100)}/{round((1-v)*100)}" for k, v in cent.items()},
-            "ceiling": ceil, "cant_judge": cant, "note": PROVISIONAL}, cent
+            "ceiling": ceil, "cant_judge": cant, "note": PROVISIONAL, "holder": holder}, cent
 
 
 if __name__ == "__main__":

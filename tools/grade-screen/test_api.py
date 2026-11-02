@@ -69,7 +69,9 @@ def test_grade_by_url():
     try:
         api.ask_gate = lambda key, img, mt: {"type": "raw", "straight_on": True, "all_edges_visible": True, "fills_frame": True}
         st, r = api.handle(site, b'{"imageUrl": "/cards/abc.webp"}', env={"ANTHROPIC_API_KEY": "k"})
-        assert st == 200 and r["measured"] and r["verdict"] == "ceiling" and r["summary"].startswith("At best PSA 8"), r
+        # G9c: chipping is a look flag until calibrated (was: verdict ceiling, "At best PSA 8")
+        assert st == 200 and r["measured"] and r["verdict"] == "no_issue" and r["ceiling"]["psa"] == 10, r
+        assert r["summary"].startswith("No ceiling from what was measured") and "flag(s) to look at" in r["summary"], r["summary"]
         assert seen[-1] == ("https://cards.test/cards/abc.webp", None)
         # behind the site lock: the session cookie (only that one) goes with the Vault photo request
         api.handle({**site, "cookie": "other=1; cr_session=karimhossien.9.sig"}, b'{"imageUrl": "/cards/abc.webp"}', env={})
@@ -78,7 +80,7 @@ def test_grade_by_url():
         assert seen[-1][1] is None  # never sent to eBay
         api.ask_gate = lambda key, img, mt: {"type": "holder", "straight_on": True, "all_edges_visible": True, "fills_frame": True}
         st, r = api.handle(site, b'{"imageUrl": "https://i.ebayimg.com/images/g/x/s-l225.jpg"}', env={"ANTHROPIC_API_KEY": "k"})
-        assert st == 200 and not r["measured"] and r["summary"] == "Can't judge: card is in a toploader or holder", r
+        assert st == 200 and not r["measured"] and r["summary"] == "Can't judge: card is in a sleeve or holder: take it out and retake", r
         assert api.handle(site, b'{"imageUrl": "https://evil.example/x.jpg"}', env={})[0] == 400
         assert api.handle(site, b'{"imageUrl": "/cards/../etc/passwd"}', env={})[0] == 400
         st, r = api.handle(site, b'{"imageUrl": "/cards/abc.webp"}', env={})  # no key: measured without the gate
@@ -101,7 +103,7 @@ def test_report_with_chips_and_back():
     h, body = form(front=png(chips=8), back=png())
     status, r = api.handle(h, body, env=ENV)
     assert status == 200, r
-    assert r["ceiling"]["psa"] <= 8 and r["holder"] is False
+    assert r["ceiling"]["psa"] == 10 and any("chipping" in l for l in r["ceiling"]["look"]) and r["holder"] is False  # G9c: look-only
     assert r["front"]["file"] is None and r["back"] is not None
     # this test card is drawn centred at ~16 px/mm: measured, and flagged as lower resolution (check the lines)
     assert r["centering"]["front_lr"] == "50/50" and r["front"]["borders"]["status"] == "ok"
@@ -152,6 +154,17 @@ def test_holder_flag_means_no_ceiling():
     h, body = form(front=png(chips=8), holder="1")
     status, r = api.handle(h, body, env=ENV)
     assert status == 200 and r["holder"] is True and r["ceiling"]["psa"] is None and r["front"]["edges"] == []
+    assert r["verdict"] == "cant_judge" and r["summary"] == "Can't judge: card is in a sleeve or holder: take it out and retake"  # G9c
+
+
+def test_sleeve_in_the_photo_is_cant_judge():
+    """G9c: nobody ticked "in a sleeve", but the photo shows one: same holder path, verdict cant_judge."""
+    h, body = form(front=open(t.sleeved(), "rb").read())
+    status, r = api.handle(h, body, env=ENV)
+    assert status == 200 and r["holder"] is True and r["ceiling"]["psa"] is None and r["front"]["edges"] == [], r["ceiling"]
+    assert r["verdict"] == "cant_judge" and r["summary"] == "Can't judge: card is in a sleeve or holder: take it out and retake", r["summary"]
+    assert "a thin penny sleeve is fine" not in api.summarize.__globals__["GATE_PROMPT"]
+    assert "penny sleeve" in api.summarize.__globals__["GATE_PROMPT"].split("holder =")[1]  # the Claude gate agrees: a sleeve is a holder
 
 
 def test_wrong_outline_is_cant_judge_not_a_ceiling():

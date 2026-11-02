@@ -1,0 +1,74 @@
+# Grade screen calibration (G9c)
+
+Only centering may set a grade ceiling today. Every other check (edge chipping, corner whitening, surface) is measured
+and shown as a look flag, but cannot lower the ceiling until it has agreed with grades PSA actually gave.
+
+The switch is one constant in `condition.py`:
+
+```python
+CALIBRATED = {"edges_chipping": False, "corners_whitening": False, "surface": False}
+```
+
+All three stay **off** in G9c. Turning one on is a separate change that needs Karim's approval of a calibration run
+(below). After changing it, run `python3 sync_vercel.py` so the Vercel copy matches.
+
+While a flag is off, the report still records the cap that check would set in `ceiling.would_cap` (PSA grade per
+check), which is what `calibrate.py` scores.
+
+## Collecting the scans
+
+1. Use Karim's own PSA-graded cards only (the Vault's PSA rows).
+2. For each cert, open its PSA cert page (psacard.com/cert/<cert number>) and save the front image as `<cert>.jpg`
+   (and the back as `<cert>-back.jpg` if shown). The PSA API can be used instead when a token is set in the local
+   environment; never paste a token into a file, commit or chat.
+3. Put the images in `tools/grade-screen/calibration/` (git-ignored: the repo is public, and the scans plus grades are
+   Karim's collection data). Nothing from that folder is ever committed.
+4. In the same folder create `grades.csv`:
+
+   ```
+   cert,psa_grade
+   12345678,9
+   ```
+
+## Running
+
+```
+cd tools/grade-screen
+python3 calibrate.py calibration calibration/grades.csv
+```
+
+It prints one row per cert (the PSA cap each check would set, `-` for none) and a summary per check:
+
+| column | meaning |
+|---|---|
+| judged | certs whose front was measured |
+| capped | certs where the check would set a cap |
+| held | caps at or above the PSA grade (the ceiling held) |
+| false_caps | caps below the PSA grade: the screen would have ruled out a grade PSA gave |
+
+A false cap is the failure G9c is about (a card ruled out of a grade it actually got). Nothing is written or changed.
+
+## Slab plastic caveat
+
+Cert-page scans are of the card inside a slab. The harness bypasses the sleeve/holder guard and takes the outline of the
+card-shaped shape inside the slab (`condition.nested_card`). Slab plastic, its inner well and its reflections can
+themselves look like edge specks or corner whitening, which is the same false-positive the guard exists to stop. So:
+
+- poor agreement on slab scans is first a sign to photograph the same cards raw (out of the slab is not possible, so
+  use raw cards from a returned order photographed before submission: `photos/` and `photos/log.csv`, see README), not
+  proof the check is wrong;
+- good agreement on slab scans alone is not enough to switch a check on (see the pass bar).
+
+## Pass bar to switch a check on (proposed by the engineer, Karim approves)
+
+For a check to move from look-only to ceiling:
+
+1. At least 30 distinct cards judged, at least 10 of them capped by the check.
+2. False caps at most 1 in 30 judged (about 3%), and **zero** false caps on cards PSA graded 10.
+3. The same holds on raw phone photos of at least 10 of those cards taken before submission (rules out slab-plastic
+   effects in either direction).
+4. Karim reviews the printed table and approves the flag change for that one check.
+
+Why this bar: a false cap costs a sale or a submission decision on a card that was fine, while a missed defect only costs
+one grading fee, so the bar weights false caps much more heavily than misses. 30 cards is about what one returned PSA
+order gives.

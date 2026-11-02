@@ -40,10 +40,31 @@ def test_clean_card_has_no_chips():
     assert sum(e["specks"] or 0 for e in d["front"]["edges"]) == 0, d["front"]["edges"]
 
 
-def test_chips_on_one_edge_are_found_and_cap_the_grade():
+def test_chips_on_one_edge_are_found_and_shown_as_a_look_flag():
+    """G9c: chipping is measured and shown, but stays a look flag until calibrated (was: capped PSA 8)."""
     d = c.assess(fake(chips=8))
     assert specks(d) >= 6
-    assert d["ceiling"]["psa"] <= 8
+    assert d["ceiling"]["psa"] == 10 and d["ceiling"]["why"] == [], d["ceiling"]
+    assert any("chipping specks" in l and c.UNCALIBRATED in l for l in d["ceiling"]["look"]), d["ceiling"]["look"]
+    assert d["ceiling"]["would_cap"]["edges_chipping"] == 8
+
+
+def test_calibration_flag_on_lets_chipping_cap_again():
+    """G9c: the gate is the only thing between a check and the ceiling: flip it on, the PSA 8 cap returns."""
+    old = dict(c.CALIBRATED)
+    try:
+        c.CALIBRATED["edges_chipping"] = True
+        d = c.assess(fake(chips=8))
+    finally:
+        c.CALIBRATED.clear(); c.CALIBRATED.update(old)
+    assert d["ceiling"]["psa"] == 8 and d["ceiling"]["why"][0].startswith("front edges: chipping specks"), d["ceiling"]
+    assert not any("chipping" in l for l in d["ceiling"]["look"])
+    assert all(v is False for v in c.CALIBRATED.values()), "every calibration flag ships off"
+
+
+def test_corner_whitening_is_look_only_until_calibrated():
+    d = c.assess(fake(corner_white=True))
+    assert d["ceiling"]["psa"] == 10 and any("whitening at 1 corner" in l for l in d["ceiling"]["look"]), d["ceiling"]
 
 
 def test_printed_dots_and_lines_are_not_chips():
@@ -55,6 +76,87 @@ def test_corner_whitening():
     d = c.assess(fake(corner_white=True))
     tl = next(x for x in d["front"]["corners"] if x["corner"] == "top-left")
     assert tl["whitening_pct"] > 3
+
+
+def card_on(img, x0, y0, border=(40, 30, 120), centre=(200, 200, 205), bw=4):
+    cv2.rectangle(img, (x0, y0), (x0 + 63 * S, y0 + 88 * S), border, -1)
+    cv2.rectangle(img, (x0 + bw * S, y0 + bw * S), (x0 + 63 * S - bw * S, y0 + 88 * S - bw * S), centre, -1)
+    return img
+
+
+def save(img, name="card.png"):
+    p = os.path.join(tempfile.mkdtemp(), name)
+    cv2.imwrite(p, img)
+    return p
+
+
+def sleeved(gap=True):
+    """G9c: card in a sleeve on a black bed: a bright plastic rim 2 mm out from the card, and between rim and card the
+    bed seen through the plastic (gap=False: a tight sleeve, rim right against the card)."""
+    img = np.full((120 * S, 90 * S, 3), 6, np.uint8)
+    x0, y0, g = 13 * S, 16 * S, (2 if gap else 1) * S
+    cv2.rectangle(img, (x0 - g, y0 - g), (x0 + 63 * S + g, y0 + 88 * S + g), (222, 222, 222), -1)
+    if gap:
+        cv2.rectangle(img, (x0 - g + S, y0 - g + S), (x0 + 63 * S + g - S, y0 + 88 * S + g - S), (18, 18, 18), -1)
+    return save(card_on(img, x0, y0), "sleeve.png")
+
+
+def white_bordered(bw=3, white=(240, 240, 240)):
+    img = np.full((120 * S, 90 * S, 3), 6, np.uint8)
+    return save(card_on(img, 13 * S, 16 * S, border=white, centre=(40, 30, 120), bw=bw), "white.png")
+
+
+def blended_bottom():
+    """G9c: the bed below the card is the colour of the card's border, so the bottom cut edge cannot be traced.
+    White specks sit along the bottom and left edges; the phone scanner's corners are given."""
+    img = np.full((120 * S, 90 * S, 3), 6, np.uint8)
+    x0, y0, w, h = 13 * S, 16 * S, 63 * S, 88 * S
+    img[y0 + h:, :] = (40, 30, 120)
+    card_on(img, x0, y0)
+    for i in range(8):
+        y = y0 + 10 * S + i * (60 * S // 8)
+        cv2.rectangle(img, (x0, y), (x0 + 3, y + 3), (245, 245, 245), -1)
+    for i in range(6):
+        x = x0 + 10 * S + i * 8 * S
+        cv2.rectangle(img, (x, y0 + h - 4), (x + 3, y0 + h), (245, 245, 245), -1)
+    H, W = img.shape[:2]
+    quad = [[x0 / W, y0 / H], [(x0 + w) / W, y0 / H], [(x0 + w) / W, (y0 + h) / H], [x0 / W, (y0 + h) / H]]
+    return save(img, "blend.png"), quad
+
+
+def test_sleeved_card_takes_the_holder_path():
+    for gap in (True, False):
+        d = c.assess(sleeved(gap))
+        assert d["holder"] is True, (gap, d["front"])
+        assert d["front"]["edges"] == [] and d["front"]["corners"] == [] and d["front"]["surface"] == {}
+        assert d["ceiling"]["psa"] is None and d["ceiling"]["bgs"] is None and d["ceiling"]["tag"] is None, d["ceiling"]
+        assert d["centering"] == {}, d["centering"]  # the outline is the plastic: no centering from it
+        cj = next(x for x in d["cant_judge"] if x["point"] == "front: sleeve or holder")
+        assert cj["why"].startswith(c.HOLDER_RETAKE), cj
+    d = c.assess(fake(), sleeved())  # sleeve on the back only: same path
+    assert d["holder"] is True and d["ceiling"]["psa"] is None and d["front"]["edges"] == []
+
+
+def test_white_bordered_card_is_not_a_holder():
+    for p in (white_bordered(), white_bordered(bw=2), white_bordered(white=(255, 255, 255)), fake()):
+        d = c.assess(p)
+        assert d["holder"] is False and d["front"].get("holder") is None, d["front"].get("holder")
+        assert len(d["front"]["edges"]) == 4 and d["ceiling"]["psa"] is not None
+
+
+def test_side_without_a_cut_edge_is_not_judged():
+    p, quad = blended_bottom()
+    d = c.assess(p, hints={"front": quad})
+    f = d["front"]
+    assert f["edges_missing"] == ["bottom"], f["borders"]["why"]
+    assert sorted(e["side"] for e in f["edges"]) == ["left", "right", "top"], f["edges"]
+    assert sorted(x["corner"] for x in f["corners"]) == ["top-left", "top-right"], f["corners"]
+    assert specks(d, "left") >= 6  # the other sides are still measured
+    lines = d["ceiling"]["why"] + d["ceiling"]["look"]
+    assert not any("bottom" in l for l in lines), lines
+    assert sum(int(l.split(", ")[-1].split(" total")[0]) for l in lines if "total" in l) == specks(d, "left"), lines  # no bottom specks counted
+    cj = next(x for x in d["cant_judge"] if x["point"] == "front bottom edge and its corners")
+    assert cj["why"] == c.EDGE_RETAKE
 
 
 def mat_photo():

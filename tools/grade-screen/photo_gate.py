@@ -21,7 +21,7 @@ Classify the photo. Answer with JSON only:
  "fills_frame": true/false,       // card is at least about a third of the photo
  "visible_flaws": [],             // only flaws you can clearly see: "corner", "edge", "surface", "print line"
  "reason": "<10 words"}
-type: raw = bare card (a thin penny sleeve is fine); slab = graded case with a label (PSA, BGS, SGC, CGC...);
+type: raw = bare card, out of any sleeve (a penny sleeve counts as holder); slab = graded case with a label (PSA, BGS, SGC, CGC...);
 holder = toploader, magnetic one-touch or other rigid case without a grade label; multi = more than one card
 or item is the subject; other = anything else."""
 

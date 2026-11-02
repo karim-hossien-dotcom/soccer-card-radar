@@ -12,7 +12,7 @@ RAW = {"type": "raw", "straight_on": True, "all_edges_visible": True, "fills_fra
 
 def test_gate():
     assert scr.usable(RAW)
-    assert scr.summarize({**RAW, "type": "holder"}, None) == ("cant_judge", "Can't judge: card is in a toploader or holder")
+    assert scr.summarize({**RAW, "type": "holder"}, None) == ("cant_judge", "Can't judge: card is in a sleeve or holder: take it out and retake")
     assert scr.summarize({**RAW, "straight_on": False}, None) == ("cant_judge", "Can't judge: photo taken at an angle")
     assert scr.summarize({**RAW, "type": "slab"}, None)[1] == "Can't judge: photo shows a graded slab"
 
@@ -21,7 +21,7 @@ def test_summaries_from_reports():
     chip = open(t.fake(chips=8), "rb").read()
     clean = open(t.fake(), "rb").read()
     v, s = scr.summarize(RAW, scr.cond.assess(chip))
-    assert v == "ceiling" and s.startswith("At best PSA 8"), s
+    assert v == "no_issue" and s.startswith("No ceiling from what was measured"), s  # G9c: chipping is look-only until calibrated
     v, s = scr.summarize(None, scr.cond.assess(clean))  # no key: ungated, measured anyway
     assert v == "no_issue" and s.startswith("No visible issue"), s
     assert scr.summarize(RAW, {"front": None, "ceiling": {}})[0] == "cant_judge"
@@ -83,9 +83,9 @@ def test_run_screens_only_new_raw_listings():
         out = scr.run({"ANTHROPIC_API_KEY": "k"}, now=datetime(2026, 10, 29, tzinfo=timezone.utc))
     finally:
         scr.Supa, scr.fetch, scr.ask_gate = orig_supa, orig_fetch, orig_gate
-    assert out == {"screened": 1, "left": 0, "gated": True, "verdicts": {"ceiling": 1}}, out
+    assert out == {"screened": 1, "left": 0, "gated": True, "verdicts": {"no_issue": 1}}, out  # G9c: was ceiling (chipping)
     w = db.writes[0]
-    assert w["externalId"] == "e1" and w["verdict"] == "ceiling" and w["gated"] is True and w["summary"].startswith("At best PSA 8")
+    assert w["externalId"] == "e1" and w["verdict"] == "no_issue" and w["gated"] is True and w["summary"].startswith("No ceiling from what was measured")
 
 
 if __name__ == "__main__":

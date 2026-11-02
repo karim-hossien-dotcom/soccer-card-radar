@@ -13,8 +13,8 @@ Classify the photo. Answer with JSON only:
  "fills_frame": true/false,
  "visible_flaws": [],
  "reason": "<10 words"}
-type: raw = bare card (a thin penny sleeve is fine); slab = graded case with a label; holder = toploader, magnetic
-one-touch or other rigid case without a grade label; multi = more than one card or item is the subject; other =
+type: raw = bare card, out of any sleeve or case; slab = graded case with a label; holder = penny sleeve, toploader,
+magnetic one-touch or any other sleeve or case without a grade label (a thin sleeve counts: it fakes edge wear); multi = more than one card or item is the subject; other =
 anything else. straight_on: camera roughly square to the card. all_edges_visible: all four card edges inside the
 photo and not hidden by a case. fills_frame: card is at least about a third of the photo. visible_flaws: only flaws
 you can clearly see: "corner", "edge", "surface", "print line"."""
@@ -35,7 +35,8 @@ def usable(g):
     return g.get("type") == "raw" and bool(g.get("straight_on")) and bool(g.get("all_edges_visible")) and bool(g.get("fills_frame"))
 
 
-GATE_WHY = {"slab": "photo shows a graded slab", "holder": "card is in a toploader or holder", "multi": "more than one card in the photo",
+HOLDER_RETAKE = "card is in a sleeve or holder: take it out and retake"  # same words as condition.HOLDER_RETAKE
+GATE_WHY = {"slab": "photo shows a graded slab", "holder": HOLDER_RETAKE, "multi": "more than one card in the photo",
             "other": "not a clear card photo"}
 
 
@@ -60,11 +61,19 @@ def summarize(gate, report):
         return "cant_judge", f"Can't judge: {why}" if why else "Can't judge: card outline not found in the photo"
     if report["front"].get("outline_error"):
         return "cant_judge", "Can't judge: outline isn't the card's edge (retake on a plain contrasting background with all four edges visible)"
+    if report.get("holder"):  # ticked by Karim or seen in the photo (G9c): plastic hides and fakes wear
+        return "cant_judge", f"Can't judge: {HOLDER_RETAKE}"
     cent = (report.get("centering") or {}).get("front_lr")
     cent_s = f" (centering {cent})" if cent else ""
     if ceil.get("psa") is not None and ceil["psa"] < 10:
         why = (ceil.get("why") or [""])[0]
         return "ceiling", f"At best PSA {ceil['psa']:g}: {why}" if why else f"At best PSA {ceil['psa']:g}{cent_s}"
+    # G9c: only claim what was measured. Look flags and unjudged edges are named, not hidden behind "no visible issue".
+    gaps = [c["point"] for c in report.get("cant_judge") or [] if c.get("point", "").endswith("edge and its corners")]
+    look = len(ceil.get("look") or [])
+    if look or gaps:
+        extra = ([f"{look} flag(s) to look at"] if look else []) + ([f"not judged: {', '.join(gaps)}"] if gaps else [])
+        return "no_issue", f"No ceiling from what was measured{cent_s}; " + "; ".join(extra)
     return "no_issue", f"No visible issue{cent_s}"
 
 

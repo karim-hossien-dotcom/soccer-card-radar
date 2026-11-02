@@ -171,11 +171,11 @@ def handle(headers, body, env=os.environ):
         rep, img = report.get(side), straight.get(side, {}).get("img")
         if rep and img is not None:
             rep["borders"]["image"] = jpeg_data_url(img)
-    report["holder"] = holder
+    report["holder"] = holder or bool(report.get("holder"))  # ticked, or a sleeve/toploader seen in the photo (G9c)
     report["gate"] = gate
     report["verdict"], report["summary"] = summarize(gate, report)
     report["measured"] = True
-    if not holder and (raking["front"] or raking["back"] or any(extra_lights.values())):
+    if not report["holder"] and (raking["front"] or raking["back"] or any(extra_lights.values())):
         report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints, extra_lights)
         for s in report["surface_scan"]:
             s["flash"] = flash
