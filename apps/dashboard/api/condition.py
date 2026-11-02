@@ -179,6 +179,8 @@ def handle(headers, body, env=os.environ):
         report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints, extra_lights)
         for s in report["surface_scan"]:
             s["flash"] = flash
+            if s["status"] == "cant_judge" and s.get("why"):  # G9c: e.g. glare on the straight-on photo
+                report["cant_judge"].append({"point": f"{s['side'].lower()} surface (side light)", "graders": "PSA, BGS, TAG", "why": s["why"]})
             for f in s["findings"]:  # look flags only: side-light findings never lower the ceiling
                 src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
                 lit = f" under {', '.join(f['lights'])} light" if f.get("lights") else ""

@@ -159,6 +159,43 @@ def test_side_without_a_cut_edge_is_not_judged():
     assert cj["why"] == c.EDGE_RETAKE
 
 
+def hotspot(img, cx, cy, r, halo=1.8):
+    """G9c: a flash hotspot: blown-out core with a warm halo fading out over 0.8 r (the halo is what read as 'stains' and
+    'dents' on the 2026-11-02 Ronaldo scan)."""
+    H, W = img.shape[:2]
+    yy, xx = np.mgrid[0:H, 0:W].astype(np.float32)
+    d = np.hypot(xx - cx, yy - cy) / r
+    k = np.clip((halo - d) / (halo - 1), 0, 1)[..., None]
+    out = img.astype(np.float32) * (1 - k) + np.float32([175, 238, 250]) * k
+    out[d <= 1] = 255
+    return np.clip(out, 0, 255).astype(np.uint8)
+
+
+def glare_card(r_mm, stain=False):
+    """fake() layout with a hotspot of radius r_mm on the plain light centre; stain=True adds a real 3 mm stain elsewhere."""
+    img = card_on(np.full((120 * S, 90 * S, 3), 6, np.uint8), 13 * S, 16 * S)
+    if stain:
+        cv2.circle(img, (int(28 * S), int(85 * S)), int(1.5 * S), (150, 200, 215), -1)
+    return save(hotspot(img, 53 * S, 46 * S, r_mm * S), "glare.png")
+
+
+def test_hotspot_on_a_plain_area_is_not_a_stain():
+    d = c.assess(glare_card(3))
+    s = d["front"]["surface"]
+    assert s["stain_spots"] == 0 and 0 < s["glare_pct"] <= 100 * c.GLARE_MAX_SHARE, s
+    assert not any("stain" in l for l in d["ceiling"]["look"]), d["ceiling"]["look"]
+    assert c.assess(glare_card(3, stain=True))["front"]["surface"]["stain_spots"] == 1  # a real stain away from it still counts
+
+
+def test_big_hotspot_makes_the_surface_cant_judge():
+    d = c.assess(glare_card(6))
+    s = d["front"]["surface"]
+    assert s["glare_pct"] > 100 * c.GLARE_MAX_SHARE and s["stain_spots"] is None and s["print_spots"] is None, s
+    cj = next(x for x in d["cant_judge"] if x["point"] == "front surface (stains, print spots, registration)")
+    assert cj["why"] == f"glare covers {round(s['glare_pct'])}% of the card: retake with the light at an angle", cj
+    assert not any("stain" in l for l in d["ceiling"]["look"])
+
+
 def mat_photo():
     """G9a: card on a black mat (0.819 wide/tall) with light dust near the mat's edge, on a light table. The mat is the
     outline found (and the one a phone hint can give); before the fix its dust read as chipping and capped PSA 8."""

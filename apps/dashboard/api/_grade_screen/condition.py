@@ -301,22 +301,64 @@ def nested_card(img):
     return best
 
 
+# G9c glare mask. A flash or lamp hotspot is blown out and colourless, with a warm halo around it that reads as stains,
+# dents or scratches. GLARE_MAX_SHARE: above this share of the card face, the straight-on photo's surface checks are not
+# judged (reason in CALIBRATION.md, "Glare threshold").
+GLARE_MAX_SHARE = 0.10
+GLARE_RETAKE = "glare covers {pct}% of the card: retake with the light at an angle"
+
+
+def glare_mask(img, px, grow_max=GLARE_MAX_SHARE, ref=None):
+    """Specular glare in a straightened card photo (uint8 0/1): blown-out or near-white colourless pixels; each blob of
+    0.25 mm^2+ up to grow_max of the photo is grown by its own radius + 1 mm to take in its halo. Bigger blobs are kept
+    pixel for pixel. ref: the straight-on photo, same geometry, for a side-light photo: only pixels that are not near-white
+    there count (a lamp pushing white ink to 255 is overexposure the surface check already masks, not a hotspot)."""
+    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+    core = (img.min(axis=2) >= 245) | ((hsv[..., 2] >= 250) & (hsv[..., 1] < 40))
+    if ref is not None:
+        core &= ref.min(axis=2) < 225
+    core = core.astype(np.uint8)
+    core = cv2.morphologyEx(core, cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
+    mask = core.copy()
+    n, _, st, cent = cv2.connectedComponentsWithStats(core)
+    for i in range(1, n):
+        a = st[i, cv2.CC_STAT_AREA]
+        if a < 0.25 * px * px or a > grow_max * core.size:  # a prism dot / a broad overexposed side
+            continue
+        cv2.circle(mask, (int(cent[i][0]), int(cent[i][1])), int(2 * np.sqrt(a / np.pi) + px), 1, -1)
+    return mask
+
+
+def in_glare(mask, x, y, w, h):
+    """True when a finding's box (px) lies mostly (half or more) inside the glare mask."""
+    x0, y0 = max(0, int(x)), max(0, int(y))
+    box = mask[y0: max(y0 + 1, int(y + h)), x0: max(x0 + 1, int(x + w))]
+    return box.size > 0 and float(box.mean()) >= 0.5
+
+
 def surface_checks(card):
-    """What a photo can show of the surface: stains on light areas, print spots on light areas, colour registration."""
+    """What a photo can show of the surface: stains on light areas, print spots on light areas, colour registration.
+    G9c: glare (and its halo) is masked first; findings mostly inside it are dropped; past GLARE_MAX_SHARE of the face
+    nothing is judged (glare_retake says why)."""
     inner = card[MARGIN + 4 * PX: MARGIN + CH - 4 * PX, MARGIN + 4 * PX: MARGIN + CW - 4 * PX]
+    glare = glare_mask(inner, PX, grow_max=1.0)
+    share = float(glare.mean())
+    out = {"glare_pct": round(100 * share, 1)}
+    if share > GLARE_MAX_SHARE:
+        out.update(stain_spots=None, print_spots=None, registration_mm=None, glare_retake=GLARE_RETAKE.format(pct=round(100 * share)))
+        return out
     Lab = lab(inner); L, A, B = Lab[:, :, 0] * 100 / 255, Lab[:, :, 1] - 128, Lab[:, :, 2] - 128
-    light = L > 80
-    out = {}
+    light = (L > 80) & (glare == 0)
     if light.sum() > 25 * PX * PX:  # at least 25 mm^2 of light area to judge against
         b_ref = float(np.median(B[light]))
         stain = light & (B - b_ref > 12) & (A > -5)
         stain = cv2.morphologyEx(stain.astype(np.uint8), cv2.MORPH_OPEN, np.ones((3, 3), np.uint8))
         n, _, st, _ = cv2.connectedComponentsWithStats(stain)
-        out["stain_spots"] = int(sum(1 for i in range(1, n) if st[i, cv2.CC_STAT_AREA] >= PX * PX))  # >= 1 mm^2
+        out["stain_spots"] = int(sum(1 for i in range(1, n) if st[i, cv2.CC_STAT_AREA] >= PX * PX and not in_glare(glare, *st[i, :4])))  # >= 1 mm^2
         lap = cv2.Laplacian(cv2.GaussianBlur(L, (3, 3), 0), cv2.CV_32F)
         spot = light & (lap > 25)
         n2, _, st2, _ = cv2.connectedComponentsWithStats(spot.astype(np.uint8))
-        out["print_spots"] = int(sum(1 for i in range(1, n2) if 2 <= st2[i, cv2.CC_STAT_AREA] <= 30))
+        out["print_spots"] = int(sum(1 for i in range(1, n2) if 2 <= st2[i, cv2.CC_STAT_AREA] <= 30 and not in_glare(glare, *st2[i, :4])))
     else:
         out["stain_spots"] = out["print_spots"] = None
     # Registration: shift between red and blue channel edge maps.
@@ -499,6 +541,8 @@ def assess_with_centering(front, back=None, holder=False, hints=None, straight=N
     for name, rep in (("front", f), ("back", b)):
         if rep and rep.get("outline_error"):
             cant.append({"point": f"{name} edges, corners and stains", "graders": "PSA, BGS, TAG", "why": OUTLINE_RETAKE + f" ({rep['outline_error']})"})
+        if rep and rep["surface"].get("glare_retake"):
+            cant.append({"point": f"{name} surface (stains, print spots, registration)", "graders": "PSA, BGS, TAG", "why": rep["surface"]["glare_retake"]})
         for sd in (rep or {}).get("edges_missing") or []:
             cant.append({"point": f"{name} {sd} edge and its corners", "graders": "PSA, BGS, TAG", "why": EDGE_RETAKE})
     for name, why in seen:

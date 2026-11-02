@@ -72,3 +72,24 @@ For a check to move from look-only to ceiling:
 Why this bar: a false cap costs a sale or a submission decision on a card that was fine, while a missed defect only costs
 one grading fee, so the bar weights false caps much more heavily than misses. 30 cards is about what one returned PSA
 order gives.
+
+## Glare threshold (G9c)
+
+`GLARE_MAX_SHARE = 0.10` in `condition.py`.
+
+The glare mask is blown-out or near-white colourless pixels, each blob grown by its own radius + 1 mm to take in the
+warm halo around a hotspot (the halo is what read as "stains" and a "dent" on the 2026-11-02 Ronaldo scan). Findings
+whose box is half or more inside the mask are dropped. On a side-light photo only pixels that are not near-white in the
+straight-on photo count, so a lamp pushing white ink to 255 is not called glare (the surface check already ignores
+clipped pixels).
+
+Past 10% of the card face (the 55 x 80 mm face inside the 4 mm border band, so about 440 mm^2: a hotspot core of about
+5 mm radius, since its mask is grown to twice its radius + 1 mm) the straight-on
+photo's surface checks (stains, print spots, registration) and that side's side-light check are cant_judge: "glare
+covers N% of the card: retake with the light at an angle". Why 10%: a phone flash or desk lamp reflection on a glossy
+card at normal distance is a few mm across and leaves most of the face to judge once masked; a hotspot past ~5 mm radius
+means the light points straight at the card, and its halo spreads unevenly beyond what the mask can predict. Like the
+other thresholds it is provisional: if calibration scans show many retakes on good photos, raise it; if halo findings
+still appear, lower it.
+
+Known limit: a scanned card whose inner face is printed pure white (255) looks like glare and goes to cant_judge.
