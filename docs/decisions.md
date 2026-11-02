@@ -31,3 +31,4 @@ Supersede an entry with a new one; never delete.
 | 2026-10-30 | G9 shipped: phone flash for the 4 light shots (look-only findings); wrong outline -> can't judge, no ceiling. Gixen hand-off (C3b) held on its branch | e98484a |
 | 2026-10-30 | C3b Gixen hand-off shipped (copy item #/max, Open Gixen, calendar reminder) | e325620 |
 | 2026-10-30 | soccerdata not adopted for the Monday run: FBref, Sofascore, WhoScored and SoFIFA block the cloud runner (403); only Understat and ESPN answer | scheduled task unchanged |
+| 2026-11-02 | Snipe targets added from the young-player read: Castro Merlin Auto Gold Mojo /50 (raw $46.99), Mayulu Chrome UCC RC Auto Orange /25 ($45.37, one sale), Palmer Prizm WC Penmanship Gold Auto /10 ($310); confidence Low, no max bid until Karim sets one | SnipeTarget |
