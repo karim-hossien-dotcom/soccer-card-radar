@@ -28,13 +28,13 @@ const gain = (c: CollectionCard, sc: Scenario) => {
   return v === null || c.cost === null ? null : v - c.cost;
 };
 
-export default function CollectionView({ cards, weeks, trends }: CollectionData) {
+export default function CollectionView({ cards, weeks, trends, openId }: CollectionData & { openId?: string }) {
   const [scen, setScen] = useState<Scenario>("now");
   const [stat, setStat] = useState<StatusFilter>("all");
   const [player, setPlayer] = useState("");
   const [sort, setSort] = useState<SortKey>("value");
   const [q, setQ] = useState("");
-  const [open, setOpen] = useState<CollectionCard | null>(null);
+  const [open, setOpen] = useState<CollectionCard | null>(() => (openId && cards.find((c) => c.id === openId)) || null);
   const [compsOpen, setCompsOpen] = useState(false);
   const [zoom, setZoom] = useState<{ src: string; x: number; y: number } | null>(null);
 

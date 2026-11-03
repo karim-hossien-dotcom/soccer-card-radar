@@ -1,6 +1,37 @@
-import { redirect } from "next/navigation";
+import { supabase } from "@soccer-card-radar/db";
+import { fixtureMode } from "./collection/load";
+import { latestRuns, type JobRunRow } from "@/lib/job-runs";
+import LatestRuns from "./latest-runs";
 
-// Rookies/Stars/Legends pages were retired (2026-10-16): their research was out of date. Snipe is home.
-export default function Home() {
-  redirect("/snipe");
+// J3: Radar home = latest result of each scheduled job (read-only). Replaces the old redirect to /snipe.
+export const dynamic = "force-dynamic";
+
+const COLS = 'job, "ranAt", "finishedAt", status, "openCount", summary, "reportPath", changes, "photoList"';
+
+async function loadJobRuns(): Promise<JobRunRow[]> {
+  if (fixtureMode()) {
+    const { readFile } = await import("node:fs/promises");
+    return (JSON.parse(await readFile(process.env.COLLECTION_FIXTURE!, "utf8")).jobRuns ?? []) as JobRunRow[];
+  }
+  const res = await Promise.all((["prices", "players", "photos"] as const).map((job) =>
+    supabase.from("JobRun").select(COLS).eq("job", job).order("ranAt", { ascending: false }).limit(1)));
+  for (const r of res) if (r.error) throw new Error(r.error.message);
+  return res.flatMap((r) => (r.data ?? []) as JobRunRow[]);
+}
+
+export default async function Home() {
+  try {
+    const panels = latestRuns(await loadJobRuns());
+    return (
+      <>
+        <header className="page-head">
+          <h1>Radar</h1>
+          <p>Latest result of each scheduled job.</p>
+        </header>
+        <LatestRuns panels={panels} />
+      </>
+    );
+  } catch (e) {
+    return <p className="notice">Couldn&apos;t load job runs: {(e as Error).message}</p>;
+  }
 }

@@ -3,7 +3,22 @@
 Source: Karim, 2026-11-03 (docs/decisions.md: "results-only dashboard on Radar home approved").
 Success metric: after the next Sunday Prices run, Karim opens the home page on his phone and sees that run's status,
 counts, changes and "Take photo" list without opening the claude.ai report.
-Order: J1 -> J2 -> J3 (engineer); J4 (coordinator) after J1 is applied. Status: **approved**, owner engineer (J4: coordinator).
+Order: J1 -> J2 -> J3 (engineer); J4 (coordinator) after J1 is applied.
+Status: J1, J2, J3 **ready for review** (branch feat/J-job-results); J4 **approved**, owner coordinator (blocked on J1 applied).
+Coordinator decision 2026-11-03: panel at "/" replacing the redirect; nav unchanged.
+
+## Change notes (engineer, 2026-11-03)
+- J1: packages/db/migrations/20261103_job_run.sql (NOT applied to Supabase) + "JobRun" type in packages/db/src/database.types.ts.
+  packages/db/test/job_run.check.sh runs it twice against a throwaway Postgres (refuses Supabase URLs): idempotent; the 4 bad
+  inserts fail; 1 good insert per job passes; anon/authenticated select and insert denied; RLS on; index present. 15/15 ok on local PG 16.
+- J2: /collection?card=<id> opens that card's drawer (collection/page.tsx reads searchParams.card; collection-view.tsx
+  initial `open`). Unknown id = normal grid. The ?card= param stays in the URL after closing (reload reopens it).
+- J3: src/lib/job-runs.ts (`latestRuns`, `formatEt`, `countsLine`) + job-runs.test.ts (7 tests); app/page.tsx (server
+  component, force-dynamic, 3 queries latest-per-job, fixture `jobRuns` in COLLECTION_FIXTURE) + app/latest-runs.tsx
+  (server-rendered view, globals.css tokens, no new CSS module). Changes: value/cost/estimate rows show from -> to (source).
+  The status line comes from status/openCount; the summary text is shown below it as written. Malformed items -> "n unreadable".
+  UAT: test/uat/make-j3-fixture.js + test/uat/j3.uat.js (J2 + J3, 1280 and 390): 44/44 ok; C5 UAT 39/39 ok; screenshots in
+  docs/backlog/uat/J3/. Grep: no fetch/POST/form/button in the new files. `pnpm build` green; dashboard tests 69/69.
 
 Note: on main, "/" only redirects to /snipe (apps/dashboard/src/app/page.tsx); there is no Radar home page to extend.
 J3 replaces that redirect with the panel at "/" (same route, no new tab, no second page). The nav tabs stay as they
