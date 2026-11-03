@@ -12,3 +12,4 @@ export * from "./value-engine";
 export * from "./comp-paste";
 export * from "./psa";
 export * from "./snipe-score";
+export * from "./thin-blend";

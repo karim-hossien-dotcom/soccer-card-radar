@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1, TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **ready for review** (branch feat/TB1-thin-blend), TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -134,6 +134,22 @@ on dollars.
   engineer shows the term-by-term recomputation and does not loosen the tolerance.
 
 **Size:** M.
+
+**Change note (engineer, 2026-11-03): ready for review.**
+- `packages/shared/src/thin-blend.ts`: `thinBlend(input)`, `thinBlendFromJson(json)`, `confidenceFromSd`, exported from
+  index.ts. Pure, never throws (bad input returns `value: null` with reasons in `excluded`). value/low/high are rounded
+  to cents; sd, m, var and weightShare are unrounded. Signals also report `n`, `r` and `sigmaM`.
+- Coordinator scope (a), approved by Karim: 1-2 exact sales within 90 days enter the blend (tests for 1 and 2 sales).
+- Coordinator scope (b): CLI `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` (or
+  `node packages/shared/bin/thin-blend.ts <input.json>`). Input is ThinBlendInput as JSON with ISO dates; `now` defaults
+  to the current time, so the job should pass it. It prints the full result as JSON. It exits 2 with `{error}` on
+  usage, read or parse errors. Relative paths resolve against the caller's cwd. Use `-s` so pnpm's banner stays out of stdout.
+- Choices the ticket left open: "recent" for the scarcer-parallel cap = 180 days (same window as higher-grade). A cap is
+  listed in `capsApplied` only when it lowers high. Sales dated more than 1 day in the future, bad dates, and zero or
+  negative `indexFactor` are excluded. The gate counts only exact sales in the target's grade state.
+- Case A' recomputed independently in Python: every term matches the ticket within tolerance (V 76.743, sd 0.37624,
+  uncapped range 47.383-124.294, exact share 0.2486).
+- Tests: shared 60/60 (20 thin-blend + 2 CLI new), dashboard 74/74, `pnpm build` green. All figures are synthetic.
 
 ## TB2: range, confidence and method in the Vault's existing value cell
 
