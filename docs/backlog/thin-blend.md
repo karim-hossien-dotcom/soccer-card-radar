@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1 **approved**; TB2 **ready for review** (branch feat/TB2-vault-range). Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **approved**; TB2 **ready for QA** (branch feat/TB2-vault-range). Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -209,6 +209,55 @@ wide it is, without a new column or page.
 - `pnpm build` green; dashboard tests 82/82, shared 38/38, grade-screen python tests green.
 - Not checked: the exact error shape the live PostgREST returns for a missing column (handled by code 42703 or the
   "column ... does not exist" message).
+
+### TB2 Review (2026-11-03, reviewer) -> ready for QA
+Diff reviewed: 106901e..70882b5 (engineer commit 70882b5). No fix commit: nothing Critical or Important found.
+- Acceptance: all met.
+  - Migration: I applied it to a throwaway local Postgres 16 (on the 20261016 schema, with an existing legacy row).
+    It applies twice cleanly (the second run only logs "already exists, skipping"). `confidence = 6` and `0` are
+    rejected by `CardComp_confidence_check`. `low > price` and `price > high` are rejected by `CardComp_range_check`.
+    The existing row and a full thin_blend insert (76.74 / 47.38 / 120 / 2) pass. Nothing was applied to Supabase.
+  - RLS: CardComp has RLS on with no policies and a revoke from anon/authenticated (20261016_collection_schema.sql:92,
+    20261016b_revoke_public_graphql.sql:4). There are no column grants, so the new columns inherit that. Consistent.
+  - Unit tests: value-est.test.ts covers an estimate with a range, a sale comp giving null, and an estimate without a
+    range giving the method only. It also covers missing fields read as null and the missing-column detector. These
+    tests fail without value-est.ts.
+  - Non-estimate cards render unchanged:
+    - Tile: `valueEst` is null unless `nowComp.source === "estimate"` (value-est.ts:26-27). The tile then renders
+      `null` where it used to render `false` (collection-view.tsx:166).
+    - Drawer: `estDrawerText(v, null)` gives the same `usd(v, 2)` string as before (value-est.ts:35-37).
+    - Runtime check against test/fixtures/collection.json (it has no estimate comps; no screenshots taken, no values
+      printed): 169 tiles, 0 `<small>` tags in the "Now" scenario, 0 page errors.
+  - PSA 9/10 band `est.` is unchanged: `est` is still evaluated first (collection-view.tsx:146, 166).
+  - Value cell at 390px: 1 line, no horizontal scroll (UAT).
+- Tolerant fallback (load.ts:90-94) is safe and narrow:
+  - It retries once, with the legacy columns, only on 42703 or "column ... does not exist" (value-est.ts:11-12).
+  - Every other error is returned unchanged and thrown at load.ts:80. The test covers a 42501 not being matched.
+  - If the legacy select also fails, that error is thrown too. Nothing is swallowed.
+- Card values: display only. Range and confidence are read from stored CardComp rows, never computed or filled in.
+  A missing part is omitted rather than invented (value-est.ts:35-41). No raw/graded conversion was added. Owner
+  overrides (vault-comp.ts OWNER_SOURCES) are untouched.
+- No secrets in the diff (grep). The fixture and the 8 screenshots are fully synthetic ("SYNTHETIC ... TEST ..."
+  items, made-up costs). make-tb2-fixture.js does not read collection.json.
+- No duplicate UI: the diff extends the existing `s.val` `<small>` and the drawer "Value now" row. There is no new
+  CSS, page or control.
+- No comments inserted mid-line or mid-type. The comment in vault-comp.ts sits on its own line in the type body. There
+  is no pixel or fuzzy-matching logic. There are no bids, scans, env or DB writes.
+- Minor (left): the migration's `pg_constraint` lookup filters on `conname` only, not `conrelid`
+  (20261103b_card_comp_range.sql:11, 14). This is harmless because the names are table-prefixed.
+- Minor (left): the range check tests each bound on its own (`low <= price` when low is set, `price <= high` when high
+  is set). The ticket asks for "when both are not null". The check is slightly stricter and matches the intent.
+- Minor (left): no test asserts the `valueEst` wiring in buildCollection (load.ts:169). The UAT covers it end to end.
+- Minor (left): tiles-390.png crops the top tiles' labels under the sticky filter bar. This comes from the
+  element-screenshot method; the layout is unchanged.
+- Minor (left, out of scope): the live PostgREST error shape for a missing column is unverified. This is moot if the
+  migration is applied first, which is the plan.
+- Build/tests:
+  - `pnpm install --frozen-lockfile`: up to date.
+  - `pnpm build --force`: 5/5.
+  - Dashboard tests: 82/82. Shared tests: 38/38.
+  - grade-screen `test_borders.py` and `test_api.py`: pass, with the known skip of the stale clutter test.
+  - TB2 UAT (`test/uat/tb2.uat.js`, synthetic fixture, Chromium 1194): 32/32.
 
 ## Out of scope (now)
 - Accepted Best Offer ingestion. It needs eBay Marketplace Insights approval, and 130point scraping is not allowed.
