@@ -7,6 +7,7 @@ import CompsPanel from "./comps-panel";
 import s from "./collection.module.css";
 import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
+import { estTileTag, estDrawerText } from "@/lib/value-est";
 
 type Scenario = "now" | "10" | "9" | "8";
 type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
@@ -162,7 +163,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
               <div className={s.meta}>
                 <div className={s.pl}>{c.player}{c.stale && <span className={s.staleTag}>stale</span>}</div>
                 <div className={s.nums}>
-                  <span className={s.val}>{usd(v)}{est && <small> est.</small>}</span>
+                  <span className={s.val}>{usd(v)}{est ? <small> est.</small> : scen === "now" && c.valueEst ? <small>{estTileTag(c.valueEst)}</small> : null}</span>
                   <span className={tone(g)}>{signed(g)}</span>
                 </div>
                 {trends[c.id]?.wow ? <div className={`${s.sub} ${tone(trends[c.id].wow)}`}>{signed(trends[c.id].wow)} this week</div> : null}
@@ -269,7 +270,7 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
           <tr><td>Status</td><td>{STATUS_LABEL[c.status]}</td></tr>
           <tr><td>Date added</td><td>{c.dateAdded ?? "—"}</td></tr>
           <tr><td>Cost basis</td><td>{usd(c.cost, 2)}</td></tr>
-          <tr><td>Value now</td><td>{usd(c.valueNow, 2)}</td></tr>
+          <tr><td>Value now</td><td>{estDrawerText(c.valueNow, c.valueEst)}</td></tr>
           <tr><td>Priced</td><td className={c.stale ? s.warn : undefined}>{c.compAsOf ? `${c.compGrade} comp, ${c.compAsOf}${c.stale ? " (stale)" : ""}` : "no comp yet"}</td></tr>
           {c.pop && <tr><td>PSA pop</td><td>{c.pop.gem10 ?? "—"} PSA 10 of {c.pop.total ?? "—"} graded{c.pop.gemRate !== null ? ` (${Math.round(c.pop.gemRate * 100)}% gem)` : ""}</td></tr>}
           <tr><td>Gain or loss now</td><td className={tone(c.valueNow !== null && c.cost !== null ? c.valueNow - c.cost : null)}>{c.valueNow !== null && c.cost !== null ? signed(c.valueNow - c.cost) : "—"}</td></tr>

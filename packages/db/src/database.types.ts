@@ -258,6 +258,9 @@ export interface Database {
           source: string;
           asOf: string;
           createdAt: string;
+          low: number | null;
+          high: number | null;
+          confidence: number | null;
         };
         Insert: {
           id?: number;
@@ -269,6 +272,9 @@ export interface Database {
           source: string;
           asOf: string;
           createdAt?: string;
+          low?: number | null;
+          high?: number | null;
+          confidence?: number | null;
         };
         Update: Partial<Database["public"]["Tables"]["CardComp"]["Insert"]>;
         Relationships: [];

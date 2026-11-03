@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1, TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **approved**; TB2 **ready for review** (branch feat/TB2-vault-range). Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -191,6 +191,24 @@ wide it is, without a new column or page.
 - Drawer screenshots must contain only synthetic numbers.
 
 **Size:** M.
+
+**Change note (engineer, 2026-11-03): ready for review.**
+- Migration `packages/db/migrations/20261103b_card_comp_range.sql` written, **not applied** to Supabase. Checked on a
+  throwaway local Postgres 16: applies twice cleanly; `confidence = 6`, `low > price` and `price > high` are rejected;
+  an existing row and a legacy-shape insert pass. Constraint names: `CardComp_confidence_check`, `CardComp_range_check`.
+- Tolerant read: `load.ts` selects the new columns and, on a Postgres 42703 (missing column), re-selects without them,
+  so the Vault keeps loading if the branch merges before the migration. Applying the migration first is still the plan.
+- Logic in new `apps/dashboard/src/lib/value-est.ts` (`valueEst`, `toCompRow`, `estTileTag`, `estDrawerText`,
+  `isMissingColumn`) with `value-est.test.ts`. `VaultComp` gains optional `low/high/confidence`; `CollectionCard` gains
+  `valueEst`. `database.types.ts` updated.
+- View: tile `s.val` adds `<small> est. 2/5</small>` (or ` est.`) on scenario Now only; PSA 9/10/8 band `est.` unchanged.
+  Drawer "Value now" reads `$76.74 · $47–$120 · thin_blend · 2/5`, or `$55.00 · est. · thin_blend` without range.
+  A partial row (range without confidence or the reverse) shows only the parts that exist. No new column/CSS/page/control.
+- UAT: `test/uat/make-tb2-fixture.js` (fully synthetic, does not read collection.json) + `test/uat/tb2.uat.js`;
+  32/32 checks pass at 1280 and 390 (no horizontal scroll, value cell 1 line). Screenshots in `docs/backlog/uat/TB2/`.
+- `pnpm build` green; dashboard tests 82/82, shared 38/38, grade-screen python tests green.
+- Not checked: the exact error shape the live PostgREST returns for a missing column (handled by code 42703 or the
+  "column ... does not exist" message).
 
 ## Out of scope (now)
 - Accepted Best Offer ingestion. It needs eBay Marketplace Insights approval, and 130point scraping is not allowed.

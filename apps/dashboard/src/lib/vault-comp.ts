@@ -1,4 +1,8 @@
-export type VaultComp = { grade: string; price: number; method: string; source: string; asOf: string };
+export type VaultComp = {
+  grade: string; price: number; method: string; source: string; asOf: string;
+  // TB2: estimate range + confidence (null/absent on sale comps, hand-applied estimates and before the migration).
+  low?: number | null; high?: number | null; confidence?: number | null;
+};
 
 /** Approved owner values (Karim's yes). Workbook "Value used" rows (source workbook_import) are old prices, not overrides. */
 const OWNER_SOURCES = new Set(["owner_set", "ratio_to_base"]);
