@@ -231,7 +231,7 @@ Status after review: ready for QA.
 Status: ready for prod (waiting for Karim's "ship"; not merged, not pushed).
 
 ### G9c (approved by Karim 2026-11-02): no false ceilings from holders, missing edges, glare or uncalibrated checks
-Status: ready for QA (G9c re-review 2026-11-02: no Critical/Important open). Owner: qa, branch feat/G9c.
+Status: ready for prod (G9c QA 2026-11-03: all 5 criteria pass; waiting for Karim's "ship"; real-phone checks still open, see QA note). Owner: qa, branch feat/G9c.
 
 | ID | Ticket | Scope | Acceptance criteria | Size |
 |---|---|---|---|---|
@@ -291,3 +291,18 @@ G9c re-review (reviewer, 2026-11-02, diff eb44f70..9c73154, no fix commit needed
 - **For QA/UAT (not an engineer item).** Real-phone check of one sleeved (penny sleeve and toploader) and one unsleeved card, including a black-bordered card on the dark backdrop. Only Karim's phone photos can settle (1)-(3); add a QA note if any reads wrong.
 - **Build/test (9c73154).** `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; dashboard test 66/66; shared test 38/38; tools/grade-screen: test_borders 8, test_condition 19, test_surface 10, test_screen 6, test_calibrate 1, test_centering exit 0, test_api 17 + 1 pre-existing skip incl. test_vendored_copy_matches_tools ok; sync_vercel.py re-run leaves the tree clean. All exit 0.
 - **Status:** ready for QA.
+
+G9c QA note (qa, 2026-11-03, feat/G9c at 99bc0a4 + this QA commit):
+- **Build/test.** `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; dashboard test 66/66; shared test 38/38; tools/grade-screen: test_borders 8, test_api 17 + 1 pre-existing skip (incl. test_vendored_copy_matches_tools), test_condition 19, test_surface 10, test_screen 6, test_calibrate 1, test_centering exit 0. sync_vercel.py leaves the tree clean. Calibration folder git-ignored; no scans in git.
+- **UAT.** Against `COLLECTION_FIXTURE=test/fixtures/collection.json next dev --port 3100`; /api/condition answered with real apps/dashboard/api/condition.py output on synthetic cards (next dev does not run Python). Engineer's test/uat/g9c.uat.js: 8/8 pass. New test/uat/g9c-qa.uat.js (QA addition: holder, edge-not-found and glare views had no UAT): 30/30 pass at 390px and 1280px, no page errors, no horizontal overflow.
+- **Per criterion.**
+  1. Holder detection: pass. Sleeved card -> "card is in a sleeve or holder: take it out and retake", no PSA ceiling, edges/corners/surface not judged, centering refused (test_condition holder tests; g9c-holder-390.png). Unsleeved white-bordered, black-on-black, loose-outline and thin-white-edge cards stay measured (tests). gate.py prompt counts a sleeve as holder.
+  2. Per-edge guard: pass. Blended bottom edge -> no bottom edge/corner entries, no bottom line in ceiling/look, cant_judge "front bottom edge and its corners: cut edge not found on this side: retake with that edge clear against the background"; other three sides measured (g9c-edge-390.png).
+  3. Glare mask: pass. 3 mm hotspot -> no stain; 6 mm hotspot -> "glare covers 12% of the card: retake with the light at an angle", no stain flag; summary names the unjudged surface. GLARE_MAX_SHARE 0.10 documented in CALIBRATION.md (g9c-glare-390.png).
+  4. Calibration gate: pass. All CALIBRATED flags off; chipping and whitening show "(not calibrated yet: does not lower the ceiling)", ceiling stays from centering only; flag-on test restores the cap. calibrate.py prints the table on the 2-image fixture.
+  5. Evidence crops: pass. Each look flag shows its JPEG crop before the text with alt text, inside the existing Look flags list; no new section, page or control (g9c-crops-390.png, g9c-look-crops-390.png). Dashboard tests cover crop mapping and the Snipe mini-badge text.
+- **Screenshots** (docs/backlog/uat/G9c/): g9c-crops-390.png, g9c-look-crops-390.png, g9c-holder-390.png, g9c-edge-390.png, g9c-glare-390.png, plus -desktop.png of crops/holder/edge/glare. Amounts visible come from the committed test fixture, not live data.
+- **Smoke (390 and 1280, with COLLECTION/SNIPE/DEALS fixtures).** Radar home /, /snipe, /dips, /collection (Vault), /grading: all 200, no page errors, no horizontal overflow. test/uat/snipe.uat.js (C1-era) times out waiting for `p[class*="basis"]`: that paragraph was removed from Snipe on main before G9c (class only left in snipe.module.css); not a G9c regression, script needs a refresh. Snipe mini-badge change not seen with live rows (no fixture carries screen results); covered by the unit test.
+- **Still needed from Karim (real phone, cannot be done synthetically):** (a) a card in a penny sleeve and (b) in a toploader -> expect the holder retake; (c) an unsleeved card -> expect it measured, no holder message; (d) a black-bordered card on the dark backdrop -> expect measured or the "sleeve check ... lighter, contrasting backdrop" retake, never "take it out". If any reads wrong, back to engineer.
+- **Risks.** Holder and glare thresholds tuned on synthetic photos only. Hairline penny sleeve under 1.5 mm with no gap reads as raw (look flags may be plastic artefacts; no ceiling effect while the gate is off). Black-bordered card without scanner corners can be traced at its art panel (pre-existing; worth a ticket). Approved behaviour change: chipping/whitening no longer lower ceilings, so most scans show a centering-only ceiling.
+- **Status:** ready for prod. Not merged; waiting for Karim's "ship".
