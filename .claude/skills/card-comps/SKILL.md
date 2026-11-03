@@ -15,7 +15,8 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
 - No usable sale and no trustworthy CL value (Karim, Nov 3 2026): the job applies an estimate itself, without asking:
   CardComp source `estimate`, method naming the rule (parallel_ratio, base_move, grade_ratio, purchase), inputs in the
   report. A real exact sale replaces it as soon as one exists. Method: the thin-market formula in
-  docs/research/2026-11-02-thin-market-pricing.md once Karim approves it; until then researcher-2's ratio methods.
+  docs/research/2026-11-02-thin-market-pricing.md (approved by Karim Nov 3 2026; formula `thin_blend`, full write-up in the card-mcp project doc
+  research/2026-11-02-thin-market-pricing.md). Until the packages/shared engine ships, jobs apply it by hand with every term shown.
 - Only graded sales in 90 days: never derive a raw value from graded prices (no PSA 9 / 2, PSA 10 / 4) or the reverse.
   Look up the raw value on PSA or Card Ladder and record source and date, else "no raw value found".
   (The snipe max-bid ceiling in packages/shared is a separate, approved bidding rule, not a valuation.)
