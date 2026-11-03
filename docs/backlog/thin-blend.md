@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1 **approved**; TB2 **ready for QA** (branch feat/TB2-vault-range). Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **approved**; TB2 **ready for prod** (branch feat/TB2-vault-range; apply migration 20261103b before merging). Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -258,6 +258,25 @@ Diff reviewed: 106901e..70882b5 (engineer commit 70882b5). No fix commit: nothin
   - Dashboard tests: 82/82. Shared tests: 38/38.
   - grade-screen `test_borders.py` and `test_api.py`: pass, with the known skip of the stale clutter test.
   - TB2 UAT (`test/uat/tb2.uat.js`, synthetic fixture, Chromium 1194): 32/32.
+
+### TB2 QA (2026-11-03, qa) -> ready for prod
+Branch feat/TB2-vault-range at 5beb481 plus this QA commit. Not merged: waiting for Karim's "ship".
+- UAT: ran `make-tb2-fixture.js` and `tb2.uat.js` on local dev (port 3100), 1280 and 390px: 32/32, no page errors.
+  - The thin_blend tile reads "$77 est. 2/5". The hand-applied estimate reads "$55 est.". The sale-comp tiles ($150,
+    $40) are unchanged.
+  - In the PSA 9 scenario, the raw band estimate is "$60 est." and there is no confidence tag.
+  - Drawer "Value now" rows:
+    - thin_blend: "$76.74 · $47–$120 · thin_blend · 2/5"
+    - hand-applied: "$55.00 · est. · thin_blend"
+    - sale comp: "$150.00"
+- Screenshots: docs/backlog/uat/TB2/ (tiles, drawer-range, drawer-no-range and drawer-sale, each at 1280 and 390).
+  - I regenerated all 8 from the synthetic fixture and each one is byte-identical to the committed file.
+  - I inspected them by eye: they show only synthetic cards, costs and values.
+- Migration: checked on a throwaway Postgres (see Review). The two bad inserts fail and the legacy row shape passes.
+- Regression: the Vault on test/fixtures/collection.json has no estimate tags and no page errors (no screenshots).
+- **For prod: apply packages/db/migrations/20261103b_card_comp_range.sql to Supabase (Karim's yes) BEFORE merging.**
+  The fallback keeps the Vault loading if the order slips, but the range and confidence only show once the columns
+  exist.
 
 ## Out of scope (now)
 - Accepted Best Offer ingestion. It needs eBay Marketplace Insights approval, and 130point scraping is not allowed.
