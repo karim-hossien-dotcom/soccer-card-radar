@@ -4,7 +4,7 @@ Source: Karim, 2026-11-03 (docs/decisions.md: "results-only dashboard on Radar h
 Success metric: after the next Sunday Prices run, Karim opens the home page on his phone and sees that run's status,
 counts, changes and "Take photo" list without opening the claude.ai report.
 Order: J1 -> J2 -> J3 (engineer); J4 (coordinator) after J1 is applied.
-Status: J1, J2, J3 **ready for QA** (branch feat/J-job-results; review 2026-11-03 below); J4 **approved**, owner coordinator (blocked on J1 applied).
+Status: J1, J2, J3 **ready for prod** (branch feat/J-job-results; QA 2026-11-03 below; waiting for Karim's "ship"); J4 **approved**, owner coordinator (blocked on J1 applied).
 Coordinator decision 2026-11-03: panel at "/" replacing the redirect; nav unchanged.
 
 ## Change notes (engineer, 2026-11-03)
@@ -48,6 +48,49 @@ Open, not fixed (outside this diff / not mine to decide):
 Build/tests (after fixes): pnpm install --frozen-lockfile ok; pnpm build 5/5 ok; dashboard 70/70; shared 38/38;
 grade-screen test_borders + test_api pass (1 pre-existing skip). UAT j3.uat.js 51/52: the 1 fail is smoke /dips 500
 (no Supabase env in sandbox; /dips has no fixture mode and is untouched by this branch).
+
+## QA (qa, 2026-11-03; branch at 3793bba)
+Result: **pass**, all J1-J3 criteria. Nothing applied to Supabase; nothing merged.
+Build/tests: pnpm install --frozen-lockfile ok; pnpm build 5/5; dashboard 70/70; shared 38/38; grade-screen test_borders +
+test_api pass (1 pre-existing skip).
+
+| Ticket | Criterion | Result | Evidence |
+|---|---|---|---|
+| J1 | Idempotent (if not exists) | pass | job_run.check.sh on throwaway local PG 16 (port 5433, not Supabase): applies, re-runs (NOTICE "already exists, skipping") |
+| J1 | Rejects job 'foo', status 'done', complete+2, incomplete+0 | pass | check script 4/4; re-run by hand to confirm the errors are the intended ones: JobRun_job_check, JobRun_status_check, JobRun_status_open_check x2 |
+| J1 | 1 good insert per job | pass | check script |
+| J1 | anon/authenticated denied | pass | select + insert denied for both; by hand: "permission denied for table JobRun" |
+| J1 | RLS on, index (job, ranAt desc) | pass | check script; total 15/15 ok |
+| J1 | Nothing applied to Supabase | pass | no Supabase env in this sandbox; throwaway PG dropped after the run |
+| J2 | ?card=<id> opens drawer (1280 + 390) | pass | j3.uat.js |
+| J2 | Unknown id = normal grid, no error | pass | j3.uat.js |
+| J2 | Close works (now also clears ?card=, reload stays closed) | pass | j3.uat.js |
+| J2 | Existing Vault UAT unchanged | pass | c5.uat.js 39/39 (Snipe + Vault drawer, desktop + 390); see flake under Risks |
+| J3 | latestRuns: fixed order, newest wins, missing job, counts per kind, malformed jsonb, ET at DST edge 2026-11-01 | pass | job-runs.test.ts (8 tests) |
+| J3 | Panel: status line once, summary, absolute ET time, counts, reportPath as text, changes collapsed, links to /collection?card=, from -> to with source, Take photo only when non-empty | pass | j3.uat.js 48/48 for 1280 + 390 |
+| J3 | 390px no horizontal scroll (collapsed + expanded) | pass | j3.uat.js |
+| J3 | Clicking a change opens that Vault drawer | pass | j3.uat.js |
+| J3 | No buttons/forms/fetch/POST in new files | pass | j3.uat.js (no button/form/input in main) + grep of page.tsx, latest-runs.tsx, job-runs.ts |
+| J3 | DB error -> "Couldn't load job runs: ..." | pass | **added** test/uat/j3-error.uat.js (was untested): dev server without fixture/Supabase env, "/" 200 with the notice, no panel, no page errors, 1280 + 390: 8/8 |
+| J3 | Smoke Snipe/Dips/Vault/Grading 200 | pass, except /dips | /snipe, /collection, /grading 200; /dips 500 = "Supabase env vars missing" (no fixture mode on /dips, file untouched by this branch, same as reviewer) |
+
+Screenshots (QA run, viewed; synthetic numbers only, checked against the fixture's cost/price fields for the 5 linked cards: no match;
+no Vault drawer shots): docs/backlog/uat/J3/home-collapsed-1280.png, home-collapsed-390.png, home-expanded-1280.png,
+home-expanded-390.png.
+
+Risks / notes for prod:
+- **Order: apply J1 to Supabase (Karim's yes) before merging J3**, otherwise "/" shows "Couldn't load job runs: ..." until
+  the table exists (j3-error.uat.js shows that path is clean, but it is what Karim would see).
+- **Squash-merge** feat/J-job-results: the two removed cost-bearing drawer screenshots are in this branch's history (cc5d0a9).
+- "/" no longer redirects to /snipe; bookmarks of "/" land on the Radar panel instead.
+- Panel stays "No run logged yet" for all three jobs until J4 is in place.
+- Pre-existing flake, not this branch: c5.uat.js failed 1 of 4 runs with a hydration mismatch at 390 on /snipe;
+  snipe-view.tsx `endsIn()`/`agoShort()` render from Date.now() in a client component, so SSR and hydration can differ across a
+  minute boundary. 3 reruns 39/39. Worth its own ticket.
+- J1 check script: negative checks print "ok" if Postgres is unreachable (the insert fails for the wrong reason). Seen when
+  the first PG start failed; harmless here because the positive checks failed loudly, but the script should exit early on a
+  failed connection.
+- Still open from review (coordinator/Karim): test/fixtures/collection.json on public main holds live rows incl. costs.
 
 Note: on main, "/" only redirects to /snipe (apps/dashboard/src/app/page.tsx); there is no Radar home page to extend.
 J3 replaces that redirect with the panel at "/" (same route, no new tab, no second page). The nav tabs stay as they
