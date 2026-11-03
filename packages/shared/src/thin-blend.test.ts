@@ -7,6 +7,7 @@ import {
   type ThinBlendInput,
   type ThinBlendResult,
   type DatedSale,
+  type ThinSignal,
 } from "./thin-blend.ts";
 
 // All prices below are synthetic (the repo is public).
@@ -306,4 +307,61 @@ test("thinBlendFromJson parses ISO dates and now", () => {
   const json = JSON.parse(JSON.stringify({ ...caseB, now: NOW.toISOString() }));
   const r = applied(thinBlendFromJson(json));
   near(r.value, 89.7, USD, "V");
+});
+
+// Follow-up: 12-month limit on ratio pairs (dated ratios), undated note, non-positive ratios listed.
+const ratioCase = (kind: "grade_ratio" | "parallel_ratio" | "base_move", ratios: ThinSignal["ratios"]): ThinBlendInput => ({
+  now: NOW,
+  target: { gradeState: "graded", grade: "PSA 8" },
+  signals: [{ kind, gradeState: "graded", sales: [sale(100, 30)], ratios }],
+});
+const RATIO_KIND_LIST = ["grade_ratio", "parallel_ratio", "base_move"] as const;
+
+for (const kind of RATIO_KIND_LIST) {
+  test(`${kind}: dated pairs within 365 days count like plain numbers, with no undated note`, () => {
+    const r = applied(thinBlend(ratioCase(kind, [{ r: 0.5, date: ago(10) }, { r: 0.6, date: ago(200) }, { r: 0.7, date: ago(365) }])));
+    assert.equal(r.signals.length, 1);
+    near(r.signals[0].r, 0.6, 1e-9, "ratio");
+    assert.ok(!r.excluded.some((e) => /undated/.test(e.reason)));
+  });
+
+  test(`${kind}: a dated pair older than 365 days is excluded with a reason; MIN_RATIOS applies after`, () => {
+    const r = applied(thinBlend(ratioCase(kind, [{ r: 0.5, date: ago(10) }, { r: 0.6, date: ago(200) }, { r: 0.7, date: ago(366) }])));
+    assert.equal(r.value, null);
+    assert.ok(r.excluded.some((e) => e.kind === kind && /older than 365 days/.test(e.reason)));
+    assert.ok(r.excluded.some((e) => e.kind === kind && /fewer than 3 ratios \(2\)/.test(e.reason)));
+  });
+
+  test(`${kind}: the old pair does not move the median when enough recent pairs remain`, () => {
+    const r = applied(
+      thinBlend(
+        ratioCase(kind, [{ r: 0.5, date: ago(10) }, { r: 0.6, date: ago(20) }, { r: 0.7, date: ago(30) }, { r: 3, date: ago(500) }, { r: 4, date: ago(600) }]),
+      ),
+    );
+    near(r.signals[0].r, 0.6, 1e-9, "ratio");
+    assert.equal(r.excluded.filter((e) => /older than 365 days/.test(e.reason)).length, 2);
+  });
+
+  test(`${kind}: undated numbers still count and each gets an "undated ratio" note`, () => {
+    const r = applied(thinBlend(ratioCase(kind, [0.5, { r: 0.6, date: ago(20) }, 0.7])));
+    assert.equal(r.signals.length, 1);
+    near(r.signals[0].r, 0.6, 1e-9, "ratio");
+    assert.equal(r.excluded.filter((e) => e.kind === kind && /undated ratio/.test(e.reason)).length, 2);
+  });
+
+  test(`${kind}: zero, negative and bad ratios are listed in excluded, not dropped silently`, () => {
+    const r = applied(
+      thinBlend(ratioCase(kind, [0, -1, { r: 0, date: ago(5) }, { r: 0.6, date: "not a date" }, { r: 0.6, date: ago(-10) }, 0.5, 0.6, 0.7])),
+    );
+    assert.equal(r.signals.length, 1);
+    assert.equal(r.excluded.filter((e) => e.kind === kind && /zero, negative or missing ratio/.test(e.reason)).length, 3);
+    assert.equal(r.excluded.filter((e) => e.kind === kind && /ratio: bad or future date/.test(e.reason)).length, 2);
+  });
+}
+
+test("thinBlendFromJson accepts dated ratios as ISO strings", () => {
+  const json = JSON.parse(JSON.stringify(ratioCase("grade_ratio", [{ r: 0.5, date: ago(10) }, { r: 0.6, date: ago(20) }, { r: 0.7, date: ago(30) }, { r: 9, date: ago(400) }])));
+  const r = applied(thinBlendFromJson(json));
+  near(r.signals[0].r, 0.6, 1e-9, "ratio");
+  near(r.value, 60, 0.001, "V");
 });

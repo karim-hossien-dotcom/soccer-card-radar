@@ -27,7 +27,8 @@ precision and gives a range and a confidence. It has to be code so the weekly jo
 - `target`: `{ gradeState: "raw" | "graded", grade }`.
 - `sales`: a list of `{ price, date, indexFactor? }` grouped into signals. Each signal is
   `{ kind: "exact" | "grade_ratio" | "parallel_ratio" | "base_move" | "purchase" | "proxy", gradeState, sales, ratios? }`.
-  - For grade_ratio, parallel_ratio and base_move, `ratios` is the list of pair ratios.
+  - For grade_ratio, parallel_ratio and base_move, `ratios` is the list of pair ratios. Each entry is a number or
+    `{ r, date }` (date = the newer sale of the pair). Dated pairs older than 365 days are excluded (follow-up below).
 - Optional caps:
   - `higherGradeSales`: same card, higher grade, with dates.
   - `scarcerParallelSales`.
@@ -228,6 +229,18 @@ Build/test after the fix: `pnpm install --frozen-lockfile` is up to date. `pnpm 
 - Error paths: no argument and a missing file each exit 2 with `{"error": ...}`. Bad JSON is covered by the CLI test.
   A relative path given through pnpm from `docs/` resolved against the caller's cwd.
 - Open for Karim: only the Minor items and the grade_ratio 365-day question in the Review. Nothing blocks shipping.
+
+**Follow-up (engineer, 2026-11-03, on a2df8c6): 12-month limit on ratio pairs. Reviewed follow-up; status stays
+ready for prod (all green).** The research limits grade-ratio pairs to the last 365 days; the engine took undated numbers.
+- `ratios` entries may be a number or `{ r, date }` (`DatedRatio`, exported). Applies to grade_ratio, parallel_ratio
+  and base_move (`usableRatios` in `thin-blend.ts`).
+- Dated pair older than 365 days from `now`: excluded, "ratio pair older than 365 days". Bad or future (> 1 day) date:
+  excluded, "ratio: bad or future date". Undated numbers (or `{ r }` with no date) still count, each with an
+  `excluded` note "undated ratio (kept)", so existing callers keep working. MIN_RATIOS (3) is checked after this filter.
+- Reviewer Minor fixed: zero, negative or missing ratios are now listed as "zero, negative or missing ratio".
+- This answers the Review's 365-day question for grade_ratio, and applies the same limit to parallel_ratio and base_move.
+- Tests first: 17 new (5 per ratio kind, 1 JSON, 1 CLI); all 17 failed on a2df8c6 and pass now. Shared 78/78,
+  dashboard 74/74, `pnpm build --force` 5/5. Made-up numbers only.
 
 ## TB2: range, confidence and method in the Vault's existing value cell
 

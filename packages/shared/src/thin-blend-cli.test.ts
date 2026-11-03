@@ -56,3 +56,31 @@ test("CLI exits 2 with a JSON error on missing file or bad JSON", () => {
   const usage = run([]);
   assert.equal(usage.status, 2);
 });
+
+test("CLI accepts dated ratio pairs and drops pairs older than 365 days", () => {
+  const dir = mkdtempSync(join(tmpdir(), "thin-blend-"));
+  const file = join(dir, "ratios.json");
+  writeFileSync(
+    file,
+    JSON.stringify({
+      now: NOW,
+      target: { gradeState: "graded", grade: "PSA 8" },
+      signals: [
+        {
+          kind: "grade_ratio",
+          gradeState: "graded",
+          sales: [{ price: 100, date: ago(30) }],
+          ratios: [{ r: 0.5, date: ago(10) }, { r: 0.6, date: ago(20) }, { r: 0.7, date: ago(30) }, { r: 9, date: ago(400) }, 0.65],
+        },
+      ],
+    }),
+  );
+  const r = run([file]);
+  assert.equal(r.status, 0, r.stderr);
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.signals[0].kind, "grade_ratio");
+  assert.ok(Math.abs(out.signals[0].r - 0.625) < 1e-9);
+  const reasons = out.excluded.map((e: { reason: string }) => e.reason);
+  assert.ok(reasons.some((x: string) => /older than 365 days/.test(x)));
+  assert.ok(reasons.some((x: string) => /undated ratio/.test(x)));
+});

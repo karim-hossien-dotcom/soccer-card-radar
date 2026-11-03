@@ -15,11 +15,19 @@ export interface DatedSale {
   indexFactor?: number; // I_now / I_at_sale; defaults to 1 (flagged as indexAssumed)
 }
 
+/** A pair ratio dated by the newer sale of the pair. Pairs older than RECENT_EXACT_DAYS are excluded. */
+export interface DatedRatio {
+  r: number;
+  date: string | Date;
+}
+
 export interface ThinSignal {
   kind: SignalKind;
   gradeState: GradeState;
   sales: DatedSale[];
-  ratios?: number[]; // pair ratios for grade_ratio / parallel_ratio / base_move
+  // Pair ratios for grade_ratio / parallel_ratio / base_move. Plain numbers are undated: they still count,
+  // with an "undated ratio" note in `excluded`.
+  ratios?: (number | DatedRatio)[];
 }
 
 export interface ThinBlendInput {
@@ -140,6 +148,36 @@ function emptyResult(excluded: Excluded[]): ThinBlendResult {
   };
 }
 
+/** Ratios that pass the checks; every other entry is listed in `excluded`. */
+function usableRatios(kind: SignalKind, list: unknown, now: number, excluded: Excluded[]): number[] {
+  const out: number[] = [];
+  for (const x of Array.isArray(list) ? list : []) {
+    const dated = !!x && typeof x === "object";
+    const r = dated ? (x as Partial<DatedRatio>).r : x;
+    if (!isPos(r)) {
+      excluded.push({ kind, reason: "zero, negative or missing ratio" });
+      continue;
+    }
+    const date = dated ? (x as Partial<DatedRatio>).date : undefined;
+    if (date === undefined || date === null) {
+      excluded.push({ kind, reason: "undated ratio (kept)" });
+      out.push(r);
+      continue;
+    }
+    const age = ageOf(date, now);
+    if (age === null) {
+      excluded.push({ kind, reason: "ratio: bad or future date" });
+      continue;
+    }
+    if (age > RECENT_EXACT_DAYS) {
+      excluded.push({ kind, reason: `ratio pair older than ${RECENT_EXACT_DAYS} days` });
+      continue;
+    }
+    out.push(r);
+  }
+  return out;
+}
+
 interface Usable {
   kind: SignalKind;
   sales: { price: number; age: number; index: number; indexGiven: boolean }[];
@@ -180,7 +218,7 @@ function compute(input: ThinBlendInput): ThinBlendResult {
     }
     let ratios: number[] = [];
     if (RATIO_KINDS.includes(kind)) {
-      ratios = (Array.isArray(sig.ratios) ? sig.ratios : []).filter(isPos);
+      ratios = usableRatios(kind, sig.ratios, now, excluded);
       if (ratios.length < MIN_RATIOS) {
         excluded.push({ kind, reason: `fewer than ${MIN_RATIOS} ratios (${ratios.length})` });
         continue;
