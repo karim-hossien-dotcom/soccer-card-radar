@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1 **approved**; TB2 **ready for prod** (branch feat/TB2-vault-range; apply migration 20261103b before merging). Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **approved**; TB2 **ready for review** (2026-11-03 fixes: 390px tile offset, Snipe hydration; branch feat/TB2-vault-range; apply migration 20261103b before merging). Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -277,6 +277,26 @@ Branch feat/TB2-vault-range at 5beb481 plus this QA commit. Not merged: waiting 
 - **For prod: apply packages/db/migrations/20261103b_card_comp_range.sql to Supabase (Karim's yes) BEFORE merging.**
   The fallback keeps the Vault loading if the order slips, but the range and confidence only show once the columns
   exist.
+
+### TB2 fixes (2026-11-03, engineer) -> ready for review
+Karim approved both fixes on 2026-11-03 ("fix it all and ship"). There is one commit for each.
+- a2d5aca: at 390px the first row of Vault tiles sat under the sticky filter bar, which wraps to about 196px on a phone.
+  The grid's `scroll-margin-top` now follows the bar's stuck height (`--sticky-h`, measured with a ResizeObserver).
+  - The TB2 UAT has a new check: after scrolling to the grid, the first tile is 12px below the bar at both 1280 and
+    390. It failed at 390 (-208px) before the fix.
+  - The UAT now takes the tiles screenshot from the top of the page. Only tiles-1280/390 changed; the drawer shots are
+    byte-identical. All were regenerated from the synthetic fixture.
+- 1be2132: Snipe hydration error. `endsIn`/`agoShort` moved to `src/lib/countdown.ts` and now take an explicit `now`.
+  - The page passes the server's `renderedAt`. SnipeView uses it for the first render, then switches to the browser
+    clock after mount and refreshes every 30s.
+  - New unit tests for the helpers.
+  - c5 UAT changes:
+    - It now loads /snipe with the browser clock 90s ahead and fails on any hydration warning. This failed before the
+      fix.
+    - It also opens a row and checks the auction countdown in the detail panel, which the old UAT never rendered.
+- Results: dashboard 85/85, shared 38/38, grade-screen tests green (1 existing skip), `pnpm build` green, TB2 UAT 34/34,
+  c5 UAT 47/47 (1280 and 390).
+- The migration note above still applies: apply 20261103b before merging.
 
 ## Out of scope (now)
 - Accepted Best Offer ingestion. It needs eBay Marketplace Insights approval, and 130point scraping is not allowed.
