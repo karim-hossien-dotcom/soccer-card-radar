@@ -45,7 +45,7 @@
 .row input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 
 /* Grid of slabs */
-.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 20px; perspective: 1200px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 20px; perspective: 1200px; scroll-margin-top: calc(var(--sticky-h, 120px) + 12px); }
 .tile {
   all: unset; box-sizing: border-box; min-width: 0; cursor: pointer; position: relative;
   display: grid; grid-template-rows: auto auto 1fr; align-content: start;

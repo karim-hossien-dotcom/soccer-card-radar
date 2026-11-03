@@ -92,6 +92,21 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     return () => window.removeEventListener("scroll", close);
   }, []);
 
+  // The filter bar is sticky and wraps to several rows on phones: keep the grid's scroll-margin equal to its stuck height
+  // so scrolling to the cards leaves the first row (labels included) below the bar.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = controlsRef.current, wrap = wrapRef.current;
+    if (!bar || !wrap || typeof ResizeObserver === "undefined") return;
+    const set = () => wrap.style.setProperty("--sticky-h", `${Math.ceil((parseFloat(getComputedStyle(bar).top) || 0) + bar.offsetHeight)}px`);
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    window.addEventListener("resize", set);
+    set();
+    return () => { ro.disconnect(); window.removeEventListener("resize", set); };
+  }, []);
+
   const movers = useMemo(
     () => cards.flatMap((c) => { const w = trends[c.id]?.wow; return w ? [{ card: c, wow: w }] : []; }),
     [cards, trends],
@@ -101,7 +116,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
   const sealedCount = useMemo(() => cards.filter((c) => c.status === "sealed").length, [cards]);
 
   return (
-    <div className={s.wrap}>
+    <div className={s.wrap} ref={wrapRef}>
       <section className={s.hero} aria-label="Collection totals">
         <div className={s.heroHead}>
           <h1>Vault</h1>
@@ -119,7 +134,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
         <span>{staleCount ? `${staleCount} cards have comps older than 14 days.` : "All comps are current."}</span>
         <button className={s.btn} onClick={() => setCompsOpen(true)}>Update comps</button>
       </div>
-      <div className={s.controls}>
+      <div className={s.controls} ref={controlsRef}>
         <Seg label="Price as" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
         <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`], ...(sealedCount ? [["sealed", `Sealed (${sealedCount})`] as [string, string]] : [])]} />
         <div className={s.row}>

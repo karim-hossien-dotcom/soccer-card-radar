@@ -29,7 +29,19 @@ const val = (p, player) => tile(p, player).locator('[class*="val"]').first();
       ok(h <= 2.05, `${name}: ${pl} value cell <= 2 lines (${h.toFixed(2)})`);
     }
     ok(await noOverflow(p), `${name}: no horizontal scroll`);
-    await p.locator('section[aria-label="Cards"]').screenshot({ path: `${SHOTS}/tiles-${name}.png` });
+    // Scrolled to the grid, the first row of tiles (label included) sits fully below the sticky filter bar.
+    await p.locator('section[aria-label="Cards"]').evaluate((e) => e.scrollIntoView());
+    const gap = await p.evaluate(() => {
+      const bar = document.querySelector('section[aria-label="Cards"]').previousElementSibling.getBoundingClientRect();
+      const first = document.querySelector('section[aria-label="Cards"] > button').getBoundingClientRect();
+      return { scrolled: window.scrollY > 0, gap: first.top - bar.bottom };
+    });
+    ok(gap.scrolled && gap.gap >= 0, `${name}: first tiles below sticky bar after scroll (gap ${gap.gap.toFixed(1)}px)`);
+    // Screenshot the whole grid from the top of the page, where the sticky bar is in normal flow above it (an element
+    // screenshot taller than the space below the stuck bar is either covered by the bar or cut off at the fold).
+    await p.evaluate(() => window.scrollTo(0, 0));
+    const box = await p.locator('section[aria-label="Cards"]').evaluate((e) => { const r = e.getBoundingClientRect(); return { x: r.x, y: r.y + window.scrollY, width: r.width, height: r.height }; });
+    await p.screenshot({ path: `${SHOTS}/tiles-${name}.png`, fullPage: true, clip: box });
 
     // Scenario PSA 9: band-multiple est. unchanged; estimate tag is "now" only
     await p.locator('[role=group][aria-label="Price as"] button', { hasText: 'PSA 9' }).click();
