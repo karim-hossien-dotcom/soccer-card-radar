@@ -4,7 +4,7 @@ Source: Karim, 2026-11-03 (docs/decisions.md: "results-only dashboard on Radar h
 Success metric: after the next Sunday Prices run, Karim opens the home page on his phone and sees that run's status,
 counts, changes and "Take photo" list without opening the claude.ai report.
 Order: J1 -> J2 -> J3 (engineer); J4 (coordinator) after J1 is applied.
-Status: J1, J2, J3 **ready for review** (branch feat/J-job-results); J4 **approved**, owner coordinator (blocked on J1 applied).
+Status: J1, J2, J3 **ready for QA** (branch feat/J-job-results; review 2026-11-03 below); J4 **approved**, owner coordinator (blocked on J1 applied).
 Coordinator decision 2026-11-03: panel at "/" replacing the redirect; nav unchanged.
 
 ## Change notes (engineer, 2026-11-03)
@@ -19,6 +19,35 @@ Coordinator decision 2026-11-03: panel at "/" replacing the redirect; nav unchan
   The status line comes from status/openCount; the summary text is shown below it as written. Malformed items -> "n unreadable".
   UAT: test/uat/make-j3-fixture.js + test/uat/j3.uat.js (J2 + J3, 1280 and 390): 44/44 ok; C5 UAT 39/39 ok; screenshots in
   docs/backlog/uat/J3/. Grep: no fetch/POST/form/button in the new files. `pnpm build` green; dashboard tests 69/69.
+
+## Review (reviewer, 2026-11-03; diff 8215693..cc5d0a9, fixes in f71c991)
+Fixed (f71c991, review(J)):
+- Important, J3: status line shown twice. Fixture/real summaries start with "Complete" / "Incomplete: 2 items open", rendered
+  under the status line (latest-runs.tsx:23-24). job-runs.ts `summaryBody()` drops that first line when it agrees with
+  status/openCount, keeps it when it disagrees (mismatch stays visible). Unit test added; UAT checks "Complete" appears once
+  and Players no longer repeats "Incomplete: 2 items open".
+- Important, J3 UAT: docs/backlog/uat/J3/vault-deeplink-{1280,390}.png showed the Salah drawer with real cost basis $800,
+  ledger purchase and the "CL cost vs CSV My Cost" note (test/fixtures/collection.json = live rows, see B1 note). Removed;
+  j3.uat.js no longer screenshots the drawer (J2 is still asserted). Synthetic Salah value 800 -> 700 so the home screenshots
+  no longer echo his real cost; other synthetic from/to numbers checked against the fixture ledger: none match a real cost.
+  Home screenshots regenerated and viewed: no costs from the Vault.
+- J2 decision: closing the drawer now clears ?card= (collection-view.tsx `closeDrawer`, history.replaceState, no new history
+  entry). Reason: reload/share of the URL reopened a drawer the user had closed. UAT checks URL cleared and reload stays closed.
+Checked, no finding: J1 SQL matches the ticket column-for-column; RLS on + revoke all from anon, authenticated, same as
+20261016e_snipe_board.sql:50-52; the dashboard reads with the service-role client (packages/db/src/index.ts:24), so the revoke
+does not block "/". No fetch/POST/form/button in new files; no secrets in the diff; no valuation logic (display only);
+nav unchanged, "/" replaces the redirect per the coordinator decision (no duplicate page).
+Open, not fixed (outside this diff / not mine to decide):
+- Critical, pre-existing, coordinator/Karim: apps/dashboard/test/fixtures/collection.json on public main (since d986d58, B1)
+  holds live rows incl. costs, certs and notes. Needs a decision (synthetic fixture + history purge).
+- feat/J-job-results was already on origin at cc5d0a9, so the two removed screenshots stay in that branch's history. Same data
+  as the fixture already public on main, so no new exposure, but QA should **squash-merge** so they don't enter main's history.
+- Minor: merging J3 before J1 is applied makes "/" show "Couldn't load job runs: ..." until the table exists. Ship J3 after
+  J1 is applied, or accept the notice briefly.
+- Not run here: packages/db/test/job_run.check.sh (no Postgres server in this sandbox; engineer reported 15/15 on PG 16).
+Build/tests (after fixes): pnpm install --frozen-lockfile ok; pnpm build 5/5 ok; dashboard 70/70; shared 38/38;
+grade-screen test_borders + test_api pass (1 pre-existing skip). UAT j3.uat.js 51/52: the 1 fail is smoke /dips 500
+(no Supabase env in sandbox; /dips has no fixture mode and is untouched by this branch).
 
 Note: on main, "/" only redirects to /snipe (apps/dashboard/src/app/page.tsx); there is no Radar home page to extend.
 J3 replaces that redirect with the panel at "/" (same route, no new tab, no second page). The nav tabs stay as they
