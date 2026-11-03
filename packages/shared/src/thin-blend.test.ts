@@ -193,6 +193,14 @@ test("AC7 scarcer-parallel cap below V caps value and high", () => {
   assert.ok(r.capsApplied.includes("scarcer_parallel"));
 });
 
+test("a raw target is never capped by graded (higher-grade) sales", () => {
+  const r = applied(thinBlend({ ...caseB, higherGradeSales: [sale(60, 10)] }));
+  near(r.value, 89.7, USD, "V");
+  near(r.high, 136.85, USD, "high");
+  assert.deepEqual(r.capsApplied, []);
+  assert.ok(r.excluded.some((e) => e.kind === "cap" && /grade state/.test(e.reason)));
+});
+
 test("caps ignore higher-grade and parallel sales older than 180 days", () => {
   const r = applied(thinBlend({ ...caseA, higherGradeSales: [sale(50, 181)], scarcerParallelSales: [sale(50, 400)] }));
   assert.deepEqual(r.capsApplied, []);

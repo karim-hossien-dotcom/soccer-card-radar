@@ -280,8 +280,13 @@ function compute(input: ThinBlendInput): ThinBlendResult {
     }
     return min;
   };
+  // A raw target is never capped by graded sales (card-comps: no raw value from graded prices).
+  const higherGradeOk = targetState === "graded";
+  if (!higherGradeOk && Array.isArray(input.higherGradeSales) && input.higherGradeSales.length) {
+    excluded.push({ kind: "cap", reason: "higher_grade: grade state (raw target)" });
+  }
   const caps: [Cap, number | null][] = [
-    ["higher_grade", lowestRecent(input.higherGradeSales, "higher_grade")],
+    ["higher_grade", higherGradeOk ? lowestRecent(input.higherGradeSales, "higher_grade") : null],
     ["scarcer_parallel", lowestRecent(input.scarcerParallelSales, "scarcer_parallel")],
     ["bin", isPos(input.lowestBin) ? input.lowestBin : null],
   ];
