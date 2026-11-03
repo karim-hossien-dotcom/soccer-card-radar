@@ -14,6 +14,11 @@ behind a login), Supabase Postgres (project zsubyufjenapkgkwpqzv). The repo is P
 - Vault photos show only the card. Graded cards use PSA's cert-page scan of Karim's own slab.
 - Rules Karim has approved (comps, base-move, max bid incl. 80% of raw when no graded comps) are applied without asking him.
   Ask only about what no rule covers (a missing cost, a card that can't be identified).
+- Jobs answer their own questions (Karim, Nov 3 2026): ownership and certs from his PSA collection (app.collectors.com,
+  not "Previously Owned") and Card Ladder collection, adding missing slabs to the Vault; card identity and parallel from
+  the PSA cert page or his PSA order; cost from his eBay purchase history (eBay itself) and PSA order fees; no eBay or PSA
+  record = pack pull at $0 (ledger source pack_pull_assumed); values with no sale = estimate (card-comps skill); photos
+  from PSA/SGC/Beckett scans. Only photos no site has go on a short "take photo" list. Buying/bidding stays Karim's.
 - A job is not done while items are open: retry blocked or conflicting items by another route, then a verifier agent;
   the report's first line says "Complete" or "Incomplete: N items open" with the reason for each.
 
