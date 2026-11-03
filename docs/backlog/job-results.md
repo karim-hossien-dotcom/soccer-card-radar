@@ -4,7 +4,7 @@ Source: Karim, 2026-11-03 (docs/decisions.md: "results-only dashboard on Radar h
 Success metric: after the next Sunday Prices run, Karim opens the home page on his phone and sees that run's status,
 counts, changes and "Take photo" list without opening the claude.ai report.
 Order: J1 -> J2 -> J3 (engineer); J4 (coordinator) after J1 is applied.
-Status: J1, J2, J3 **ready for prod** (branch feat/J-job-results; QA 2026-11-03 below; waiting for Karim's "ship"); J4 **approved**, owner coordinator (blocked on J1 applied).
+Status: J1, J2, J3 **shipped** 2026-11-03 (squash 8d0583f; JobRun applied to Supabase); J4 **done** (job prompts insert one JobRun row per run).
 Coordinator decision 2026-11-03: panel at "/" replacing the redirect; nav unchanged.
 
 ## Change notes (engineer, 2026-11-03)

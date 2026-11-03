@@ -231,7 +231,7 @@ Status after review: ready for QA.
 Status: ready for prod (waiting for Karim's "ship"; not merged, not pushed).
 
 ### G9c (approved by Karim 2026-11-02): no false ceilings from holders, missing edges, glare or uncalibrated checks
-Status: ready for prod (G9c QA 2026-11-03: all 5 criteria pass; waiting for Karim's "ship"; real-phone checks still open, see QA note). Owner: qa, branch feat/G9c.
+Status: shipped 2026-11-03 (squash 80831db). Real-phone checks still open, see QA note.
 
 | ID | Ticket | Scope | Acceptance criteria | Size |
 |---|---|---|---|---|
