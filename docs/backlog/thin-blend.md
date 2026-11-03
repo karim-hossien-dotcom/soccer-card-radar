@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1, TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **ready for prod** (branch feat/TB1-thin-blend, awaiting Karim's "ship"), TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -27,7 +27,8 @@ precision and gives a range and a confidence. It has to be code so the weekly jo
 - `target`: `{ gradeState: "raw" | "graded", grade }`.
 - `sales`: a list of `{ price, date, indexFactor? }` grouped into signals. Each signal is
   `{ kind: "exact" | "grade_ratio" | "parallel_ratio" | "base_move" | "purchase" | "proxy", gradeState, sales, ratios? }`.
-  - For grade_ratio, parallel_ratio and base_move, `ratios` is the list of pair ratios.
+  - For grade_ratio, parallel_ratio and base_move, `ratios` is the list of pair ratios. Each entry is a number or
+    `{ r, date }` (date = the newer sale of the pair). Dated pairs older than 365 days are excluded (follow-up below).
 - Optional caps:
   - `higherGradeSales`: same card, higher grade, with dates.
   - `scarcerParallelSales`.
@@ -134,6 +135,112 @@ on dollars.
   engineer shows the term-by-term recomputation and does not loosen the tolerance.
 
 **Size:** M.
+
+**Change note (engineer, 2026-11-03): ready for review.**
+- `packages/shared/src/thin-blend.ts`: `thinBlend(input)`, `thinBlendFromJson(json)`, `confidenceFromSd`, exported from
+  index.ts. Pure, never throws (bad input returns `value: null` with reasons in `excluded`). value/low/high are rounded
+  to cents; sd, m, var and weightShare are unrounded. Signals also report `n`, `r` and `sigmaM`.
+- Coordinator scope (a), approved by Karim: 1-2 exact sales within 90 days enter the blend (tests for 1 and 2 sales).
+- Coordinator scope (b): CLI `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` (or
+  `node packages/shared/bin/thin-blend.ts <input.json>`). Input is ThinBlendInput as JSON with ISO dates; `now` defaults
+  to the current time, so the job should pass it. It prints the full result as JSON. It exits 2 with `{error}` on
+  usage, read or parse errors. Relative paths resolve against the caller's cwd. Use `-s` so pnpm's banner stays out of stdout.
+- Choices the ticket left open: "recent" for the scarcer-parallel cap = 180 days (same window as higher-grade). A cap is
+  listed in `capsApplied` only when it lowers high. Sales dated more than 1 day in the future, bad dates, and zero or
+  negative `indexFactor` are excluded. The gate counts only exact sales in the target's grade state.
+- Case A' recomputed independently in Python: every term matches the ticket within tolerance (V 76.743, sd 0.37624,
+  uncapped range 47.383-124.294, exact share 0.2486).
+- Tests: shared 60/60 (20 thin-blend + 2 CLI new), dashboard 74/74, `pnpm build` green. All figures are synthetic.
+
+**Review (reviewer, 2026-11-03): ready for QA.** Diff reviewed: 106901e..cb9f9a7.
+- Acceptance criteria: AC1-AC9 each have a test in `packages/shared/src/thin-blend.test.ts` (AC1 case A' + uncapped
+  range, AC2, AC3, AC4, AC5 x4, AC6, AC7, AC8 boundaries, AC9 x3) and the CLI has 2 tests. AC10: see build/test below.
+- Formula against the research write-up (section 4): independent Python recompute of A' and B' matches every ticket term
+  (A': V 76.743, sd 0.37624, 47.383-124.294, exact share 0.2486, conflict 0.867 vs 1.741; B': V 89.702, sd 0.32956,
+  58.799-136.847). The research's own cases A and B run through the engine (scratchpad only, real figures not
+  committed) give $101.03 / $60.41-$165.50 / 2/5 and $185.22 / $122.04-$281.11 / 2/5, against the write-up's $100.88 /
+  $60-$166 and $185.2 / $122-$281. The small gap on A is the write-up rounding σ_m to 0.44 (engine 0.4374).
+- card-comps: raw and graded signals are kept apart (AC6). Nothing is invented: every output comes from inputs. Owner
+  overrides and the DB are untouched. No secrets. No real costs in the diff: grep for the write-up's cost and sale
+  figures finds nothing, and there is no `.snapshots/` export for today to compare against.
+- Engineer's open choices, all accepted: a 180-day window for the scarcer-parallel cap (same as the higher-grade cap and
+  the skill's 6-month pairing). `capsApplied` lists a cap only when it lowers high; any cap below V is also below
+  high, so a cap that binds is never missed. Sales dated more than 1 day ahead, bad dates and non-positive indexFactor
+  are excluded with reasons. Rounding to cents is monotone, so low <= value <= high still holds for TB2's check. The
+  gate counts only exact sales in the target's grade state.
+- CLI: exit 0 for any result, exit 2 with `{error}` for no argument, a missing file or bad JSON (tested). Relative
+  paths resolve against the caller's cwd through pnpm (checked from docs/). If `now` is omitted, the CLI uses the
+  current time.
+
+Findings:
+- **Important (fixed):** a raw target was capped by `higherGradeSales`, which are graded sales. A raw exact $100 sale
+  with a $60 PSA sale as the higher-grade cap returned value $60, a raw value set by a graded price. That breaks the
+  card-comps rule. Fixed in f5151d6: the higher-grade cap is only used for a graded target. For a raw target it is
+  listed in `excluded` as "higher_grade: grade state (raw target)" (`thin-blend.ts:284`). Test at
+  `thin-blend.test.ts:196`. It fails without the fix and passes with it.
+- Minor (left): non-positive ratios are dropped silently, with no `excluded` entry (`thin-blend.ts:183`).
+- Minor (left): cap sales with bad or future dates are skipped silently (`thin-blend.ts:278`). Bad cap prices are
+  listed.
+- Minor (left, caller contract): `scarcerParallelSales` and `lowestBin` carry no gradeState. The caller (the weekly job,
+  TB2 or later) must pass only the target's grade state.
+- Minor (left, design): the result does not echo the `now` it used. Without `now` in the input, the output depends on
+  the wall clock and an audit report cannot reproduce it. The job should always pass `now`. Echoing it is a small
+  follow-up if wanted.
+- Minor (left): `bin/thin-blend.ts:16` prefers `INIT_CWD`. If the bin is run directly with `node` from inside a
+  different pnpm script, a relative path would resolve against that script's cwd. Absolute paths are unaffected.
+- Question for Karim/PM (left, business rule): the write-up's table limits grade_ratio inputs to sales within 365
+  days. The ticket doesn't say so and the engine doesn't enforce it. Older sales still lose weight through var_j.
+- Checked with nothing found: comments inserted mid-line or mid-type; off-by-one windows (the gate is `<= 90`,
+  purchases are kept to 730 days and caps to 180 days, inclusive, with tests at 89/181 days); fuzzy matching; bids,
+  sold-scans, env changes; duplicate UI (no UI).
+
+Build/test after the fix: `pnpm install --frozen-lockfile` is up to date. `pnpm build --force` gives 5/5. Shared tests
+61/61 and dashboard 74/74. grade-screen `test_borders.py` and `test_api.py` pass, with 1 skip that was already in the test file.
+
+**QA (2026-11-03, on 12539e1): ready for prod.** This is a library plus a CLI with no UI, so there are no screenshots.
+- The shared tests pass 61/61. Case A' was recomputed independently in Python and matches every term (see Review).
+  There is no `.snapshots/` export for today. The diff's dollar figures are all synthetic and none matches the
+  write-up's costs.
+- CLI run 1, made-up graded PSA 9 card, `now` given, run as `pnpm -s --filter @soccer-card-radar/shared thin-blend
+  <abs path>`:
+  - Inputs:
+    - exact: $62 (2026-08-20) and $48 (2025-12-01).
+    - parallel_ratio: $30 and $34 (indexFactor 0.95), with ratios [1.6, 1.9, 2.1, 2.4].
+    - A raw purchase of $25.
+    - scarcerParallelSales: $70.
+    - lowestBin: $75.
+  - Exit 0. value **59.28**, low 47.17, high **70.00**, sd 0.1783, confidence 4 (uncapped 4), capsApplied
+    `["scarcer_parallel"]` (the BIN of $75 is above high, so it is not listed), conflict false.
+  - Signals: exact (n 2, weightShare 0.536) and parallel_ratio (r 2.0, σ_m 0.1732, weightShare 0.464). The raw
+    purchase is excluded as "grade state".
+  - A separate Python recompute gives V 59.28, low 47.17 and sd 0.1783.
+- CLI run 2, made-up raw card, no `now` (wall clock), run as `node packages/shared/bin/thin-blend.ts qa2.json`
+  with a relative path:
+  - Inputs:
+    - purchase: $45 (2026-07-15).
+    - proxy: $28 (2026-10-05), $0, and $31 dated 2027-02-01.
+    - higherGradeSales: $30.
+  - Exit 0. value **38.95**, low 26.06, high 58.21, sd 0.3136, confidence **2** (uncapped 3, purchase/proxy-only
+    cap), capsApplied `[]`.
+  - excluded:
+    - the $0 proxy sale: "zero, negative or missing price".
+    - the 2027 sale: "bad or future date".
+    - the higher-grade cap: "higher_grade: grade state (raw target)". This confirms the review fix.
+- Error paths: no argument and a missing file each exit 2 with `{"error": ...}`. Bad JSON is covered by the CLI test.
+  A relative path given through pnpm from `docs/` resolved against the caller's cwd.
+- Open for Karim: only the Minor items and the grade_ratio 365-day question in the Review. Nothing blocks shipping.
+
+**Follow-up (engineer, 2026-11-03, on a2df8c6): 12-month limit on ratio pairs. Reviewed follow-up; status stays
+ready for prod (all green).** The research limits grade-ratio pairs to the last 365 days; the engine took undated numbers.
+- `ratios` entries may be a number or `{ r, date }` (`DatedRatio`, exported). Applies to grade_ratio, parallel_ratio
+  and base_move (`usableRatios` in `thin-blend.ts`).
+- Dated pair older than 365 days from `now`: excluded, "ratio pair older than 365 days". Bad or future (> 1 day) date:
+  excluded, "ratio: bad or future date". Undated numbers (or `{ r }` with no date) still count, each with an
+  `excluded` note "undated ratio (kept)", so existing callers keep working. MIN_RATIOS (3) is checked after this filter.
+- Reviewer Minor fixed: zero, negative or missing ratios are now listed as "zero, negative or missing ratio".
+- This answers the Review's 365-day question for grade_ratio, and applies the same limit to parallel_ratio and base_move.
+- Tests first: 17 new (5 per ratio kind, 1 JSON, 1 CLI); all 17 failed on a2df8c6 and pass now. Shared 78/78,
+  dashboard 74/74, `pnpm build --force` 5/5. Made-up numbers only.
 
 ## TB2: range, confidence and method in the Vault's existing value cell
 

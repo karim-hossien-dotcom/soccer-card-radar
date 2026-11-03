@@ -8,7 +8,8 @@
   "scripts": {
     "build": "tsc",
     "clean": "rm -rf dist",
-    "test": "node --test src/*.test.ts"
+    "test": "node --test src/*.test.ts",
+    "thin-blend": "node bin/thin-blend.ts"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
