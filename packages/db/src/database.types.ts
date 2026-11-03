@@ -597,6 +597,18 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["CenteringCheck"]["Insert"]>;
         Relationships: [];
       };
+      JobRun: {
+        Row: {
+          id: string; job: string; ranAt: string; finishedAt: string | null; status: string; openCount: number;
+          summary: string; reportPath: string | null; changes: Json; photoList: Json; createdAt: string;
+        };
+        Insert: {
+          id?: string; job: string; ranAt: string; finishedAt?: string | null; status: string; openCount?: number;
+          summary: string; reportPath?: string | null; changes?: Json; photoList?: Json; createdAt?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["JobRun"]["Insert"]>;
+        Relationships: [];
+      };
       AlertSent: {
         Row: {
           id: string;
