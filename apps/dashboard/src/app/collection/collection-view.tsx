@@ -37,6 +37,14 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
   const [open, setOpen] = useState<CollectionCard | null>(() => (openId && cards.find((c) => c.id === openId)) || null);
   const [compsOpen, setCompsOpen] = useState(false);
   const [zoom, setZoom] = useState<{ src: string; x: number; y: number } | null>(null);
+  // J2: closing drops ?card= (replaceState, no new history entry) so a reload doesn't reopen a closed drawer.
+  const closeDrawer = () => {
+    setOpen(null);
+    const u = new URL(window.location.href);
+    if (!u.searchParams.has("card")) return;
+    u.searchParams.delete("card");
+    window.history.replaceState(window.history.state, "", u.pathname + u.search + u.hash);
+  };
 
   const players = useMemo(() => {
     const counts = new Map<string, number>();
@@ -169,7 +177,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
 
       {zoom && <Zoom {...zoom} />}
       {compsOpen && <CompsPanel cards={cards} inView={list} onClose={() => setCompsOpen(false)} />}
-      {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={() => setOpen(null)} />}
+      {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={closeDrawer} />}
     </div>
   );
 }

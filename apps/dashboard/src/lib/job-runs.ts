@@ -73,6 +73,18 @@ export function formatEt(iso: string | null | undefined): string {
   return Number.isNaN(t) ? "unknown time" : ET.format(new Date(t)).replace(/\s/g, " ");
 }
 
+/**
+ * Drops the summary's first line when it repeats the status line ("Complete" / "Incomplete: N items open").
+ * Kept when it disagrees with status/openCount, so a mismatch stays visible.
+ */
+export function summaryBody(summary: string, complete: boolean, open: number): string {
+  const [first = "", ...rest] = summary.split("\n");
+  const m = /^\s*(complete|incomplete)\s*(?::\s*(\d+)\b[^\n]*)?\s*$/i.exec(first);
+  if (!m) return summary;
+  const same = complete ? m[1]!.toLowerCase() === "complete" && !m[2] : m[1]!.toLowerCase() === "incomplete" && Number(m[2]) === open;
+  return same ? rest.join("\n").replace(/^\s*\n/, "") : summary;
+}
+
 function toView(r: JobRunRow): RunView {
   const [changes, badC] = parseList(r.changes, parseChange);
   const [photoList, badP] = parseList(r.photoList, parsePhoto);
@@ -81,7 +93,7 @@ function toView(r: JobRunRow): RunView {
   const open = Number(r.openCount) || 0;
   return {
     statusLine: complete ? "Complete" : `Incomplete: ${open} open`, complete,
-    summary: typeof r.summary === "string" ? r.summary : "", ranAt: r.ranAt, finishedAt: r.finishedAt ?? null,
+    summary: summaryBody(typeof r.summary === "string" ? r.summary : "", complete, open), ranAt: r.ranAt, finishedAt: r.finishedAt ?? null,
     reportPath: str(r.reportPath), changes, photoList, counts: countsLine(changes, unreadable), unreadable,
   };
 }

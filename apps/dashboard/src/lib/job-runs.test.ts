@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { latestRuns, formatEt, countsLine, type JobRunRow } from "./job-runs.ts";
+import { latestRuns, formatEt, countsLine, summaryBody, type JobRunRow } from "./job-runs.ts";
 
 const row = (o: Partial<JobRunRow>): JobRunRow => ({
   job: "prices", ranAt: "2026-11-09T00:43:00Z", finishedAt: null, status: "complete", openCount: 0,
@@ -30,6 +30,19 @@ test("status line", () => {
   const [p, pl] = latestRuns([row({}), row({ job: "players", status: "incomplete", openCount: 2 })]);
   assert.equal(p!.run!.statusLine, "Complete");
   assert.equal(pl!.run!.statusLine, "Incomplete: 2 open");
+});
+
+test("summary's first line is dropped when it repeats the status line, kept when it disagrees", () => {
+  const [p, pl] = latestRuns([
+    row({ summary: "Complete\n41 cards checked." }),
+    row({ job: "players", status: "incomplete", openCount: 2, summary: "Incomplete: 2 items open\n- a\n- b" }),
+  ]);
+  assert.equal(p!.run!.summary, "41 cards checked.");
+  assert.equal(pl!.run!.summary, "- a\n- b");
+  assert.equal(latestRuns([row({ summary: "Complete" })])[0]!.run!.summary, "");
+  assert.equal(summaryBody("Incomplete: 3 items open\n- a", false, 2), "Incomplete: 3 items open\n- a");
+  assert.equal(summaryBody("Incomplete: 1 open\n- a", true, 0), "Incomplete: 1 open\n- a");
+  assert.equal(summaryBody("Completed 41 checks", true, 0), "Completed 41 checks");
 });
 
 test("counts per kind from changes, plus photoList length", () => {

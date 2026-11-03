@@ -16,7 +16,7 @@ data.jobRuns = [
     summary: 'Complete\n41 Vault cards checked; 3 values moved, 1 card added, 1 cost filled, 1 estimate.',
     reportPath: 'audits/2026-11-08-prices.md',
     changes: [
-      { kind: 'value', ...card(SALAH), from: 800, to: 845, source: 'ebay_sold' },
+      { kind: 'value', ...card(SALAH), from: 700, to: 745, source: 'ebay_sold' },
       { kind: 'value', ...card(HAALAND), from: 310, to: 295.5, source: 'cardladder' },
       { kind: 'value', ...card(CR7), from: 150, to: 162, source: 'ebay_sold' },
       { kind: 'card_added', ...card(CAMA), source: 'psa_collection' },
