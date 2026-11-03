@@ -15,3 +15,6 @@ __pycache__/
 
 # local data snapshots for auditor agents (hold costs; never commit)
 .snapshots/
+
+# G9c calibration scans (PSA cert pages of Karim's own cards): never commit, the repo is public
+tools/grade-screen/calibration/

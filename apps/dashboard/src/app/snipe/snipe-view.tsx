@@ -7,6 +7,7 @@ import type { Budget } from "@/lib/budget";
 import TargetPanel from "./target-panel";
 import { findTarget, type SnipePrefill } from "@/lib/grading";
 import { GIXEN_URL, ebayItemNumber, maxText, reminderUrl } from "@/lib/gixen";
+import { screenMiniText } from "@/lib/condition-report";
 import s from "./snipe.module.css";
 
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
@@ -117,7 +118,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                     {r.live.length ? (
                       <>
                         <span className={over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "muted" : undefined}>{usd(r.livePrice)}</span>
-                        {r.live[0].screen && r.live[0].screen.verdict !== "error" && <span className={s.screenMini} data-verdict={r.live[0].screen.verdict}>{r.live[0].screen.verdict === "ceiling" ? r.live[0].screen.summary.split(":")[0] : r.live[0].screen.verdict === "no_issue" ? "No visible issue" : "Photo: can't judge"}</span>}
+                        {r.live[0].screen && r.live[0].screen.verdict !== "error" && <span className={s.screenMini} data-verdict={r.live[0].screen.verdict}>{screenMiniText(r.live[0].screen.verdict, r.live[0].screen.summary)}</span>}
                         <span className={s.small}>{over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
                       </>
                     ) : <span className="muted">none live</span>}

@@ -80,7 +80,7 @@ def outer_edges(img, quad, ppm, half_mm=1.2, n=60, step=0.5):
     q = order(np.float32(quad))
     lab = _lab(cv2.GaussianBlur(img, (0, 0), 0.7))
     ctr = q.mean(0)
-    lines, stats = [], {}
+    lines, stats, missing = [], {}, {}
     offs = np.arange(-half_mm * ppm, half_mm * ppm + step, step, dtype=np.float32)
     for k, side in enumerate(SIDES):
         a, b = q[k], q[(k + 1) % 4]
@@ -106,13 +106,18 @@ def outer_edges(img, quad, ppm, half_mm=1.2, n=60, step=0.5):
             s = offs[0] + _peak(gr, idx) * step
             pts.append(base[r] + s * nrm)
         if len(pts) < n * MIN_INLIERS:
-            return None, {"side": side, "why": "edge not found"}
+            missing[side] = "edge not found"  # G9c: keep going, so every side without a cut edge is named
+            continue
         f = _fit_line(np.array(pts), thresh=1.0)
         if f is None:
-            return None, {"side": side, "why": "edge not straight"}
+            missing[side] = "edge not straight"
+            continue
         p0, u, m, rms = f
         stats[side] = {"inliers": round(float(m.sum()) / n, 2), "rms_px": round(rms, 2)}
         lines.append((p0, u))
+    if missing:
+        first = next(iter(missing))
+        return None, {"side": first, "why": missing[first], "missing": missing}
     corners = np.array([_intersect(lines[(k + 3) % 4], lines[k]) for k in range(4)], np.float32)
     return corners, stats
 
@@ -278,7 +283,8 @@ def measure(img, quad):
     q = order(np.float32(quad))
     sides_px = [np.linalg.norm(q[(k + 1) % 4] - q[k]) for k in range(4)]
     ppm = float((sides_px[0] + sides_px[2]) / 2 / CARD_W + (sides_px[1] + sides_px[3]) / 2 / CARD_H) / 2
-    out = {"status": "refused", "px_per_mm": round(ppm, 1), "outer": None, "inner": {}, "alternates": {}, "centering": {}, "why": []}
+    out = {"status": "refused", "px_per_mm": round(ppm, 1), "outer": None, "inner": {}, "alternates": {}, "centering": {}, "why": [],
+           "edges_missing": []}  # G9c: sides whose cut edge was not found: no edge or corner check may use them
     shape = outline_shape_error(q)
     if shape:
         out["why"].append(shape)
@@ -288,7 +294,8 @@ def measure(img, quad):
         return out, None
     corners, st = outer_edges(img, q, ppm)
     if corners is None:
-        out["why"].append(f"{st['side']} cut edge: {st['why']} (plain dark backdrop, card flat)")
+        out["edges_missing"] = [s for s in SIDES if st["missing"].get(s) == "edge not found"]
+        out["why"].append("; ".join(f"{s} cut edge: {w}" for s, w in st["missing"].items()) + " (plain dark backdrop, card flat)")
         return out, None
     # refine once around the fitted edges
     c2, st2 = outer_edges(img, corners, ppm, half_mm=0.5)

@@ -219,6 +219,12 @@ def overlay(raking, finds, width=420):
     return "data:image/jpeg;base64," + base64.b64encode(buf.tobytes()).decode() if ok else None
 
 
+def glare_box(f):
+    """A finding's box in straightened px (x, y, w, h): its size around its centre, at least 2 mm."""
+    half = max(1.0, f["size_mm"] / 2) * PX
+    return f["x"] * CW - half, f["y"] * CH - half, 2 * half, 2 * half
+
+
 LIGHTS = ("left", "top", "right", "bottom")
 
 
@@ -249,7 +255,13 @@ def analyse_lights(flat_src, rakings, flat_hint=None):
     flat, e1 = straighten(flat_src, flat_hint)
     if flat is None:
         return {"status": "cant_judge", "why": f"straight-on photo: {e1}", "findings": [], "overlay": None, "lights": []}
-    per, used, why, first = [], [], [], None
+    # G9c: glare in the straight-on photo spoils every ratio against it; past the share limit nothing is judged.
+    flat_glare = cond.glare_mask(flat, PX, grow_max=1.0)
+    share = float(flat_glare[INSET:-INSET, INSET:-INSET].mean())
+    if share > cond.GLARE_MAX_SHARE:
+        return {"status": "cant_judge", "why": "straight-on photo: " + cond.GLARE_RETAKE.format(pct=round(100 * share)),
+                "findings": [], "overlay": None, "lights": []}
+    per, used, why, first, lit = [], [], [], None, {}
     for light, src, hint in rakings:
         rk, e2 = straighten(src, hint)
         if rk is None:
@@ -257,11 +269,16 @@ def analyse_lights(flat_src, rakings, flat_hint=None):
         z, mask = anomaly_map(flat, rk)
         if z is None:
             why.append(f"{light} light: too much glare or black"); continue
-        per.append((light, findings_from(z))); used.append(light)
+        glare = flat_glare | cond.glare_mask(rk, PX, ref=flat)  # a hotspot's halo shades like a dent: drop what sits in it
+        finds = [f for f in findings_from(z) if not cond.in_glare(glare, *glare_box(f))]
+        per.append((light, finds)); used.append(light); lit[light] = rk
         first = rk if first is None else first
     if not per:
         return {"status": "cant_judge", "why": "; ".join(why) or "no side-light photo", "findings": [], "overlay": None, "lights": []}
     finds = merge(per)
+    for f in finds:  # G9c evidence: box on the straightened card and a zoomed crop from the first light that saw it
+        x, y, w, h = glare_box(f)
+        f.update(bbox=[int(x), int(y), int(w), int(h)], px_per_mm=PX, crop=cond.crop_url(lit[f["lights"][0]], (x, y, w, h), PX))
     return {"status": "measured", "why": "; ".join(why) or None, "findings": finds, "overlay": overlay(first, finds), "lights": used}
 
 

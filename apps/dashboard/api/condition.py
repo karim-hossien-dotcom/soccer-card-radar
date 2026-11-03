@@ -171,20 +171,24 @@ def handle(headers, body, env=os.environ):
         rep, img = report.get(side), straight.get(side, {}).get("img")
         if rep and img is not None:
             rep["borders"]["image"] = jpeg_data_url(img)
-    report["holder"] = holder
+    report["holder"] = holder or bool(report.get("holder"))  # ticked, or a sleeve/toploader seen in the photo (G9c)
     report["gate"] = gate
     report["verdict"], report["summary"] = summarize(gate, report)
     report["measured"] = True
-    if not holder and (raking["front"] or raking["back"] or any(extra_lights.values())):
+    if not report["holder"] and (raking["front"] or raking["back"] or any(extra_lights.values())):
         report["surface_scan"] = surface_scan(front, back, raking, env.get("ANTHROPIC_API_KEY"), hints, extra_lights)
         for s in report["surface_scan"]:
             s["flash"] = flash
+            if s["status"] == "cant_judge" and s.get("why"):  # G9c: e.g. glare on the straight-on photo
+                report["cant_judge"].append({"point": f"{s['side'].lower()} surface (side light)", "graders": "PSA, BGS, TAG", "why": s["why"]})
             for f in s["findings"]:  # look flags only: side-light findings never lower the ceiling
                 src = {"both": "measured and seen by Claude", "measured": "measured", "claude": "seen by Claude"}[f["source"]]
                 lit = f" under {', '.join(f['lights'])} light" if f.get("lights") else ""
                 if flash:
                     lit += " (phone flash, not calibrated)"
                 report["ceiling"]["look"].append(f"{s['side']}: {f['kind']}, {f['where']} ({src}{lit})")
+                report["ceiling"]["look_evidence"].append({"side": s["side"].lower(), "bbox": f["bbox"], "px_per_mm": f["px_per_mm"], "crop": f.get("crop")}
+                                                          if f.get("bbox") else None)  # G9c: Claude-only findings have no box
     return 200, report
 
 

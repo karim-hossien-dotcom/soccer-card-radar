@@ -119,6 +119,31 @@ def test_four_lights_one_finding_per_defect_and_clean_stays_clean():
     assert lights(height())["findings"] == []
 
 
+def test_flash_hotspot_is_not_a_dent_or_scratch():
+    """G9c: a phone-flash hotspot in the side-light photo: its halo shades like a dent; it is masked, nothing is flagged."""
+    import test_condition as tc
+    for r in (40, 80):  # 2 and 4 mm core at 20 px/mm
+        rk = tc.hotspot(raking(CARD, height(), "left"), 0.35 * W, 0.6 * H, r)
+        res = sf.analyse_lights(enc(place(CARD)), [("left", enc(place(rk, 2.4)), None)])
+        assert res["status"] == "measured" and res["findings"] == [], res["findings"]
+
+
+def test_glare_on_the_straight_on_photo_is_cant_judge():
+    import test_condition as tc
+    flat = tc.hotspot(CARD, 0.5 * W, 0.5 * H, 160)  # 8 mm core: well over the share limit
+    res = sf.analyse_lights(enc(place(flat)), [("left", enc(place(raking(CARD, height(dent=(0.7, 0.3))), 2.4)), None)])
+    assert res["status"] == "cant_judge" and "glare covers" in res["why"] and "retake with the light at an angle" in res["why"], res
+
+
+def test_findings_carry_bbox_and_crop():
+    import test_condition as tc
+    r = run(height(dent=(0.75, 0.2)))
+    f = r["findings"][0]
+    x, y, w, h = f["bbox"]
+    assert f["px_per_mm"] == sf.PX and abs((x + w / 2) / sf.CW - f["x"]) < 0.01 and abs((y + h / 2) / sf.CH - f["y"]) < 0.01, f
+    assert max(tc.crop_size(f["crop"])) == 120
+
+
 def test_no_card_is_cant_judge():
     blank = enc(np.full((800, 600, 3), 30, np.uint8))
     assert sf.analyse_lights(blank, [("left", blank, None)])["status"] == "cant_judge"

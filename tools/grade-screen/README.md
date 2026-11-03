@@ -33,9 +33,12 @@ Photo rules: front only, no sleeve, dark plain background, straight above, card 
 
 `python3 condition.py front.jpg [back.jpg] [--holder]` prints a JSON report:
 
-- **Caps the grade ceiling** (checked by eye on the Ronaldo #161 test card): centering front and back against PSA
-  (55/45, 60/40, 65/35; back 75/25, 90/10) and Beckett (50/50, 55/45, 60/40; back 60/40, 70/30, 80/20) tolerances;
-  edge chipping / whitening specks on dark borders; corner whitening.
+- **Caps the grade ceiling**: centering front and back against PSA (55/45, 60/40, 65/35; back 75/25, 90/10) and
+  Beckett (50/50, 55/45, 60/40; back 60/40, 70/30, 80/20) tolerances. Edge chipping / whitening specks on dark borders,
+  corner whitening and stains are measured but stay look flags until calibrated (G9c: `CALIBRATED` in condition.py,
+  `calibrate.py`, CALIBRATION.md).
+- **Not judged** (G9c): a card in a sleeve or toploader (seen in the photo, or ticked) is cant_judge; a side whose cut
+  edge is not found gets no edge or corner checks.
 - **Look flags** (measured, not yet allowed to lower the ceiling): cut-line notches, waviness and roughness (TAG),
   corner dings vs the other corners, stains and print spots on light areas, colour registration.
 - **Can't judge from a photo** (listed in every report): surface scratches and metallic print lines on chrome, dents,
