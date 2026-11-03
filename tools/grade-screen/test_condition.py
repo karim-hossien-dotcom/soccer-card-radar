@@ -92,12 +92,18 @@ def save(img, name="card.png"):
 
 def sleeved(gap=True):
     """G9c: card in a sleeve on a black bed: a bright plastic rim 2 mm out from the card, and between rim and card the
-    bed seen through the plastic (gap=False: a tight sleeve, rim right against the card)."""
+    bed seen through the plastic (gap=False: a tight sleeve, a 2 mm plastic rim right against the card, with the
+    specular streak plastic shows: a near-white highlight 0.5 mm in, falling off to grey either side. A flat 1 mm band
+    is what white card stock looks like, so the review fix no longer counts it as plastic)."""
     img = np.full((120 * S, 90 * S, 3), 6, np.uint8)
-    x0, y0, g = 13 * S, 16 * S, (2 if gap else 1) * S
-    cv2.rectangle(img, (x0 - g, y0 - g), (x0 + 63 * S + g, y0 + 88 * S + g), (222, 222, 222), -1)
+    x0, y0, g = 13 * S, 16 * S, 2 * S
     if gap:
+        cv2.rectangle(img, (x0 - g, y0 - g), (x0 + 63 * S + g, y0 + 88 * S + g), (222, 222, 222), -1)
         cv2.rectangle(img, (x0 - g + S, y0 - g + S), (x0 + 63 * S + g - S, y0 + 88 * S + g - S), (18, 18, 18), -1)
+    else:
+        for i in range(g):  # concentric 1 px rings, outside in: grey -> highlight at 0.5 mm -> grey at the card
+            v = int(255 - 65 * abs(i - S // 2) / (g - S // 2))
+            cv2.rectangle(img, (x0 - g + i, y0 - g + i), (x0 + 63 * S + g - i, y0 + 88 * S + g - i), (v, v, v), 1)
     return save(card_on(img, x0, y0), "sleeve.png")
 
 
@@ -274,6 +280,81 @@ def test_holder_and_unusable_photos_never_claim_a_grade():
     assert h["front"]["edges"] == [] and h["ceiling"]["psa"] is None
     blank = os.path.join(tempfile.mkdtemp(), "b.png"); cv2.imwrite(blank, np.zeros((400, 300, 3), np.uint8))
     assert c.assess(blank)["ceiling"]["psa"] is None
+
+
+# G9c review: holder false positives. Fixtures follow the reviewer's probe (bed 6, the phone scanner's corners).
+def scan_quad(off_mm=0.0, x0=13 * S, y0=16 * S, W=90 * S, H=120 * S):
+    """The phone scanner's corners (fractions of the photo), off_mm outside the cut edge (negative: inside)."""
+    o = off_mm * S
+    return [[(x0 - o) / W, (y0 - o) / H], [(x0 + 63 * S + o) / W, (y0 - o) / H],
+            [(x0 + 63 * S + o) / W, (y0 + 88 * S + o) / H], [(x0 - o) / W, (y0 + 88 * S + o) / H]]
+
+
+def bed(v=6, noise=0):
+    img = np.full((120 * S, 90 * S, 3), v, np.uint8)
+    if noise:
+        img = np.clip(img + np.random.default_rng(0).normal(0, noise, img.shape), 0, 255).astype(np.uint8)
+    return img
+
+
+def measured_not_holder(d, label, centering=False):
+    f = d["front"]
+    assert d["holder"] is False and f.get("holder") is None, (label, f.get("holder"))
+    assert not any("sleeve or holder" in x["point"] for x in d["cant_judge"]), label
+    assert len(f["edges"]) == 4 - len(f.get("edges_missing") or []), (label, f["edges"])
+    if centering:  # centering still works where it did before G9c
+        assert d["centering"], (label, f["borders"]["why"])
+
+
+def test_black_border_on_black_backdrop_is_not_a_holder():
+    """Review item 1: a dark printed border on the dark bed looks like bed seen through a sleeve. Without a plastic
+    edge at the outline that is a contrast problem: measured, plus a retake on a lighter backdrop (never 'take it out')."""
+    cases = [(bed(), b) for b in (12, 20, 30)] + [(bed(6, 4), 18)]
+    for img, b in cases:
+        p = save(card_on(img, 13 * S, 16 * S, border=(b, b, b), centre=(60, 120, 200)), "black.png")
+        for hint in (None, scan_quad()):
+            d = c.assess(p, hints={"front": hint} if hint else None)
+            measured_not_holder(d, (b, hint is not None))  # border 12-18 on bed 6: the cut edge itself is not found
+            if hint is None:
+                continue  # no corners: the tracer finds the art panel, not the card (pre-existing, not a sleeve question)
+            cj = [x for x in d["cant_judge"] if x["point"] == "front: sleeve check"]
+            assert cj and cj[0]["why"] == c.LOW_CONTRAST_RETAKE, (b, d["cant_judge"][-3:])
+    assert "lighter" in c.LOW_CONTRAST_RETAKE and "take it out" not in c.LOW_CONTRAST_RETAKE
+
+
+def test_loose_outline_is_not_a_holder():
+    """Review item 2: the scanner's corners up to LOOSE_OUTLINE_MM outside the cut edge (backdrop between) are a loose
+    outline, not a sleeve; no low-contrast retake either. Any card, white-bordered included."""
+    assert c.LOOSE_OUTLINE_MM >= 1.5
+    plain = save(card_on(bed(), 13 * S, 16 * S), "plain.png")
+    white = save(card_on(bed(), 13 * S, 16 * S, border=(240, 240, 240), centre=(40, 30, 120), bw=3), "white.png")
+    for p in (plain, white):
+        for off in (0.5, 1.0, 1.5, -0.5):
+            d = c.assess(p, hints={"front": scan_quad(off)})
+            measured_not_holder(d, (p, off), centering=off <= 1.0)  # 1.5 mm is past the cut-edge refit window (1.2 mm)
+            assert not any(x["point"] == "front: sleeve check" for x in d["cant_judge"]), (p, off)
+
+
+def test_thin_white_edge_on_a_dark_card_is_not_a_holder():
+    """Review item 3: white stock or edge wear 0.3-1.0 mm wide around a dark full-bleed card is the wear the edge
+    check exists to find, not a plastic rim (a rim must be wider than RIM_MIN_MM and show a specular streak)."""
+    assert c.RIM_MIN_MM > 1.0
+    for t in (0.3, 0.6, 1.0):
+        img = bed()
+        x0, y0, w, h, k = 13 * S, 16 * S, 63 * S, 88 * S, int(t * S)
+        cv2.rectangle(img, (x0, y0), (x0 + w, y0 + h), (235, 235, 235), -1)
+        cv2.rectangle(img, (x0 + k, y0 + k), (x0 + w - k, y0 + h - k), (30, 25, 90), -1)
+        p = save(img, "thin.png")
+        for hint in (None, scan_quad()):
+            d = c.assess(p, hints={"front": hint} if hint else None)
+            measured_not_holder(d, (t, hint is not None))
+
+
+def test_sleeved_card_with_the_scanner_corners_on_the_sleeve_is_a_holder():
+    """The phone path: corners on the sleeve's outline, 2 mm outside the card."""
+    for gap in (True, False):
+        d = c.assess(sleeved(gap), hints={"front": scan_quad(2.0)})
+        assert d["holder"] is True and d["ceiling"]["psa"] is None, (gap, d["front"].get("holder"), d["front"]["borders"]["why"])
 
 
 if __name__ == "__main__":

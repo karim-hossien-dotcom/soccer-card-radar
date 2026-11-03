@@ -26,6 +26,9 @@ def test_summaries_from_reports():
     assert v == "no_issue" and s.startswith("No visible issue"), s
     v, s = scr.summarize(RAW, scr.cond.assess(t.glare_card(6)))  # G9c review: surface not judged (glare) is named too
     assert v == "no_issue" and s.startswith("No ceiling from what was measured") and "not judged: front surface" in s, s
+    black = t.save(t.card_on(t.bed(), 13 * t.S, 16 * t.S, border=(30, 30, 30), centre=(60, 120, 200)), "black.png")
+    v, s = scr.summarize(RAW, scr.cond.assess(black, hints={"front": t.scan_quad()}))  # G9c review: black border, black bed
+    assert v == "no_issue" and "not judged: front: sleeve check" in s and "take it out" not in s, s
     assert scr.summarize(RAW, {"front": None, "ceiling": {}})[0] == "cant_judge"
 
 

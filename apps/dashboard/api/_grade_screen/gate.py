@@ -70,7 +70,7 @@ def summarize(gate, report):
         return "ceiling", f"At best PSA {ceil['psa']:g}: {why}" if why else f"At best PSA {ceil['psa']:g}{cent_s}"
     # G9c: only claim what was measured. Look flags and unjudged edges are named, not hidden behind "no visible issue".
     gaps = [c["point"] for c in report.get("cant_judge") or []
-            if c.get("point", "").endswith(("edge and its corners", "surface (stains, print spots, registration)"))]
+            if c.get("point", "").endswith(("edge and its corners", "surface (stains, print spots, registration)", ": sleeve check"))]
     look = len(ceil.get("look") or [])
     if look or gaps:
         extra = ([f"{look} flag(s) to look at"] if look else []) + ([f"not judged: {', '.join(gaps)}"] if gaps else [])

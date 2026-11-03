@@ -93,3 +93,26 @@ other thresholds it is provisional: if calibration scans show many retakes on go
 still appear, lower it.
 
 Known limit: a scanned card whose inner face is printed pure white (255) looks like glare and goes to cant_judge.
+
+## Holder signs (G9c review)
+
+Constants in `condition.py` next to `holder_signs`. Measured on the card straightened from the cut edge
+`borders.measure` fits (`outer.corners_px`), not the rough outline, so corners up to the 1.2 mm refit window loose are
+corrected before the check.
+
+- `PLASTIC_EDGE_MM = 0.2`: the gap sign (backdrop seen through plastic, then the card) only counts when the outline
+  itself is a visible plastic edge, unlike the backdrop. Backdrop colour straight from the outline in is a loose outline
+  or a dark printed border, never a holder.
+- `LOOSE_OUTLINE_MM = 2.0`: backdrop straight from the outline in, up to 2.0 mm deep, is a loose outline and ignored.
+  Corners 1.5 mm loose (past the refit window) must not trip; 2.0 leaves 0.5 mm for blur and a tilted hint. Deeper on
+  3+ sides is a dark border on a dark backdrop that can't be told from a sleeve: measured as usual, plus cant_judge
+  "front: sleeve check" with `LOW_CONTRAST_RETAKE` (retake on a lighter, contrasting backdrop), which the summary names.
+- `RIM_MIN_MM = 1.5`, `RIM_MAX_MM = 3.0`, `RIM_PEAK_L = 95`, `RIM_STREAK_L = 12`: the rim sign needs a bright,
+  colourless band wider than white stock or edge wear (0.3-1.0 mm) with a specular streak inside it (a near-white peak
+  at least 12 L above the rest of the band, band ends trimmed 0.2 mm). Printed white borders and paper stock are flat,
+  so a 2-3 mm white border does not count either.
+
+Limits (synthetic only, needs a real-phone check of one sleeved and one unsleeved card): a penny sleeve whose edge is a
+hairline under 1.5 mm with no gap shows neither sign and is measured as a raw card; a white border photographed with a
+flash streak near the edge could read as a rim. Without scanner corners, a black-bordered card on a black bed is traced
+at its art panel (pre-existing, not a holder question).

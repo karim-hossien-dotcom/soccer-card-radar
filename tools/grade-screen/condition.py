@@ -246,18 +246,34 @@ def _first_run(mask, min_len, start_max):
 
 SLEEVE_GAP_DE, CARD_DE = 20.0, 35.0  # backdrop seen through plastic vs the backdrop outside; the card inside vs the backdrop
 HOLDER_SIDES = 3                      # sides that must show it (a sleeve's open end can hide one)
+# G9c review. A gap only counts as a sleeve when the outline itself is something: the plastic's edge, visibly unlike the
+# backdrop, at least PLASTIC_EDGE_MM wide. Backdrop colour straight from the outline in is either a loose outline (the
+# scanner's corners a little outside the cut edge) or a dark printed border on a dark backdrop; neither is a holder.
+PLASTIC_EDGE_MM = 0.2
+LOOSE_OUTLINE_MM = 2.0  # backdrop straight from the outline in, up to this deep: a loose outline, ignored. Deeper on
+                        # HOLDER_SIDES+ sides: a dark border we can't tell from a sleeve -> LOW_CONTRAST_RETAKE.
+                        # 2.0 mm: corners 1.5 mm loose must not trip (CALIBRATION.md "Holder signs").
+# Rim sign: a plastic edge wider than white stock or edge wear (0.3-1.0 mm) and with a specular streak (a near-white
+# highlight in the band, falling off by RIM_STREAK_L): printed white borders and paper stock are flat.
+RIM_MIN_MM, RIM_MAX_MM, RIM_PEAK_L, RIM_STREAK_L = 1.5, 3.0, 95.0, 12.0
+LOW_CONTRAST_RETAKE = ("card border too close to the backdrop to tell a dark border from a sleeve: "
+                       "retake on a lighter, contrasting backdrop")
 
 
 def holder_signs(card):
-    """G9c: why the traced outline looks like a sleeve or toploader, not the card's cut edge; None if it doesn't.
+    """G9c: (why the traced outline looks like a sleeve or toploader, not the card's cut edge, or None;
+    True if a dark border on a dark backdrop makes that impossible to tell).
     Profiles from the outline inward, 30 per side, 6 mm clear of the corners. Two signs:
-      gap: a run of 0.5 mm+ starting within 2.5 mm of the outline whose colour is the backdrop's (seen through clear
-           plastic), then the card further in: a second, nested outline.
-      rim: a bright, colourless band 0.2-1.2 mm wide at the outline (the plastic's edge catching the light) with
-           something much darker right inside it. A white card border is wider than 1.2 mm, so it does not count.
-    Either sign on HOLDER_SIDES+ sides (60% of the profiles on each) -> holder."""
+      gap: a plastic edge at the outline (PLASTIC_EDGE_MM+, unlike the backdrop), then a run of 0.5 mm+ in the
+           backdrop's colour (seen through clear plastic) starting within 2.5 mm, then the card further in.
+      rim: a bright, colourless band RIM_MIN_MM-RIM_MAX_MM wide at the outline with a specular streak (peak
+           RIM_PEAK_L+, RIM_STREAK_L+ brighter than the rest of the band) and something much darker right inside.
+           White stock, edge wear and printed white borders are flat, and the first two are narrower.
+    Either sign on HOLDER_SIDES+ sides (60% of the profiles on each) -> holder. Backdrop colour straight from the
+    outline in, deeper than LOOSE_OUTLINE_MM, on HOLDER_SIDES+ sides (counting gap sides) -> can't tell."""
     Lab = lab(card) * np.float32([100 / 255, 1, 1]) - np.float32([0, 128, 128])
-    gap_sides, rim_sides, depth = [], [], []
+    gap_sides, rim_sides, unsure_sides, depth = [], [], [], []
+    edge_px, loose_px, trim = max(2, int(PLASTIC_EDGE_MM * PX)), int(LOOSE_OUTLINE_MM * PX), max(1, int(0.2 * PX))
     for side in ("top", "right", "bottom", "left"):
         t = _to_top(Lab, side)
         cols = np.linspace(MARGIN + 6 * PX, t.shape[1] - MARGIN - 6 * PX, 30).astype(int)
@@ -265,23 +281,30 @@ def holder_signs(card):
         prof = t[MARGIN: MARGIN + 8 * PX][:, cols]                     # depth x profiles x Lab
         de = np.linalg.norm(prof - back, axis=2)
         L, chroma = prof[..., 0], np.hypot(prof[..., 1], prof[..., 2])
-        gaps = rims = 0
+        gaps = rims = unsure = 0
         for j in range(len(cols)):
             r = _first_run(de[2:, j] < SLEEVE_GAP_DE, int(0.5 * PX), int(2.5 * PX))
             if r:
                 inner = np.flatnonzero(de[2 + r[1]:, j] > CARD_DE)
-                if inner.size:
+                plastic = r[0] >= edge_px and np.median(de[2: 2 + r[0], j]) > SLEEVE_GAP_DE
+                if plastic and inner.size:
                     gaps += 1; depth.append((2 + r[1] + inner[0]) / PX)
-            r = _first_run((L[:, j] > 80) & (chroma[:, j] < 12), 2, int(0.5 * PX))
-            if r and r[1] - r[0] <= int(1.2 * PX) and r[1] + 3 < L.shape[0] and L[r[1] + 3, j] < L[r[0]:r[1], j].mean() - 30:
-                rims += 1
+                elif not plastic and 2 + r[1] > loose_px:
+                    unsure += 1
+            r = _first_run((L[:, j] > 70) & (chroma[:, j] < 12), 2, int(0.5 * PX))
+            if r and int(RIM_MIN_MM * PX) <= r[1] - r[0] <= int(RIM_MAX_MM * PX) and r[1] + 3 < L.shape[0]:
+                band = L[r[0] + trim: r[1] - trim, j]
+                if (band.size and band.max() >= RIM_PEAK_L and band.max() - band.min() >= RIM_STREAK_L
+                        and L[r[1] + 3, j] < L[r[0]:r[1], j].mean() - 30):
+                    rims += 1
         if gaps >= 0.6 * len(cols): gap_sides.append(side)
+        elif gaps + unsure >= 0.6 * len(cols): unsure_sides.append(side)
         if rims >= 0.6 * len(cols): rim_sides.append(side)
     if len(gap_sides) >= HOLDER_SIDES:
-        return f"second card edge {np.median(depth):.1f} mm inside the traced outline on {len(gap_sides)} sides, backdrop showing between"
+        return f"second card edge {np.median(depth):.1f} mm inside the traced outline on {len(gap_sides)} sides, backdrop showing between", False
     if len(rim_sides) >= HOLDER_SIDES:
-        return f"thin bright plastic edge around the card on {len(rim_sides)} sides"
-    return None
+        return f"bright plastic edge around the card on {len(rim_sides)} sides", False
+    return None, len(gap_sides) + len(unsure_sides) >= HOLDER_SIDES
 
 
 def nested_card(img):
@@ -529,7 +552,10 @@ def side_report(path, hint=None, straight=None, holder_guard=True):
     borders, flat = bd.measure(img, q)
     rep = {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders, "_card": card}
     shape = bd.outline_shape_error(q)
-    sleeve = None if shape or not holder_guard else holder_signs(card)
+    sleeve, unsure = None, False
+    if not shape and holder_guard:  # on the card straightened from the fitted cut edge, not the rough outline (G9c review)
+        fit = (borders.get("outer") or {}).get("corners_px")
+        sleeve, unsure = holder_signs(warp_with_margin(img, np.float32(fit)) if fit else card)
     if shape:  # G9a: the outline is a mat, shadow or holder, not the cut edge: edges/corners/stains on it are meaningless
         rep.update(edges=[], corners=[], surface={}, outline_error=shape)
     elif sleeve:  # G9c: the outline is the plastic; centering from it would be wrong too
@@ -539,6 +565,8 @@ def side_report(path, hint=None, straight=None, holder_guard=True):
     else:  # G9c per-edge guard: a side without a found cut edge (and its two corners) is not measured at all
         miss = borders.get("edges_missing") or []
         rep.update(edges=edge_checks(card, miss), corners=corner_checks(card, miss), surface=surface_checks(card), edges_missing=miss)
+        if unsure:
+            rep["sleeve_check"] = LOW_CONTRAST_RETAKE
     if straight is not None and flat is not None:
         straight["img"] = flat
     return rep, None
@@ -606,6 +634,8 @@ def assess_with_centering(front, back=None, holder=False, hints=None, straight=N
             cant.append({"point": f"{name} surface (stains, print spots, registration)", "graders": "PSA, BGS, TAG", "why": rep["surface"]["glare_retake"]})
         for sd in (rep or {}).get("edges_missing") or []:
             cant.append({"point": f"{name} {sd} edge and its corners", "graders": "PSA, BGS, TAG", "why": EDGE_RETAKE})
+        if rep and rep.get("sleeve_check"):
+            cant.append({"point": f"{name}: sleeve check", "graders": "PSA, BGS, TAG", "why": rep["sleeve_check"]})
     for name, why in seen:
         cant.append({"point": f"{name}: sleeve or holder", "graders": "PSA, BGS, TAG", "why": f"{HOLDER_RETAKE} ({why})"})
     for w in cent_why:
