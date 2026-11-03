@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1 **ready for QA** (branch feat/TB1-thin-blend), TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **ready for prod** (branch feat/TB1-thin-blend, awaiting Karim's "ship"), TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -195,6 +195,39 @@ Findings:
 
 Build/test after the fix: `pnpm install --frozen-lockfile` is up to date. `pnpm build --force` gives 5/5. Shared tests
 61/61 and dashboard 74/74. grade-screen `test_borders.py` and `test_api.py` pass, with 1 skip that was already in the test file.
+
+**QA (2026-11-03, on 12539e1): ready for prod.** This is a library plus a CLI with no UI, so there are no screenshots.
+- The shared tests pass 61/61. Case A' was recomputed independently in Python and matches every term (see Review).
+  There is no `.snapshots/` export for today. The diff's dollar figures are all synthetic and none matches the
+  write-up's costs.
+- CLI run 1, made-up graded PSA 9 card, `now` given, run as `pnpm -s --filter @soccer-card-radar/shared thin-blend
+  <abs path>`:
+  - Inputs:
+    - exact: $62 (2026-08-20) and $48 (2025-12-01).
+    - parallel_ratio: $30 and $34 (indexFactor 0.95), with ratios [1.6, 1.9, 2.1, 2.4].
+    - A raw purchase of $25.
+    - scarcerParallelSales: $70.
+    - lowestBin: $75.
+  - Exit 0. value **59.28**, low 47.17, high **70.00**, sd 0.1783, confidence 4 (uncapped 4), capsApplied
+    `["scarcer_parallel"]` (the BIN of $75 is above high, so it is not listed), conflict false.
+  - Signals: exact (n 2, weightShare 0.536) and parallel_ratio (r 2.0, σ_m 0.1732, weightShare 0.464). The raw
+    purchase is excluded as "grade state".
+  - A separate Python recompute gives V 59.28, low 47.17 and sd 0.1783.
+- CLI run 2, made-up raw card, no `now` (wall clock), run as `node packages/shared/bin/thin-blend.ts qa2.json`
+  with a relative path:
+  - Inputs:
+    - purchase: $45 (2026-07-15).
+    - proxy: $28 (2026-10-05), $0, and $31 dated 2027-02-01.
+    - higherGradeSales: $30.
+  - Exit 0. value **38.95**, low 26.06, high 58.21, sd 0.3136, confidence **2** (uncapped 3, purchase/proxy-only
+    cap), capsApplied `[]`.
+  - excluded:
+    - the $0 proxy sale: "zero, negative or missing price".
+    - the 2027 sale: "bad or future date".
+    - the higher-grade cap: "higher_grade: grade state (raw target)". This confirms the review fix.
+- Error paths: no argument and a missing file each exit 2 with `{"error": ...}`. Bad JSON is covered by the CLI test.
+  A relative path given through pnpm from `docs/` resolved against the caller's cwd.
+- Open for Karim: only the Minor items and the grade_ratio 365-day question in the Review. Nothing blocks shipping.
 
 ## TB2: range, confidence and method in the Vault's existing value cell
 
