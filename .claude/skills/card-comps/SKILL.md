@@ -19,7 +19,8 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
   research/2026-11-02-thin-market-pricing.md). Run it with the engine (shipped Nov 3 2026): write the signals to a JSON file and run
   `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` from the repo, always passing `now` and dated ratio
   pairs ({r, date} = newer sale of the pair; pairs older than 365 days are dropped). Store value, and the range/confidence
-  in the report (and in CardComp low/high/confidence once that migration is applied).
+  in the report (and in CardComp low/high/confidence once that migration is applied). No local checkout: clone the repo to a
+  temp folder and `pnpm install` first; if that fails, apply the formula by hand with every term shown.
 - Only graded sales in 90 days: never derive a raw value from graded prices (no PSA 9 / 2, PSA 10 / 4) or the reverse.
   Look up the raw value on PSA or Card Ladder and record source and date, else "no raw value found".
   (The snipe max-bid ceiling in packages/shared is a separate, approved bidding rule, not a valuation.)
