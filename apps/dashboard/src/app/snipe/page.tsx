@@ -19,7 +19,7 @@ export default async function SnipePage({ searchParams }: { searchParams: Record
           <p>Cards worth bidding on, best first.</p>
         </header>
         <Freshness listingsAt={status.listingsAt} compact />
-        <SnipeView {...data} prefill={prefill} listingsAt={status.listingsAt} />
+        <SnipeView {...data} prefill={prefill} listingsAt={status.listingsAt} renderedAt={Date.now()} />
       </>
     );
   } catch (e) {
