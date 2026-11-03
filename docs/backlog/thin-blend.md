@@ -6,7 +6,7 @@ holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's re
 fixtures or screenshots (the repo is public).
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
-Status: TB1 **ready for review** (branch feat/TB1-thin-blend), TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
+Status: TB1 **ready for QA** (branch feat/TB1-thin-blend), TB2 **approved**. Owner: engineer. Order: TB1 -> TB2.
 
 **Until TB1 ships, the weekly Prices job (Sun 7:43pm) applies thin_blend by hand** and shows every term in
 audits/<date>-prices.md. It writes CardComp rows with source `estimate` and method `thin_blend`. Range and confidence
@@ -150,6 +150,51 @@ on dollars.
 - Case A' recomputed independently in Python: every term matches the ticket within tolerance (V 76.743, sd 0.37624,
   uncapped range 47.383-124.294, exact share 0.2486).
 - Tests: shared 60/60 (20 thin-blend + 2 CLI new), dashboard 74/74, `pnpm build` green. All figures are synthetic.
+
+**Review (reviewer, 2026-11-03): ready for QA.** Diff reviewed: 106901e..cb9f9a7.
+- Acceptance criteria: AC1-AC9 each have a test in `packages/shared/src/thin-blend.test.ts` (AC1 case A' + uncapped
+  range, AC2, AC3, AC4, AC5 x4, AC6, AC7, AC8 boundaries, AC9 x3) and the CLI has 2 tests. AC10: see build/test below.
+- Formula against the research write-up (section 4): independent Python recompute of A' and B' matches every ticket term
+  (A': V 76.743, sd 0.37624, 47.383-124.294, exact share 0.2486, conflict 0.867 vs 1.741; B': V 89.702, sd 0.32956,
+  58.799-136.847). The research's own cases A and B run through the engine (scratchpad only, real figures not
+  committed) give $101.03 / $60.41-$165.50 / 2/5 and $185.22 / $122.04-$281.11 / 2/5, against the write-up's $100.88 /
+  $60-$166 and $185.2 / $122-$281. The small gap on A is the write-up rounding σ_m to 0.44 (engine 0.4374).
+- card-comps: raw and graded signals are kept apart (AC6). Nothing is invented: every output comes from inputs. Owner
+  overrides and the DB are untouched. No secrets. No real costs in the diff: grep for the write-up's cost and sale
+  figures finds nothing, and there is no `.snapshots/` export for today to compare against.
+- Engineer's open choices, all accepted: a 180-day window for the scarcer-parallel cap (same as the higher-grade cap and
+  the skill's 6-month pairing). `capsApplied` lists a cap only when it lowers high; any cap below V is also below
+  high, so a cap that binds is never missed. Sales dated more than 1 day ahead, bad dates and non-positive indexFactor
+  are excluded with reasons. Rounding to cents is monotone, so low <= value <= high still holds for TB2's check. The
+  gate counts only exact sales in the target's grade state.
+- CLI: exit 0 for any result, exit 2 with `{error}` for no argument, a missing file or bad JSON (tested). Relative
+  paths resolve against the caller's cwd through pnpm (checked from docs/). If `now` is omitted, the CLI uses the
+  current time.
+
+Findings:
+- **Important (fixed):** a raw target was capped by `higherGradeSales`, which are graded sales. A raw exact $100 sale
+  with a $60 PSA sale as the higher-grade cap returned value $60, a raw value set by a graded price. That breaks the
+  card-comps rule. Fixed in f5151d6: the higher-grade cap is only used for a graded target. For a raw target it is
+  listed in `excluded` as "higher_grade: grade state (raw target)" (`thin-blend.ts:284`). Test at
+  `thin-blend.test.ts:196`. It fails without the fix and passes with it.
+- Minor (left): non-positive ratios are dropped silently, with no `excluded` entry (`thin-blend.ts:183`).
+- Minor (left): cap sales with bad or future dates are skipped silently (`thin-blend.ts:278`). Bad cap prices are
+  listed.
+- Minor (left, caller contract): `scarcerParallelSales` and `lowestBin` carry no gradeState. The caller (the weekly job,
+  TB2 or later) must pass only the target's grade state.
+- Minor (left, design): the result does not echo the `now` it used. Without `now` in the input, the output depends on
+  the wall clock and an audit report cannot reproduce it. The job should always pass `now`. Echoing it is a small
+  follow-up if wanted.
+- Minor (left): `bin/thin-blend.ts:16` prefers `INIT_CWD`. If the bin is run directly with `node` from inside a
+  different pnpm script, a relative path would resolve against that script's cwd. Absolute paths are unaffected.
+- Question for Karim/PM (left, business rule): the write-up's table limits grade_ratio inputs to sales within 365
+  days. The ticket doesn't say so and the engine doesn't enforce it. Older sales still lose weight through var_j.
+- Checked with nothing found: comments inserted mid-line or mid-type; off-by-one windows (the gate is `<= 90`,
+  purchases are kept to 730 days and caps to 180 days, inclusive, with tests at 89/181 days); fuzzy matching; bids,
+  sold-scans, env changes; duplicate UI (no UI).
+
+Build/test after the fix: `pnpm install --frozen-lockfile` is up to date. `pnpm build --force` gives 5/5. Shared tests
+61/61 and dashboard 74/74. grade-screen `test_borders.py` and `test_api.py` pass, with 1 skip that was already in the test file.
 
 ## TB2: range, confidence and method in the Vault's existing value cell
 
