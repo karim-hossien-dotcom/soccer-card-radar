@@ -16,7 +16,8 @@ behind a login), Supabase Postgres (project zsubyufjenapkgkwpqzv). The repo is P
   Ask only about what no rule covers (a missing cost, a card that can't be identified).
 - Jobs answer their own questions (Karim, Nov 3 2026): ownership and certs from his PSA collection (app.collectors.com,
   not "Previously Owned") and Card Ladder collection, adding missing slabs to the Vault; card identity and parallel from
-  the PSA cert page or his PSA order; cost from his eBay purchase history (eBay itself) and PSA order fees; no eBay or PSA
+  the PSA cert page or his PSA order; cost from his eBay purchase history (eBay itself; also eBay Selling > "past purchases" for older buys) and PSA order fees;
+  an eBay price replaces a Card Ladder cost entry; no eBay or PSA
   record = pack pull at $0 (ledger source pack_pull_assumed); values with no sale = estimate (card-comps skill); photos
   from PSA/SGC/Beckett scans. Only photos no site has go on a short "take photo" list. Buying/bidding stays Karim's.
 - Not owned (Karim, Nov 3 2026), never add to the Vault even if his PSA collection lists them: PSA certs 69127224
