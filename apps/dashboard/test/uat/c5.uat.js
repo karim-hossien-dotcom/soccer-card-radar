@@ -63,6 +63,25 @@ const noOverflow = (p) => p.evaluate(() => document.documentElement.scrollWidth 
     await p.close();
   }
 
+  // Hydration: countdowns ("ends in", "eBay checked") must render the same on the server and the first client render.
+  // The browser clock runs 90s ahead of the server's so a minute always ticks over between the two renders.
+  for (const [name, viewport] of [['desktop', { width: 1280, height: 1000 }], ['390', { width: 390, height: 844 }]]) {
+    const ctx = await b.newContext({ viewport });
+    const p = await ctx.newPage();
+    await p.clock.install({ time: Date.now() + 90_000 });
+    const hyd = [];
+    p.on('console', (m) => { if (m.type() === 'error' && /hydrat|did not match|server-rendered|server rendered/i.test(m.text())) hyd.push(m.text().slice(0, 160)); });
+    p.on('pageerror', (e) => { if (/hydrat|did not match|server-rendered|server rendered/i.test(String(e))) hyd.push(String(e).slice(0, 160)); });
+    await p.goto('http://localhost:3100/snipe', { waitUntil: 'networkidle' });
+    ok(/ends in \d/.test(await p.locator('body').innerText()), `${name}: snipe board shows an auction countdown`);
+    ok(!hyd.length, `${name}: no hydration mismatch with the client clock 90s ahead ${hyd.join('; ')}`);
+    const errs = []; p.on('pageerror', (e) => errs.push(String(e)));
+    await p.locator('tr[aria-expanded]', { hasText: 'auction, ends in' }).first().click();
+    ok(/auction.*, ends in \d/.test(await p.locator('ul[class*="live"]').first().innerText()), `${name}: opened row lists auctions with a countdown`);
+    ok(!errs.length, `${name}: no page errors opening a row ${errs.join('; ')}`);
+    await ctx.close();
+  }
+
   // Assumption keys override defaults on both pages (fixtures are re-read per request).
   const SF = process.env.SNIPE_FIXTURE, CF = process.env.COLLECTION_FIXTURE;
   if (SF && CF) {

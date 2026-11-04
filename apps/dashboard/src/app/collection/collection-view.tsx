@@ -7,6 +7,7 @@ import CompsPanel from "./comps-panel";
 import s from "./collection.module.css";
 import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
+import { estTileTag, estDrawerText } from "@/lib/value-est";
 
 type Scenario = "now" | "10" | "9" | "8";
 type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
@@ -91,6 +92,21 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     return () => window.removeEventListener("scroll", close);
   }, []);
 
+  // The filter bar is sticky and wraps to several rows on phones: keep the grid's scroll-margin equal to its stuck height
+  // so scrolling to the cards leaves the first row (labels included) below the bar.
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const controlsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const bar = controlsRef.current, wrap = wrapRef.current;
+    if (!bar || !wrap || typeof ResizeObserver === "undefined") return;
+    const set = () => wrap.style.setProperty("--sticky-h", `${Math.ceil((parseFloat(getComputedStyle(bar).top) || 0) + bar.offsetHeight)}px`);
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    window.addEventListener("resize", set);
+    set();
+    return () => { ro.disconnect(); window.removeEventListener("resize", set); };
+  }, []);
+
   const movers = useMemo(
     () => cards.flatMap((c) => { const w = trends[c.id]?.wow; return w ? [{ card: c, wow: w }] : []; }),
     [cards, trends],
@@ -100,7 +116,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
   const sealedCount = useMemo(() => cards.filter((c) => c.status === "sealed").length, [cards]);
 
   return (
-    <div className={s.wrap}>
+    <div className={s.wrap} ref={wrapRef}>
       <section className={s.hero} aria-label="Collection totals">
         <div className={s.heroHead}>
           <h1>Vault</h1>
@@ -118,7 +134,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
         <span>{staleCount ? `${staleCount} cards have comps older than 14 days.` : "All comps are current."}</span>
         <button className={s.btn} onClick={() => setCompsOpen(true)}>Update comps</button>
       </div>
-      <div className={s.controls}>
+      <div className={s.controls} ref={controlsRef}>
         <Seg label="Price as" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
         <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`], ...(sealedCount ? [["sealed", `Sealed (${sealedCount})`] as [string, string]] : [])]} />
         <div className={s.row}>
@@ -162,7 +178,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
               <div className={s.meta}>
                 <div className={s.pl}>{c.player}{c.stale && <span className={s.staleTag}>stale</span>}</div>
                 <div className={s.nums}>
-                  <span className={s.val}>{usd(v)}{est && <small> est.</small>}</span>
+                  <span className={s.val}>{usd(v)}{est ? <small> est.</small> : scen === "now" && c.valueEst ? <small>{estTileTag(c.valueEst)}</small> : null}</span>
                   <span className={tone(g)}>{signed(g)}</span>
                 </div>
                 {trends[c.id]?.wow ? <div className={`${s.sub} ${tone(trends[c.id].wow)}`}>{signed(trends[c.id].wow)} this week</div> : null}
@@ -269,7 +285,7 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
           <tr><td>Status</td><td>{STATUS_LABEL[c.status]}</td></tr>
           <tr><td>Date added</td><td>{c.dateAdded ?? "—"}</td></tr>
           <tr><td>Cost basis</td><td>{usd(c.cost, 2)}</td></tr>
-          <tr><td>Value now</td><td>{usd(c.valueNow, 2)}</td></tr>
+          <tr><td>Value now</td><td>{estDrawerText(c.valueNow, c.valueEst)}</td></tr>
           <tr><td>Priced</td><td className={c.stale ? s.warn : undefined}>{c.compAsOf ? `${c.compGrade} comp, ${c.compAsOf}${c.stale ? " (stale)" : ""}` : "no comp yet"}</td></tr>
           {c.pop && <tr><td>PSA pop</td><td>{c.pop.gem10 ?? "—"} PSA 10 of {c.pop.total ?? "—"} graded{c.pop.gemRate !== null ? ` (${Math.round(c.pop.gemRate * 100)}% gem)` : ""}</td></tr>}
           <tr><td>Gain or loss now</td><td className={tone(c.valueNow !== null && c.cost !== null ? c.valueNow - c.cost : null)}>{c.valueNow !== null && c.cost !== null ? signed(c.valueNow - c.cost) : "—"}</td></tr>

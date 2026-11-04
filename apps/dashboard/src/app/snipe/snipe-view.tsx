@@ -8,6 +8,7 @@ import TargetPanel from "./target-panel";
 import { findTarget, type SnipePrefill } from "@/lib/grading";
 import { GIXEN_URL, ebayItemNumber, maxText, reminderUrl } from "@/lib/gixen";
 import { screenMiniText } from "@/lib/condition-report";
+import { agoShort, endsIn } from "@/lib/countdown";
 import s from "./snipe.module.css";
 
 const usd = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `$${n >= 100 ? Math.round(n).toLocaleString("en-US") : n.toFixed(n % 1 ? 2 : 0)}`);
@@ -16,17 +17,15 @@ const over = (price: number | null, max: number | null) => price !== null && max
 /** The max to compare a live listing against: the approved max when the auction has one (it can be hand-set above the engine max). */
 const maxFor = (decisions: Record<string, Decision>, l: LiveListing, r: BoardRow) => (decisions[l.externalId]?.status === "approved" ? decisions[l.externalId].maxBid : r.result.maxBid);
 const short = (d: string) => new Date(d + "T12:00:00Z").toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
-const agoShort = (iso: string) => {
-  const h = Math.floor((Date.now() - new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + "Z").getTime()) / 3600_000);
-  return h < 1 ? "just now" : h < 48 ? `${h}h ago` : `${Math.floor(h / 24)}d ago`;
-};
-const endsIn = (iso: string | null) => {
-  if (!iso) return "";
-  const m = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
-  return m < 60 ? `${m}m` : m < 2880 ? `${Math.floor(m / 60)}h ${m % 60}m` : `${Math.floor(m / 1440)}d`;
-};
-
-export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, maxBidRule: m, own, prefill = null, listingsAt = null }: SnipeData & { prefill?: SnipePrefill | null; listingsAt?: string | null }) {
+export default function SnipeView({ budget: serverBudget, decisions: serverDecisions, rows, players, actions, gemHaircut, psa9Haircut, maxBidRule: m, own, prefill = null, listingsAt = null, renderedAt }: SnipeData & { prefill?: SnipePrefill | null; listingsAt?: string | null; renderedAt: number }) {
+  // Countdowns use the server's clock for the server render and the first client render (same HTML, no hydration error),
+  // then the browser's clock after mount, refreshed every 30s.
+  const [now, setNow] = useState(renderedAt);
+  useEffect(() => {
+    setNow(Date.now());
+    const t = setInterval(() => setNow(Date.now()), 30_000);
+    return () => clearInterval(t);
+  }, []);
   const [open, setOpen] = useState<string | null>(null);
   // C3: apply a decision on screen as soon as the server accepts it; the next server render replaces this.
   const [local, setLocal] = useState<{ decisions: Record<string, Decision>; spent: number }>({ decisions: {}, spent: 0 });
@@ -68,7 +67,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
           <div><span>Budget left</span><b>{usd(budget.left)}</b><small>of {usd(budget.budget)} · {short(budget.start)}–{short(budget.end)}</small></div>
           <div><span>Live listings</span><b>{rows.filter((r) => r.live.length).length}</b><small>of {rows.length} targets</small></div>
           {own.graded > 0 && <div><span>Your PSA 10 rate</span><b>{own.psa10} of {own.graded}</b><small>cards you graded</small></div>}
-          {listingsAt && <div><span>eBay checked</span><b>{agoShort(listingsAt)}</b><small>daily scan</small></div>}
+          {listingsAt && <div><span>eBay checked</span><b>{agoShort(listingsAt, now)}</b><small>daily scan</small></div>}
         </div>
         <button className="btn btn-primary" onClick={() => { setDraft(null); setEditing("new"); }}>Add target</button>
       </div>
@@ -119,7 +118,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                       <>
                         <span className={over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "muted" : undefined}>{usd(r.livePrice)}</span>
                         {r.live[0].screen && r.live[0].screen.verdict !== "error" && <span className={s.screenMini} data-verdict={r.live[0].screen.verdict}>{screenMiniText(r.live[0].screen.verdict, r.live[0].screen.summary)}</span>}
-                        <span className={s.small}>{over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
+                        <span className={s.small}>{over(r.livePrice, maxFor(decisions, r.live[0], r)) ? "over your max, " : ""}{r.live[0].kind === "auction" ? `auction, ends in ${endsIn(r.live[0].endsAt, now)}` : "Buy It Now"}{r.live.length > 1 ? `, +${r.live.length - 1} more` : ""}</span>
                       </>
                     ) : <span className="muted">none live</span>}
                   </td>
@@ -132,7 +131,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
                     <span className={s.small}>{r.legend ? "Legend: stats ignored" : r.form ? `Rating ${r.form.avgRating ?? "—"}, ${r.form.goals ?? "—"}G ${r.form.assists ?? "—"}A` : "Stats pending your review"}</span>
                   </td>
                 </tr>
-                {open === r.target.id && <Detail row={r} budget={budget} decisions={decisions} onDecided={onDecided} onEdit={() => setEditing(r.target)} />}
+                {open === r.target.id && <Detail row={r} budget={budget} decisions={decisions} onDecided={onDecided} onEdit={() => setEditing(r.target)} now={now} />}
               </Fragment>
             ))}
             {rows.length === 0 && <tr><td colSpan={7} className="serif">No targets yet. Add the first card you want to snipe.</td></tr>}
@@ -145,7 +144,7 @@ export default function SnipeView({ budget: serverBudget, decisions: serverDecis
   );
 }
 
-function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRow; budget: Budget; decisions: Record<string, Decision>; onDecided: (id: string, d: Decision) => void; onEdit: () => void }) {
+function Detail({ row: r, budget, decisions, onDecided, onEdit, now }: { row: BoardRow; budget: Budget; decisions: Record<string, Decision>; onDecided: (id: string, d: Decision) => void; onEdit: () => void; now: number }) {
   const t = r.target;
   return (
     <tr className={s.detail}>
@@ -177,7 +176,7 @@ function Detail({ row: r, budget, decisions, onDecided, onEdit }: { row: BoardRo
               <ul className={s.live}>
                 {r.live.slice(0, 6).map((l, i) => (
                   <li key={i} className={over(l.price, maxFor(decisions, l, r)) ? "muted" : undefined}>
-                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt)}` : "Buy It Now"}{over(l.price, maxFor(decisions, l, r)) ? ", over your max" : ""}
+                    <strong>{usd(l.price)}</strong> {l.kind === "auction" ? `auction${l.bids !== null ? `, ${l.bids} bid${l.bids === 1 ? "" : "s"}` : ""}, ends in ${endsIn(l.endsAt, now)}` : "Buy It Now"}{over(l.price, maxFor(decisions, l, r)) ? ", over your max" : ""}
                     <br /><a href={l.url} target="_blank" rel="noopener noreferrer">{l.title}</a>
                     {l.screen && <ScreenBadge s={l.screen} />}
                     <BidControls listing={l} row={r} left={budget.left} decision={decisions[l.externalId]} onDecided={onDecided} skipOnly={l.kind !== "auction"} />

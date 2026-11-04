@@ -2,6 +2,7 @@ import { supabase } from "@soccer-card-radar/db";
 import { valueCard, configFromAssumptions, snipeMaxBid, snipeConfigFromAssumptions, type CardStatus, type Decision } from "@soccer-card-radar/shared";
 import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
 import { byRecency, vaultComp, maxBidInputs, isSaleComp, type VaultComp } from "@/lib/vault-comp";
+import { valueEst, toCompRow, isMissingColumn, COMP_COLS, COMP_COLS_LEGACY, type ValueEst } from "@/lib/value-est";
 
 export type CompRow = VaultComp;
 
@@ -20,6 +21,7 @@ export type CollectionCard = {
   submissionId: string | null;
   cost: number | null;
   valueNow: number | null;
+  valueEst: ValueEst | null; // TB2: range/confidence/method when valueNow is an estimate
   psa10: number | null;
   psa9: number | null;
   psa8: number | null;
@@ -69,7 +71,7 @@ export async function fetchRows(): Promise<RawRows> {
   const since = new Date(Date.now() - 13 * 7 * 86400_000).toISOString().slice(0, 10);
   const [cards, comps, ledger, assumptions, snapshots, pops] = await Promise.all([
     supabase.from("Card").select("*"),
-    supabase.from("CardComp").select('"cardId", grade, price, method, source, "asOf"'),
+    fetchComps(),
     supabase.from("LedgerEntry").select('"cardId", kind, amount, "occurredOn", source'),
     supabase.from("Assumption").select("key, value"),
     supabase.from("CardValueSnapshot").select('"cardId", week, status, "valueNow", psa10, psa9, psa8, cost').gte("week", since),
@@ -82,6 +84,13 @@ export async function fetchRows(): Promise<RawRows> {
     pops: (pops.data ?? []).map((r) => ({ ...r, gemRate: num(r.gemRate) })),
     snapshots: (snapshots.data ?? []).map((r) => ({ ...r, valueNow: num(r.valueNow), psa10: num(r.psa10), psa9: num(r.psa9), psa8: num(r.psa8), cost: num(r.cost) })),
   } as RawRows;
+}
+
+/** TB2: tolerant read. Until 20261103b_card_comp_range.sql is applied the range columns are missing: read without them. */
+async function fetchComps() {
+  const r = await supabase.from("CardComp").select(COMP_COLS);
+  if (!r.error || !isMissingColumn(r.error)) return r;
+  return supabase.from("CardComp").select(COMP_COLS_LEGACY);
 }
 
 /** Loads the collection and records this week's value snapshot (A5): only changed rows are written. */
@@ -110,7 +119,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
   const compsBy = new Map<string, CompRow[]>();
   for (const c of rows.comps) {
     const list = compsBy.get(c.cardId) ?? [];
-    list.push({ grade: c.grade, price: Number(c.price), method: c.method, source: c.source, asOf: c.asOf });
+    list.push(toCompRow(c));
     compsBy.set(c.cardId, list);
   }
   const ledgerBy = new Map<string, CollectionCard["ledger"]>();
@@ -157,6 +166,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
       submissionId: card.submissionId,
       cost,
       valueNow,
+      valueEst: valueEst(nowComp),
       ...v,
       maxBid,
       comps: [...comps].sort(byRecency),
