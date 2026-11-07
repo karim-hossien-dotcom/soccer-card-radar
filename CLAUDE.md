@@ -21,7 +21,8 @@ behind a login), Supabase Postgres (project zsubyufjenapkgkwpqzv). The repo is P
   record = pack pull at $0 (ledger source pack_pull_assumed); values with no sale = estimate (card-comps skill); photos
   from PSA/SGC/Beckett scans. Only photos no site has go on a short "take photo" list. Buying/bidding stays Karim's.
 - Not owned (Karim, Nov 3 2026), never add to the Vault even if his PSA collection lists them: PSA certs 69127224
-  (2021 Road to Qatar #116 Ronaldo Optic Holo) and 69127228 (2021 Road to Qatar #26 Vinicius Optic Red).
+  (2021 Road to Qatar #116 Ronaldo Optic Holo) and 69127228 (2021 Road to Qatar #26 Vinicius Optic Red); the 2024-25
+  Topps Chrome UCC Roman Numeral Salah III/XI (eBay Oct 15 2026, refunded as damaged, Nov 2026).
 - A job is not done while items are open: retry blocked or conflicting items by another route, then a verifier agent;
   the report's first line says "Complete" or "Incomplete: N items open" with the reason for each.
 
