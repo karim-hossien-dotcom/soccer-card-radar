@@ -49,6 +49,9 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
   serial ("09/10") before calling it base. Trust the card, not the title.
 - Sellers name the same parallel differently (Merlin #97 Gold /50 is often titled "Gold Atomic"): search by print run
   and grade ("/50 PSA 10") as well as the colour word, and check the serial in the photo, before calling a card unsold.
+- An "Auto Patch" / patch auto is a different card from an on-card "Autograph" of the same set (Dynasty DAV-KM1 is
+  on-card; Sep 27 2026 $1,184 "Auto Patch Black 4/5" is not a comp for it). A Card Ladder value with no exact sale
+  behind it is not a comp either; compare it with the proxy before trusting it.
 - No exact sale in any grade: always add a proxy signal before falling back to purchase-only. Proxy = the same player's
   same tier in the same grade (e.g. other 2024-26 Topps Gold /50 autos PSA 10 of that player), last 90 days; never
   other players unless the same player has none (Karim, Nov 10 2026: Bellingham gold auto PSA 10s).
