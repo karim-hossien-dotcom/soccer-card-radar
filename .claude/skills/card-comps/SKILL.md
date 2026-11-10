@@ -47,6 +47,11 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
 - Card Ladder labels a season by its SECOND year: "2025 Merlin" = 2024-25 Merlin.
 - Seller titles are unreliable for the year and often omit the parallel colour: check each sale photo for a stamped
   serial ("09/10") before calling it base. Trust the card, not the title.
+- Sellers name the same parallel differently (Merlin #97 Gold /50 is often titled "Gold Atomic"): search by print run
+  and grade ("/50 PSA 10") as well as the colour word, and check the serial in the photo, before calling a card unsold.
+- No exact sale in any grade: always add a proxy signal before falling back to purchase-only. Proxy = the same player's
+  same tier in the same grade (e.g. other 2024-26 Topps Gold /50 autos PSA 10 of that player), last 90 days; never
+  other players unless the same player has none (Karim, Nov 10 2026: Bellingham gold auto PSA 10s).
 - Confirm insert and parallel names on the official checklist. PSA's cert label is the authority for a graded card's name.
 
 ## Card Ladder
