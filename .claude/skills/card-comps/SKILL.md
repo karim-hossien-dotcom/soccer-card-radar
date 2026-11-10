@@ -17,7 +17,9 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
   report. A real exact sale replaces it as soon as one exists. Method: the thin-market formula in
   docs/research/2026-11-02-thin-market-pricing.md (approved by Karim Nov 3 2026; formula `thin_blend`, full write-up in the card-mcp project doc
   research/2026-11-02-thin-market-pricing.md). Run it with the engine (shipped Nov 3 2026): write the signals to a JSON file and run
-  `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` from the repo, always passing `now` and dated ratio
+  `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` from the repo, always passing `now`, an `indexFactor` on every sale older
+  than 2 weeks (player's Card Ladder index now ÷ index at the sale date, read from /players/<Name> Chart.instances; never
+  leave it to default to 1 when the index has moved), and dated ratio
   pairs ({r, date} = newer sale of the pair; pairs older than 365 days are dropped). Store value, and the range/confidence
   in the report (and in CardComp low/high/confidence once that migration is applied). No local checkout: clone the repo to a
   temp folder and `pnpm install` first; if that fails, apply the formula by hand with every term shown.

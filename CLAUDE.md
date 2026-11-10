@@ -23,6 +23,8 @@ behind a login), Supabase Postgres (project zsubyufjenapkgkwpqzv). The repo is P
 - Not owned (Karim, Nov 3 2026), never add to the Vault even if his PSA collection lists them: PSA certs 69127224
   (2021 Road to Qatar #116 Ronaldo Optic Holo) and 69127228 (2021 Road to Qatar #26 Vinicius Optic Red); the 2024-25
   Topps Chrome UCC Roman Numeral Salah III/XI (eBay Oct 15 2026, refunded as damaged, Nov 2026).
+- Graders other than PSA, BGS, SGC and CGC (e.g. VGC) are valued as raw cards. PlayerForm: when no source publishes a
+  stat for the row's scope (e.g. an all-competitions rating), switch that player to league scope (Karim, Nov 10 2026).
 - A job is not done while items are open: retry blocked or conflicting items by another route, then a verifier agent;
   the report's first line says "Complete" or "Incomplete: N items open" with the reason for each.
 
