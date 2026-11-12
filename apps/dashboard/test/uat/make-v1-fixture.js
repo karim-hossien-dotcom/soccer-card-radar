@@ -17,7 +17,8 @@ const data = {
     card(3, { status: 'raw', player: 'Test Charlie', item: 'SYNTHETIC 2017 TEST CHROME #3 TEST CHARLIE' }),
     card(4, { status: 'raw', player: 'Test Delta', item: 'SYNTHETIC 2018 TEST NOW #4 TEST DELTA (Qty 2)' }),
     card(5, { status: 'at_grader', player: 'Test Echo', item: 'SYNTHETIC 2014 TEST SET #5 TEST ECHO', submissionId: 'SYN-0001' }),
-    card(6, { status: 'graded', grader: 'PSA', grade: '9', cert: '00000106', player: 'Test Foxtrot', item: 'SYNTHETIC 2017 TEST SET #6 TEST FOXTROT' }),  ],
+    card(6, { status: 'graded', grader: 'PSA', grade: '9', cert: '00000106', player: 'Test Foxtrot', item: 'SYNTHETIC 2017 TEST SET #6 TEST FOXTROT' }),
+  ],
   comps: [
     comp(1, 'raw', 40), comp(1, 'PSA 10', 300), comp(1, 'PSA 9', 120), comp(1, 'PSA 8', 70),
     comp(2, 'raw', 60), comp(2, 'PSA 10', 500), comp(2, 'PSA 9', 150), comp(2, 'PSA 8', 90),
