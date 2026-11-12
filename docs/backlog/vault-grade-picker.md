@@ -5,7 +5,7 @@ tiny selector". Rework, Karim 2026-11-11 (rejected the per-card grade chip): "ju
 where we can select and check multiple as they add up".
 Success metric: Karim can filter (e.g. At PSA), tick cards, switch "Price as" to PSA 10 and read what those cards add
 up to. No database write, no new page and no second "Price as" control.
-Status: V1 **ready for review** (rework). Owner: Karim.
+Status: V1 **ready for prod** (rework; reviewed and QA'd 2026-11-11, waiting for Karim's "ship"). Owner: Karim.
 
 **V1 rework change note (engineer, 2026-11-11, branch feat/V1-grade-picker):**
 - Removed the per-card grade chip (tile and drawer), the override logic, "no comp", the hero "overridden · reset" label
@@ -28,6 +28,33 @@ Status: V1 **ready for review** (rework). Owner: Karim.
 - Results: dashboard tests 95/95, shared 78/78, grade-screen test_borders.py and test_api.py exit 0, `pnpm build` green.
   UAT: V1 72 ok / 0 FAIL at 1280 and 390, TB2 34 ok / 0 FAIL (screenshots to a temp dir), C5 47 ok / 0 FAIL (copy of
   the real collection, every Playwright screenshot stubbed, nothing written, copy deleted).
+
+**Review (reviewer, 2026-11-11, rework ef755e1, diff c8a47f3..ef755e1):** no Critical or Important findings, no fix commit.
+- AC1: `vault-scenario.test.ts` covers hand totals at Now/10/9/8, fallback, graded/sealed, no-cost/no-value, unknown and
+  duplicate ids, select-all = Vault totals, `parseSelection` and throwing storage; `scenarioValue`/`vaultTotals` checked
+  against main's code verbatim. AC2-7 covered by `v1.uat.js` (72 ok / 0 FAIL at 1280 and 390, rerun by reviewer).
+- Accessibility, checked separately: the checkbox is a sibling of the open button (`collection-view.tsx:189`), labelled
+  "Select <player>, <item>"; Tab goes from the open button to the checkbox, which shows a 2px accent focus ring; Space
+  toggles it and Enter does not open the drawer; at 390 the tap area is 36x46 and a click in its corner toggles it.
+- sessionStorage: only accessed through `storage()` / `read|writeStoredSelection`, all in try/catch; read after mount
+  (no hydration warning with valid or corrupt storage, or with storage throwing).
+- No selection: `vaultTotals` equals main's totals code, and the summary is not rendered. No chip/override code left
+  (grep for `gradeOverride`/override/chip in the Vault: none; the "no comp yet" drawer text is main's).
+- Card values: no valuation change; the UAT fixture is fully synthetic. No secrets in the diff or screenshots (all four
+  V1 PNGs checked by eye: SYNTHETIC cards only). No DB, API, `load.ts` or packages/shared change; no duplicate control.
+- Minor, left as is (design or harmless, not in AC):
+  1. The first tick adds the summary line to the hero, which pushes the grid down about 25px (layout shift under the
+     pointer). A reserved line would avoid it; that's a design choice for Karim/PM.
+  2. `aria-live` sits on the conditionally rendered `<p>` (`collection-view.tsx:123`), so screen readers may skip the
+     first appearance. Later updates are announced.
+  3. Ids of cards that leave the Vault stay in sessionStorage until "clear" (ignored in totals; tab-scoped).
+- Build/tests: `pnpm install --frozen-lockfile` ok; `pnpm build --force` 5/5; dashboard 95/95; shared 78/78;
+  grade-screen test_borders.py and test_api.py exit 0.
+
+**QA (2026-11-11):** UAT run locally on port 3100 with Chromium 1194. V1 72 ok / 0 FAIL (synthetic fixture, screenshots
+to a temp dir, identical in content to the committed ones). TB2 34 ok / 0 FAIL (synthetic fixture, screenshots to a temp
+dir). C5 47 ok / 0 FAIL on a temp copy of the collection fixture with every Playwright screenshot stubbed (no files
+written, copy deleted). Working tree clean after the runs. Ready for prod; merging stays with Karim's "ship".
 
 ## V1 (rework): select cards and add them up
 
