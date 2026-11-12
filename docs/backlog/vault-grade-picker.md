@@ -4,7 +4,7 @@ Source: Karim's request, 2026-11-11: "if I have the At PSA filter but want to se
 tiny selector".
 Success metric: with "Price as" on one grade, Karim can price chosen cards at another grade, and the totals and sort
 use those choices. No database write, no new page and no second global control.
-Status: V1 **ready for review** (requested by Karim 2026-11-11). Owner: reviewer.
+Status: V1 **ready for QA** (requested by Karim 2026-11-11). Owner: qa.
 
 **V1 change note (engineer, 2026-11-11, branch feat/V1-grade-picker):**
 - New `apps/dashboard/src/lib/vault-scenario.ts` (+ 10 tests): `Scenario`/`scenarioValue` moved here (no copy left),
@@ -23,6 +23,40 @@ Status: V1 **ready for review** (requested by Karim 2026-11-11). Owner: reviewer
 - Results: dashboard tests 95/95, `pnpm build` green, V1 UAT all ok at 1280 and 390, TB2 UAT all ok, C5 UAT all ok
   (run with screenshots disabled because its fixture is a copy of the real collection), J3's J2 checks ok
   (its /dips smoke fails locally only for lack of Supabase env, unrelated).
+
+**V1 Review (reviewer, 2026-11-11, diff c8a47f3..33a958b on feat/V1-grade-picker):**
+- Critical: none. Important: none. No fix commit needed.
+- AC1: 10 tests in `src/lib/vault-scenario.test.ts`, synthetic cards, cover every listed case; they import the new
+  helper, so a revert fails them. AC2: `vaultTotals`/`cardValue` with `{}` equal main's copied code at Now/10/9/8
+  (test :461). Also checked by hand: `scenarioValue` uses `!canOverride` where main used graded||sealed, so `sold`
+  cards now return valueNow directly; main also landed on valueNow because the value engine gives sold cards null
+  psa10/9/8 (`packages/shared/src/value-engine.ts:64`). Totals with no overrides are identical to main.
+- AC3-AC8: V1 UAT 86/86 ok at 1280 and 390 (hand totals $845 -> $1,000 / +$650, reload, reset, drawer sync both ways,
+  storage-throws stub, hydration listener with stored and corrupt values, no control nested in the tile button).
+- Accessibility (own Playwright run, synthetic fixture): the chip is a sibling of `button.open` (collection-view.tsx:164,
+  :193), Tab goes tile button -> chip; the tile ring shows when the button has keyboard focus (2px solid,
+  collection.module.css:60); the chip gets the global `:focus-visible` ring (checked in a screenshot, not clipped);
+  ArrowDown on the chip changes the value without opening the drawer; Enter on the button opens it, Escape closes it.
+  Every chip is 32px high at 390 and 1280; no horizontal scroll at 390.
+- localStorage: read in `useEffect` after mount (:30), all access through `storage()` and the never-throwing helpers;
+  hydration-safe.
+- card-comps: no new value. An override to a grade with no value shows "no comp" (no fallback, no invented number);
+  graded/sealed cards get no chip. No secrets, no bid, scan or env change in the diff. Screenshots in
+  `docs/backlog/uat/V1/` are synthetic only (checked all six by eye). No duplicate UI: one chip per tile plus the
+  drawer chip, which the ticket asks for; hero text sits in the existing heroKpis label.
+- Minor (left as is):
+  1. collection-view.tsx:31-35 writes localStorage inside the `setOverrides` updater (a side effect in an updater;
+     StrictMode runs it twice in dev). Idempotent, so harmless.
+  2. `.chipOn` uses `--gold`, which `globals.css:43` maps to `--accent` (blue), so the overridden chip is blue, not
+     the gold #D4A017 in docs/design. It follows the current token; a design question, not a V1 defect.
+  3. At 390 a keyboard-focused tile can scroll under the sticky filter bar (scroll-margin is only on `.grid`,
+     collection.module.css:48). Pre-existing, out of scope.
+  4. AC7's 2-line check in v1.uat.js measures only the Alpha tile; Escape while a native select popup is open in the
+     drawer is not tested.
+- Build/tests: `pnpm install --frozen-lockfile` ok; dashboard 95/95, shared 78/78, grade-screen test_borders.py and
+  test_api.py exit 0 (1 pre-existing skip); `pnpm build --force` 5/5. UAT: V1 86 ok / 0 FAIL, TB2 34 ok / 0 FAIL,
+  C5 47 ok / 0 FAIL (C5 fixture is a copy of the real collection: run with every Playwright screenshot stubbed out,
+  nothing written, copy deleted afterwards).
 
 ## V1: per-card grade override on Vault tiles and the drawer
 
