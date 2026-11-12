@@ -48,7 +48,7 @@
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 20px; perspective: 1200px; scroll-margin-top: calc(var(--sticky-h, 120px) + 12px); }
 .tile {
   all: unset; box-sizing: border-box; min-width: 0; position: relative;
-  display: grid; grid-template-rows: 1fr auto; align-content: start;
+  display: grid; grid-template-rows: 1fr; align-content: start;
   background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden;
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transform-style: preserve-3d;
   transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .2s;
@@ -58,15 +58,19 @@
 .tile::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s; background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, 0.55), transparent 45%); mix-blend-mode: soft-light; }
 .tile:hover::after { opacity: 1; }
 .tile:has(> .open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
-/* V1: the open button fills the tile; the grade chip row is its sibling (no control nested in the button). */
+/* V1: the open button fills the tile; the select checkbox sits in its top-left corner as a sibling (no control in the button). */
 .open { all: unset; box-sizing: border-box; min-width: 0; cursor: pointer; display: grid; grid-template-rows: auto auto 1fr; align-content: start; }
-.chipRow { padding: 0 12px 12px; margin-top: -4px; display: flex; min-width: 0; }
-.chip { appearance: none; -webkit-appearance: none; min-height: 32px; max-width: 100%; min-width: 0; padding: 4px 26px 4px 10px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%235a6880' stroke-width='1.5'/%3E%3C/svg%3E") no-repeat right 10px center; color: var(--ink-2); font-size: var(--t-xs); font-weight: 600; cursor: pointer; text-overflow: ellipsis; white-space: nowrap; overflow: hidden; }
-.chip:hover { border-color: #b3bdcc; }
-.chipOn { background-color: var(--gold); border-color: var(--gold); color: #fff; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23ffffff' stroke-width='1.5'/%3E%3C/svg%3E"); }
-.chip option { color: var(--ink); background: var(--surface); }
-.noComp { font-size: var(--t-sm); font-weight: 700; color: var(--ink-3); }
-.thChip { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.open .label { padding-left: 38px; }
+.pick { position: absolute; top: 0; left: 0; z-index: 2; width: 36px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.pick input { appearance: none; -webkit-appearance: none; margin: 0; width: 16px; height: 16px; border: 1.5px solid var(--on-navy-2); border-radius: 4px; background: transparent; cursor: pointer; display: grid; place-content: center; }
+.pick input::after { content: ""; width: 9px; height: 5px; border: solid #fff; border-width: 0 0 2px 2px; transform: translate(0, -1px) rotate(-45deg); opacity: 0; }
+.pick input:checked { background: var(--accent); border-color: var(--accent); }
+.pick input:checked::after { opacity: 1; }
+.pick:hover input { border-color: var(--on-navy); }
+.tileOn { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.selSum { margin: 14px 0 0; font-size: var(--t-sm); color: var(--on-navy-2); line-height: 1.6; }
+.selSum b { font-weight: 700; }
+.selSum b:not(.pos):not(.neg) { color: var(--on-navy); }
 .reset { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; color: var(--on-navy); }
 .reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @keyframes tile-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }

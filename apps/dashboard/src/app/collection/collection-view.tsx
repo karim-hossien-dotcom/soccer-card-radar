@@ -9,7 +9,7 @@ import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
 import { estTileTag, estDrawerText } from "@/lib/value-est";
 import {
-  type Scenario, type Overrides, canOverride, cardValue, cardGain, vaultTotals, readStoredOverrides, writeStoredOverrides,
+  type Scenario, scenarioValue, cardGain, vaultTotals, selectionTotals, toggleSelection, readStoredSelection, writeStoredSelection,
 } from "@/lib/vault-scenario";
 
 type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
@@ -20,21 +20,14 @@ const usd = (n: number | null | undefined, d = 0) =>
   n === null || n === undefined ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d, minimumFractionDigits: d });
 const signed = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `${n >= 0 ? "+" : "−"}${usd(Math.abs(n))}`);
 const tone = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? s.pos : s.neg);
-const SCEN_LABEL: Record<Scenario, string> = { now: "Now", "10": "PSA 10", "9": "PSA 9", "8": "PSA 8" };
-const storage = () => { try { return window.localStorage; } catch { return null; } };
+const storage = () => { try { return window.sessionStorage; } catch { return null; } };
 
 export default function CollectionView({ cards, weeks, trends, openId }: CollectionData & { openId?: string }) {
   const [scen, setScen] = useState<Scenario>("now");
-  // V1: per-card grade overrides. Loaded after mount (server and first client render agree: no hydration mismatch).
-  const [overrides, setOverrides] = useState<Overrides>({});
-  useEffect(() => { setOverrides(readStoredOverrides(storage())); }, []);
-  const setOverride = (id: string, v: Scenario | null) => setOverrides((prev) => {
-    const next = { ...prev };
-    if (v) next[id] = v; else delete next[id];
-    writeStoredOverrides(storage(), next);
-    return next;
-  });
-  const resetOverrides = () => { setOverrides({}); writeStoredOverrides(storage(), {}); };
+  // V1: checked cards (by id) add up in the totals. Kept for the tab session; loaded after mount (no hydration mismatch).
+  const [selected, setSelected] = useState<string[]>([]);
+  useEffect(() => { setSelected(readStoredSelection(storage())); }, []);
+  const changeSel = (next: string[]) => { setSelected(next); writeStoredSelection(storage(), next); };
   const [stat, setStat] = useState<StatusFilter>("all");
   const [player, setPlayer] = useState("");
   const [sort, setSort] = useState<SortKey>("value");
@@ -66,9 +59,9 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
         (!needle || `${c.item} ${c.cert ?? ""} ${c.player}`.toLowerCase().includes(needle)),
     );
     const key: Record<SortKey, (c: CollectionCard) => number | string> = {
-      value: (c) => cardValue(c, scen, overrides).value ?? -1,
-      gain: (c) => cardGain(c, scen, overrides) ?? -1e9,
-      upside: (c) => (cardValue(c, scen, overrides).value ?? 0) - (c.valueNow ?? 0),
+      value: (c) => scenarioValue(c, scen) ?? -1,
+      gain: (c) => cardGain(c, scen) ?? -1e9,
+      upside: (c) => (scenarioValue(c, scen) ?? 0) - (c.valueNow ?? 0),
       cost: (c) => c.cost ?? -1,
       date: (c) => c.dateAdded ?? "",
       name: (c) => c.player,
@@ -78,9 +71,11 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
       if (sort === "name") return String(ka).localeCompare(String(kb));
       return ka < kb ? 1 : ka > kb ? -1 : 0;
     });
-  }, [cards, scen, overrides, stat, player, sort, q]);
+  }, [cards, scen, stat, player, sort, q]);
 
-  const totals = useMemo(() => vaultTotals(list, scen, overrides), [list, scen, overrides]);
+  const totals = useMemo(() => vaultTotals(list, scen), [list, scen]);
+  const sel = useMemo(() => selectionTotals(cards, selected, scen), [cards, selected, scen]);
+  const selSet = useMemo(() => new Set(selected), [selected]);
 
   useEffect(() => {
     const close = () => setZoom(null);
@@ -119,15 +114,17 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
           <p>{cards.length - sealedCount} cards{sealedCount ? ` + ${sealedCount} sealed` : ""}. Values from 90-day sales, else Card Ladder.</p>
         </div>
         <div className={s.heroKpis}>
-          <div className={s.big}><span>
-            {scen === "now" ? "Value now" : `Value if PSA ${scen}`}
-            {totals.overridden > 0 && <> · {totals.overridden} overridden · <button type="button" className={s.reset} onClick={resetOverrides}>reset</button></>}
-            {totals.noComp > 0 && ` · ${totals.noComp} no comp`}
-          </span><b><CountUp value={totals.value} /></b></div>
+          <div className={s.big}><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b><CountUp value={totals.value} /></b></div>
           <div><span>Cost</span><b><CountUp value={totals.cost} /></b></div>
           <div><span>Gain or loss</span><b className={tone(totals.gain)}><CountUp value={totals.gain} signed /></b></div>
           <div><span>Cards in view</span><b>{list.length}</b></div>
         </div>
+        {sel.count > 0 && (
+          <p className={s.selSum} aria-label="Selected cards" aria-live="polite">
+            <b>{sel.count} selected</b> · Value <b>{usd(sel.value)}</b> · Cost <b>{usd(sel.cost)}</b> · Gain <b className={tone(sel.gain)}>{signed(sel.gain)}</b>
+            {" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button>
+          </p>
+        )}
       </section>
       <Tracker weeks={weeks} movers={movers} />
       <div className={s.due} role="region" aria-label="Comps">
@@ -156,12 +153,13 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
 
       <section className={s.grid} aria-label="Cards">
         {list.map((c) => {
-          const { value: v, noComp, scenario: sc } = cardValue(c, scen, overrides);
-          const g = cardGain(c, scen, overrides);
-          const est = !noComp && sc !== "now" && c.estimated && c.status !== "graded";
-          // V1: the tile is a wrapper; the open button and the grade chip are siblings (no control inside a button).
+          const v = scenarioValue(c, scen);
+          const g = cardGain(c, scen);
+          const est = scen !== "now" && c.estimated && c.status !== "graded";
+          const on = selSet.has(c.id);
+          // V1: the tile is a wrapper; the open button and the select checkbox are siblings (no control inside a button).
           return (
-            <div key={c.id} className={s.tile} data-tile onMouseMove={tilt} onMouseLeave={untilt}>
+            <div key={c.id} className={`${s.tile} ${on ? s.tileOn : ""}`} data-tile onMouseMove={tilt} onMouseLeave={untilt}>
             <button type="button" className={s.open} onClick={() => { setZoom(null); setOpen(c); }} aria-label={`${c.player}, ${c.item}`}>
               <div className={s.label}>
                 <span className={s.labelSet}>{c.item}</span>
@@ -180,7 +178,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
               <div className={s.meta}>
                 <div className={s.pl}>{c.player}{c.stale && <span className={s.staleTag}>stale</span>}</div>
                 <div className={s.nums}>
-                  <span className={s.val}>{noComp ? <span className={s.noComp}>no comp</span> : usd(v)}{est ? <small> est.</small> : sc === "now" && c.valueEst ? <small>{estTileTag(c.valueEst)}</small> : null}</span>
+                  <span className={s.val}>{usd(v)}{est ? <small> est.</small> : scen === "now" && c.valueEst ? <small>{estTileTag(c.valueEst)}</small> : null}</span>
                   <span className={tone(g)}>{signed(g)}</span>
                 </div>
                 {trends[c.id]?.wow ? <div className={`${s.sub} ${tone(trends[c.id].wow)}`}>{signed(trends[c.id].wow)} this week</div> : null}
@@ -188,11 +186,9 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
                 {c.status === "raw" && c.decision && <div className={s.sub}>{c.decision}</div>}
               </div>
             </button>
-            {canOverride(c) && (
-              <div className={s.chipRow}>
-                <GradeChip label={`${c.player}, ${c.item}`} global={scen} value={overrides[c.id] ?? null} onChange={(o) => setOverride(c.id, o)} />
-              </div>
-            )}
+            <label className={s.pick} title="Select to add up">
+              <input type="checkbox" checked={on} onChange={() => changeSel(toggleSelection(selected, c.id))} aria-label={`Select ${c.player}, ${c.item}`} />
+            </label>
             </div>
           );
         })}
@@ -201,7 +197,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
 
       {zoom && <Zoom {...zoom} />}
       {compsOpen && <CompsPanel cards={cards} inView={list} onClose={() => setCompsOpen(false)} />}
-      {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={closeDrawer} global={scen} override={overrides[open.id] ?? null} onOverride={(o) => setOverride(open.id, o)} />}
+      {open && <Drawer card={open} series={trends[open.id]?.series ?? []} onClose={closeDrawer} />}
     </div>
   );
 }
@@ -251,21 +247,6 @@ function Seg({ label, value, onChange, options }: { label: string; value: string
   );
 }
 
-/** V1: compact native select styled as a chip. Empty value = follow the global "Price as". */
-function GradeChip({ label, global, value, onChange }: { label: string; global: Scenario; value: Scenario | null; onChange: (v: Scenario | null) => void }) {
-  return (
-    <select
-      className={`${s.chip} ${value ? s.chipOn : ""}`}
-      aria-label={`Price ${label} as`}
-      value={value ?? ""}
-      onChange={(e) => onChange((e.target.value || null) as Scenario | null)}
-    >
-      <option value="">Follow ({SCEN_LABEL[global]})</option>
-      {(["now", "10", "9", "8"] as const).map((o) => <option key={o} value={o}>{SCEN_LABEL[o]}</option>)}
-    </select>
-  );
-}
-
 function Zoom({ src, x, y }: { src: string; x: number; y: number }) {
   const W = 300, H = 420, pad = 16;
   const vw = typeof window !== "undefined" ? window.innerWidth : 1200;
@@ -279,10 +260,7 @@ function Zoom({ src, x, y }: { src: string; x: number; y: number }) {
   );
 }
 
-function Drawer({ card: c, series, onClose, global, override, onOverride }: {
-  card: CollectionCard; series: { week: string; value: number }[]; onClose: () => void;
-  global: Scenario; override: Scenario | null; onOverride: (v: Scenario | null) => void;
-}) {
+function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { week: string; value: number }[]; onClose: () => void }) {
   const ref = useRef<HTMLDivElement>(null);
   const [zoomed, setZoomed] = useState(false);
   useEffect(() => {
@@ -291,7 +269,7 @@ function Drawer({ card: c, series, onClose, global, override, onOverride }: {
     ref.current?.focus();
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
-  const showScen = canOverride(c);
+  const showScen = c.status === "raw" || c.status === "at_grader";
   return (
     <div className={s.backdrop} onClick={onClose}>
       <div className={s.drawer} role="dialog" aria-modal aria-label={c.item} tabIndex={-1} ref={ref} onClick={(e) => e.stopPropagation()}>
@@ -319,7 +297,7 @@ function Drawer({ card: c, series, onClose, global, override, onOverride }: {
         {series.length >= 2 && <Spark series={series} />}
         {showScen && (
           <table className={s.tbl}>
-            <thead><tr><th><span className={s.thChip}>If graded <GradeChip label={c.item} global={global} value={override} onChange={onOverride} /></span></th><th>Value</th><th>Net vs cost{c.status === "raw" ? " + fee" : ""}</th></tr></thead>
+            <thead><tr><th>If graded</th><th>Value</th><th>Net vs cost{c.status === "raw" ? " + fee" : ""}</th></tr></thead>
             <tbody>
               <tr><td>PSA 10</td><td>{usd(c.psa10)}</td><td className={tone(c.net10)}>{signed(c.net10)}</td></tr>
               <tr><td>PSA 9</td><td>{usd(c.psa9)}</td><td className={tone(c.net9)}>{signed(c.net9)}</td></tr>

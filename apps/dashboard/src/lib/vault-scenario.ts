@@ -1,9 +1,8 @@
-/** V1: Vault "Price as" scenario plus per-card grade overrides. Pure: no React, no I/O (storage is passed in). */
+/** Vault "Price as" scenario and the V1 card selection totals. Pure: no React, no I/O (storage is passed in). */
 
 export type Scenario = "now" | "10" | "9" | "8";
 export const SCENARIOS: readonly Scenario[] = ["now", "10", "9", "8"];
-export type Overrides = Record<string, Scenario>;
-export const OVERRIDES_KEY = "vault.gradeOverrides.v1";
+export const SELECTION_KEY = "vault.selection.v1";
 
 export type ScenarioCard = {
   id: string;
@@ -15,73 +14,58 @@ export type ScenarioCard = {
   cost: number | null;
 };
 
-const isScenario = (v: unknown): v is Scenario => typeof v === "string" && (SCENARIOS as readonly string[]).includes(v);
-const gradeValue = (c: ScenarioCard, sc: Exclude<Scenario, "now">) => (sc === "10" ? c.psa10 : sc === "9" ? c.psa9 : c.psa8);
-
-/** Only raw and at-grader cards change with the grade; graded and sealed cards are worth their own comp. */
-export const canOverride = (c: Pick<ScenarioCard, "status">) => c.status === "raw" || c.status === "at_grader";
-
-/** Global "Price as" value: a missing grade value falls back to value now (unchanged from before V1). */
+/** "Price as" value: graded and sealed cards keep their own comp; a missing grade value falls back to value now. */
 export function scenarioValue(c: ScenarioCard, sc: Scenario): number | null {
-  if (sc === "now" || !canOverride(c)) return c.valueNow;
-  return gradeValue(c, sc) ?? c.valueNow;
+  if (sc === "now" || c.status === "graded" || c.status === "sealed") return c.valueNow;
+  const v = sc === "10" ? c.psa10 : sc === "9" ? c.psa9 : c.psa8;
+  return v ?? c.valueNow;
 }
 
-export function effectiveScenario(global: Scenario, overrides: Overrides, card: ScenarioCard): Scenario {
-  const o = canOverride(card) && Object.prototype.hasOwnProperty.call(overrides, card.id) ? overrides[card.id] : undefined;
-  return isScenario(o) ? o : global;
-}
-
-export type CardValue = { value: number | null; noComp: boolean; scenario: Scenario; overridden: boolean };
-
-/** A per-card override to a grade with no value is "no comp" (no fallback); the global path keeps its fallback. */
-export function cardValue(card: ScenarioCard, global: Scenario, overrides: Overrides): CardValue {
-  const scenario = effectiveScenario(global, overrides, card);
-  const overridden = canOverride(card) && isScenario(overrides[card.id]);
-  if (overridden && scenario !== "now" && gradeValue(card, scenario) === null) return { value: null, noComp: true, scenario, overridden };
-  return { value: scenarioValue(card, scenario), noComp: false, scenario, overridden };
-}
-
-export const cardGain = (card: ScenarioCard, global: Scenario, overrides: Overrides) => {
-  const v = cardValue(card, global, overrides).value;
-  return v === null || card.cost === null ? null : v - card.cost;
+export const cardGain = (c: ScenarioCard, sc: Scenario) => {
+  const v = scenarioValue(c, sc);
+  return v === null || c.cost === null ? null : v - c.cost;
 };
 
-export function vaultTotals(cards: ScenarioCard[], global: Scenario, overrides: Overrides) {
-  let value = 0, cost = 0, gain = 0, overridden = 0, noComp = 0;
+/** Value sums every card with a value; cost every card with a cost; gain only cards with both. */
+export function vaultTotals(cards: ScenarioCard[], sc: Scenario) {
+  let cost = 0, value = 0, gain = 0;
   for (const c of cards) {
-    const r = cardValue(c, global, overrides);
-    if (r.overridden) overridden++;
-    if (r.noComp) noComp++;
-    if (r.value !== null) value += r.value;
-    if (c.cost !== null) { cost += c.cost; if (r.value !== null) gain += r.value - c.cost; }
+    const v = scenarioValue(c, sc);
+    if (v !== null) value += v;
+    if (c.cost !== null) { cost += c.cost; if (v !== null) gain += v - c.cost; }
   }
-  return { value, cost, gain, overridden, noComp };
+  return { cost, value, gain };
 }
 
-/** Never throws: corrupt JSON, non-objects and unknown grades give an empty or cleaned map. */
-export function parseOverrides(raw: string | null): Overrides {
+/** Totals for the checked cards, over all cards (not just the filtered list). Unknown ids (sold, removed) are ignored. */
+export function selectionTotals(cards: ScenarioCard[], selected: Iterable<string>, sc: Scenario) {
+  const ids = new Set(selected);
+  const picked = cards.filter((c) => ids.has(c.id));
+  return { count: picked.length, ...vaultTotals(picked, sc) };
+}
+
+export const toggleSelection = (sel: readonly string[], id: string): string[] =>
+  sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
+
+/** Never throws: anything but an array of strings gives [] or a cleaned, de-duplicated list. */
+export function parseSelection(raw: string | null): string[] {
   let o: unknown;
-  try { o = raw ? JSON.parse(raw) : null; } catch { return {}; }
-  if (!o || typeof o !== "object" || Array.isArray(o)) return {};
-  const out: Overrides = {};
-  for (const [k, v] of Object.entries(o)) if (k !== "__proto__" && isScenario(v)) out[k] = v;
-  return out;
+  try { o = raw ? JSON.parse(raw) : null; } catch { return []; }
+  if (!Array.isArray(o)) return [];
+  return [...new Set(o.filter((x): x is string => typeof x === "string" && x.length > 0))];
 }
-
-export const serializeOverrides = (m: Overrides) => JSON.stringify(parseOverrides(JSON.stringify(m)));
 
 type Store = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
-export function readStoredOverrides(store: Store | undefined | null): Overrides {
-  try { return store ? parseOverrides(store.getItem(OVERRIDES_KEY)) : {}; } catch { return {}; }
+export function readStoredSelection(store: Store | undefined | null): string[] {
+  try { return store ? parseSelection(store.getItem(SELECTION_KEY)) : []; } catch { return []; }
 }
 
-/** Empty map removes the key. Returns false when storage is missing or throws (private mode, quota). */
-export function writeStoredOverrides(store: Store | undefined | null, m: Overrides): boolean {
+/** Empty list removes the key. Returns false when storage is missing or throws. */
+export function writeStoredSelection(store: Store | undefined | null, sel: readonly string[]): boolean {
   if (!store) return false;
   try {
-    if (Object.keys(m).length) store.setItem(OVERRIDES_KEY, serializeOverrides(m)); else store.removeItem(OVERRIDES_KEY);
+    if (sel.length) store.setItem(SELECTION_KEY, JSON.stringify(sel)); else store.removeItem(SELECTION_KEY);
     return true;
   } catch { return false; }
 }
