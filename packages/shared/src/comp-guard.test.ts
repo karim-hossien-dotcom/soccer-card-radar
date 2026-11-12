@@ -281,3 +281,134 @@ test("CLI exits 0 when ok, 1 with errors, 2 on usage or bad JSON", () => {
   assert.equal(parse.status, 2);
   assert.ok(JSON.parse(parse.stdout).error);
 });
+
+// review(PC1): false rejects and false accepts found in review. All titles are made up.
+const titled = (title: string, card: Partial<CompGuardInput["card"]> = {}, grade = "raw"): CompGuardInput => {
+  const inp = base();
+  inp.card = { ...inp.card, ...card };
+  inp.proposed = { ...inp.proposed, grade, price: 20, sampleSize: 1, low: 18, high: 22, confidence: 2 };
+  inp.sales = [sale(20, 10, title)];
+  return inp;
+};
+const T = "2019 Fictional Chrome Test Player #7";
+
+test("review(PC1) grader labels and club nicknames with colour words are not parallels", () => {
+  for (const [title, grade] of [
+    [`${T} BGS 10 Black Label`, "BGS 10"],
+    [`${T} Beckett Black Label 10`, "BGS 10"],
+    [`${T} SGC 10 Gold Label`, "SGC 10"],
+    [`${T} BGS Pristine 10`, "BGS 10"],
+    [`${T} PSA 10 Gem Mint`, "PSA 10"],
+    [`${T} Red Bull Salzburg`, "raw"],
+    [`${T} Red Star Belgrade`, "raw"],
+    [`${T} Red Devils`, "raw"],
+    [`${T} Chelsea Blues`, "raw"],
+    [`${T} Ghana Black Stars`, "raw"],
+    [`${T} Sunderland Black Cats`, "raw"],
+    [`${T} Villarreal Yellow Submarine`, "raw"],
+    [`${T} Japan Blue Samurai`, "raw"],
+    [`${T} Rose Bowl`, "raw"],
+  ]) {
+    const inp = titled(title, grade === "raw" ? {} : { grader: grade.split(" ")[0], grade: grade.split(" ")[1], status: "graded" }, grade);
+    assert.deepEqual(codes(inp), [], title);
+  }
+});
+
+test("review(PC1) an insert name with colour words in the card's own item is allowed; other colours are not", () => {
+  const card = { item: "2019 Fictional Chrome Black Gold Test Player #BG7" };
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Black Gold Test Player #BG7", card)), []);
+  onlyCode(titled("2019 Fictional Chrome Black Gold Test Player #BG7 Red", card), "parallel_word", 0);
+});
+
+test("review(PC1) base card rejects every parallel name and spelling", () => {
+  for (const w of [
+    "Silver", "Purple Mojo", "Tie-Dye", "Tie Dye", "TieDye", "Zebra", "Gold", "Rose Gold Shimmer", "White", "Red Wave",
+    "Multi-Color", "Multicolor", "Multi Colour", "Blue Refractor", "Refractors", "X-Fractor", "Lava", "Wave", "Gold Vinyl",
+    "Copper", "Lime Green", "Sepia", "Negative Refractor", "Cracked Ice", "Laser", "Logofractor", "Rainbow Foil", "Prizms",
+  ]) {
+    onlyCode(titled(`${T} ${w}`), "parallel_word", 0);
+  }
+});
+
+test("review(PC1) parallel card: Gold is not Rose Gold, and Rose Gold Shimmer /299 is not Gold /50", () => {
+  onlyCode(titled(`${T} Gold`, { parallel: "Rose Gold Shimmer", printRun: 299 }), "parallel_word", 0);
+  onlyCode(titled(`${T} Gold /50`, { parallel: "Rose Gold Shimmer", printRun: 299 }), "parallel_word", 0);
+  assert.deepEqual(codes(titled(`${T} Rose Gold Shimmer /299`, { parallel: "Rose Gold Shimmer", printRun: 299 })), []);
+  const g = titled(`${T} Rose Gold Shimmer /299`, { parallel: "Gold", printRun: 50 });
+  onlyCode(g, "parallel_word", 0);
+  assert.equal(compGuard(g).errors.length, 2); // the phrase and the serial
+  assert.deepEqual(codes(titled(`${T} Gold Refractors 07/50`, { parallel: "Gold Refractor", printRun: 50 })), []);
+  onlyCode(titled(`${T} Gold Wave /50`, { parallel: "Gold", printRun: 50 }), "parallel_word", 0);
+  onlyCode(titled(`${T} Blue`, { parallel: "Blue Wave", printRun: null }), "parallel_word", 0);
+});
+
+test("review(PC1) parallel card with neither its name nor its print run in the title is kept with a warning", () => {
+  const r = compGuard(titled(T, { parallel: "Gold", printRun: 50 }));
+  assert.equal(r.ok, true);
+  assert.ok(r.warnings.some((w) => w.code === "parallel_unconfirmed" && w.sale === 0));
+  for (const t of [`${T} Gold`, `${T} 12/50`]) {
+    const ok = compGuard(titled(t, { parallel: "Gold", printRun: 50 }));
+    assert.ok(!ok.warnings.some((w) => w.code === "parallel_unconfirmed"), t);
+  }
+  assert.ok(!compGuard(titled(T)).warnings.some((w) => w.code === "parallel_unconfirmed"), "base card");
+});
+
+test("review(PC1) serials: 1 of 1, numbered to, any /xx not the print run; seasons are not serials", () => {
+  for (const t of [`${T} 1 of 1`, `${T} 07 of 10`, `${T} numbered to 25`, `${T} #'d /99`, `${T} 1/1`, `${T} #24/25`]) {
+    onlyCode(titled(t, { year: "2024-25" }), "parallel_word", 0);
+  }
+  assert.deepEqual(serialsIn("2024/2025 Fictional Set Player"), []);
+  assert.deepEqual(serialsIn("Fictional Set Player 1 of 1"), [1]);
+  assert.deepEqual(serialsIn("Top Player of 2024"), []);
+  assert.deepEqual(codes(titled("2024/2025 Fictional Chrome Test Player #7", { year: "2024-25" })), []);
+  // "24/25" is the season when the card is 2024-25 (or Card Ladder's "2025"); for a 2019 card it stays a serial.
+  assert.deepEqual(codes(titled("24/25 Fictional Chrome Test Player #7", { year: "2024-25" })), []);
+  assert.deepEqual(codes(titled("24/25 Fictional Chrome Test Player #7", { year: "2025" })), []);
+  onlyCode(titled("24/25 Fictional Chrome Test Player #7", { year: "2019" }), "parallel_word", 0);
+  onlyCode(titled("24/25 Fictional Chrome Test Player #7 05/25", { year: "2024-25" }), "parallel_word", 0);
+});
+
+test("review(PC1) auto: non-auto rejects AU/signed/RPA; patch auto and on-card auto are different cards", () => {
+  for (const w of ["AU", "Signed", "Signature", "Autographed", "RPA", "Relic", "Jersey"]) onlyCode(titled(`${T} ${w}`), "auto_mismatch", 0);
+  const onCard = { isAuto: true, item: "2019 Fictional Chrome Test Player Autograph #A7" };
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player Autograph #A7", onCard)), []);
+  onlyCode(titled("2019 Fictional Chrome Test Player #A7 RPA", onCard), "auto_mismatch", 0);
+  onlyCode(titled("2019 Fictional Chrome Test Player #A7 Auto Patch", onCard), "auto_mismatch", 0);
+  onlyCode(titled("2019 Fictional Chrome Test Player #A7", onCard), "auto_mismatch", 0);
+  const patch = { isAuto: true, item: "2019 Fictional Chrome Test Player Auto Patch #AP7" };
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player Auto Patch #AP7", patch)), []);
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player #AP7 RPA", patch)), []);
+  onlyCode(titled("2019 Fictional Chrome Test Player #AP7 On Card Auto", patch), "auto_mismatch", 0);
+});
+
+test("review(PC1) grade: CGC AUTH / Authentic / Altered and PSA qualifiers are not the grade", () => {
+  const psa9 = { grader: "PSA", grade: "9", status: "graded" };
+  for (const t of [`${T} PSA 9 OC`, `${T} PSA 9 (ST)`, `${T} PSA 9 MK`]) onlyCode(titled(t, psa9, "PSA 9"), "grade_mismatch", 0);
+  assert.deepEqual(codes(titled(`${T} PSA 9 MINT`, psa9, "PSA 9")), []);
+  const cgc = { grader: "CGC", grade: "10", status: "graded" };
+  for (const t of [`${T} CGC AUTH`, `${T} CGC Authentic`, `${T} CGC 10 Altered`]) onlyCode(titled(t, cgc, "CGC 10"), "grade_mismatch", 0);
+  onlyCode(titled(`${T} CGC Authentic`), "grade_mismatch", 0);
+});
+
+test("review(PC1) own_sale: ledger match on the next UTC calendar day; a ledger sale stored negative", () => {
+  const next = base();
+  next.sales[0] = { ...next.sales[0], date: `${day(9)}T23:30:00Z` };
+  next.ledger = [{ date: day(10), amount: 18, kind: "purchase" }];
+  onlyCode(next, "own_sale", 0);
+  const two = base();
+  two.sales[0] = { ...two.sales[0], date: `${day(8)}T00:30:00Z` };
+  two.ledger = [{ date: day(10), amount: 18, kind: "purchase" }];
+  assert.deepEqual(codes(two), []);
+  const sold = base();
+  sold.ledger = [{ date: day(10), amount: -18, kind: "sale" }];
+  onlyCode(sold, "own_sale", 0);
+  const fee = base();
+  fee.ledger = [{ date: day(10), amount: 18, kind: "shipping" }];
+  assert.deepEqual(codes(fee), []);
+});
+
+test("review(PC1) not_median also checks method single", () => {
+  const inp = titled(T);
+  inp.proposed = { ...inp.proposed, method: "single", price: 25 };
+  onlyCode(inp, "not_median");
+});

@@ -92,16 +92,36 @@ export const ESTIMATE_MAX_DAYS = 730; // 24 months
 export const OWN_PRICE_TOL = 0.01; // ±1%
 const DAY_MS = 86_400_000;
 
-/** Parallel / colour words (card-comps sale check 2). Multi-word phrases are matched as phrases. */
+/** Parallel / colour words (card-comps sale check 2). Multi-word phrases are matched as phrases, longest first. */
 export const PARALLEL_WORDS = [
   "silver", "gold", "rose gold", "purple", "blue", "red", "green", "orange", "pink", "black", "white", "yellow",
   "teal", "aqua", "bronze", "platinum", "sapphire", "emerald", "ruby", "mojo", "tie dye", "zebra", "shimmer",
   "wave", "red wave", "blue wave", "lava", "multi color", "refractor", "x fractor", "xfractor", "superfractor",
   "prizm", "holo", "atomic", "speckle", "camo", "cracked ice", "disco", "hyper", "neon", "pulsar", "scope",
   "snakeskin", "velocity", "choice", "nebula", "galactic", "printing plate", "fotl", "geometric", "sparkle",
+  // review(PC1): more parallel names seen on soccer checklists
+  "vinyl", "copper", "lime", "magenta", "fuchsia", "sepia", "negative", "ice", "laser", "lazer", "logofractor",
+  "glitter", "rainbow", "foil",
+];
+/**
+ * review(PC1): phrases that hold a colour word but are not a parallel: club / national-team nicknames and grader
+ * labels (BGS Black Label, SGC Gold Label). Removed from the title before the parallel check.
+ */
+export const NOT_PARALLEL_PHRASES = [
+  "red bull", "red bulls", "red star", "red devils", "black stars", "black cats", "yellow submarine", "blue samurai",
+  "black label", "gold label",
+];
+/** Spellings folded to one form before matching (title and card alike). */
+const CANON: [RegExp, string][] = [
+  [/\brefractors\b/g, "refractor"],
+  [/\bprizms\b/g, "prizm"],
+  [/\bmulti ?colou?r\b/g, "multi color"],
+  [/\btie ?dye\b/g, "tie dye"],
+  [/\bcolour\b/g, "color"],
 ];
 const AUTO_WORDS = ["auto", "autos", "autograph", "autographs", "autographed", "signed", "signature", "signatures", "au", "rpa"];
-const MEM_WORDS = ["patch", "patches", "relic", "relics", "jersey", "jsy", "memorabilia"];
+// "rpa" = rookie patch auto: a patch auto, so it counts as a memorabilia word too (review(PC1)).
+const MEM_WORDS = ["patch", "patches", "relic", "relics", "jersey", "jsy", "memorabilia", "rpa"];
 const GRADERS = ["PSA", "BGS", "SGC", "CGC", "BECKETT", "TAG", "HGA", "GMA", "ISA", "CSG", "VGC", "KSA", "AGS"];
 
 const norm = (s: unknown): string =>
@@ -110,6 +130,7 @@ const norm = (s: unknown): string =>
     .replace(/[-_]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+const canon = (s: string): string => CANON.reduce((t, [re, to]) => t.replace(re, to), s);
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const hasWord = (text: string, word: string) => new RegExp(`(^|[^a-z0-9])${esc(word)}([^a-z0-9]|$)`).test(text);
 const toTime = (d: unknown): number => {
@@ -125,21 +146,65 @@ function median(xs: number[]): number {
   return s.length % 2 ? s[k] : (s[k - 1] + s[k]) / 2;
 }
 
-/**
- * Denominators of serials in a title ("/50", "09/10", "#/99"). A four-digit season ("2024/25") is not a serial;
- * a two-digit one ("24/25") is treated as a serial, because it cannot be told from one (ambiguous -> reject).
- */
-export function serialsIn(title: string): number[] {
-  const out: number[] = [];
-  const re = /(\d{1,4})?\s*\/\s*(\d{1,4})(?!\d)/g;
+interface SerialHit {
+  num: string | null;
+  den: number;
+  hash: boolean; // written "#24/25": always a serial
+}
+
+function serialHits(title: string): SerialHit[] {
+  const out: SerialHit[] = [];
+  const re = /(#\s*)?(\d{1,4})?\s*\/\s*(\d{1,4})(?!\d)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(title))) {
-    const a = m[1];
-    const b = m[2];
-    if (a && /^(19|20)\d{2}$/.test(a) && b.length === 2) continue; // 2024/25
-    out.push(Number(b));
+    const a = m[2];
+    const b = m[3];
+    if (a && /^(19|20)\d{2}$/.test(a) && (b.length === 2 || (b.length === 4 && Number(b) === Number(a) + 1))) continue; // 2024/25, 2024/2025
+    out.push({ num: a ?? null, den: Number(b), hash: !!m[1] });
+  }
+  // review(PC1): "1 of 1", "07 of 10", "numbered to 25", "#'d to 99"
+  const of = /(?:^|[^\w])(\d{1,4}) of (\d{1,4})(?!\d)/gi;
+  while ((m = of.exec(title))) if (!/^(19|20)\d{2}$/.test(m[2])) out.push({ num: m[1], den: Number(m[2]), hash: false });
+  const to = /(?:numbered|#'?d|serial(?:ly)? numbered)\s*(?:to|\/)\s*(\d{1,4})(?!\d)/gi;
+  while ((m = to.exec(title))) out.push({ num: null, den: Number(m[1]), hash: false });
+  return out;
+}
+
+/**
+ * Denominators of serials in a title ("/50", "09/10", "#/99", "1 of 1", "numbered to 25"). A four-digit season
+ * ("2024/25", "2024/2025") is not a serial; a two-digit one ("24/25") is treated as a serial (ambiguous -> reject)
+ * unless compGuard finds it is the card's own season.
+ */
+export function serialsIn(title: string): number[] {
+  return serialHits(title).map((h) => h.den);
+}
+
+/** Two-digit season pairs ("24/25") that can be this card's season: year "2024-25", "2025" or "2024". */
+function cardSeasons(year: unknown): Set<string> {
+  const out = new Set<string>();
+  const ys = (String(year ?? "").match(/(19|20)\d{2}/g) ?? []).map(Number);
+  const two = String(year ?? "").match(/(19|20)(\d{2})\s*[-/]\s*(\d{2})(?!\d)/);
+  if (two) out.add(`${two[2]}/${two[3]}`);
+  for (const y of ys) {
+    const p = (n: number) => String(((n % 100) + 100) % 100).padStart(2, "0");
+    out.add(`${p(y - 1)}/${p(y)}`);
+    out.add(`${p(y)}/${p(y + 1)}`);
   }
   return out;
+}
+
+/** Parallel phrases in a text, longest first; a matched phrase is consumed so its words are not counted again. */
+function parallelPhrases(text: string): Set<string> {
+  const found = new Set<string>();
+  let t = ` ${text} `;
+  for (const p of [...PARALLEL_WORDS].sort((a, b) => b.split(" ").length - a.split(" ").length || b.length - a.length)) {
+    const re = new RegExp(`(^|[^a-z0-9])${esc(p)}(?=[^a-z0-9]|$)`, "g");
+    if (re.test(t)) {
+      found.add(p);
+      t = t.replace(re, "$1 ");
+    }
+  }
+  return found;
 }
 
 /** Graders and grades shown in a title: [{grader, grade|null}]. Also flags Authentic/Altered. */
@@ -155,6 +220,8 @@ function gradesIn(title: string): { grader: string; grade: number | null }[] {
 }
 
 const AUTHENTIC_RE = /(^|[^a-z])(authentic|auth|altered)([^a-z]|$)/i;
+/** review(PC1): PSA qualifier grades ("PSA 9 OC", "PSA 8 (ST)") are not the straight grade. Upper case only. */
+const QUALIFIER_RE = /(^|[^A-Za-z0-9])(PSA|SGC|BGS|CGC)\s*\d{1,2}(?:\.\d)?\s*\(?(OC|ST|PD|OF|MK|MC)\)?(?![A-Za-z])/;
 
 export function compGuard(input: CompGuardInput): CompGuardResult {
   const errors: GuardIssue[] = [];
@@ -212,7 +279,8 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
   if (!noSalesOk && proposed.sampleSize !== kept.length) {
     errors.push({ code: "n_mismatch", message: `sampleSize ${proposed.sampleSize} but ${kept.length} kept sales` });
   }
-  if (proposed.method === "median" && kept.length) {
+  // "single" is the median of one sale (review(PC1)).
+  if ((proposed.method === "median" || proposed.method === "single") && kept.length) {
     const prices = kept.map((k) => k.s.price).filter(isNum);
     if (prices.length === kept.length) {
       const med = median(prices);
@@ -227,7 +295,11 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
   }
 
   // Per kept sale.
-  const cardText = norm([card.item, card.set, card.parallel].filter(Boolean).join(" "));
+  const cardText = canon(norm([card.item, card.set, card.parallel].filter(Boolean).join(" ")));
+  const cardPhrases = parallelPhrases(cardText);
+  const ownParallel = parallelPhrases(canon(norm(card.parallel)));
+  const seasons = cardSeasons(card.year);
+  const cardHasMem = MEM_WORDS.some((w) => hasWord(cardText, w));
   const parallelText = norm(card.parallel);
   const isBase = !parallelText || parallelText === "base";
   const printRun = isNum(card.printRun) && card.printRun > 0 ? card.printRun : null;
@@ -237,8 +309,11 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
 
   for (const { i, s } of kept) {
     const title = typeof s.title === "string" ? s.title : "";
-    // Team names that carry a colour word are not parallels.
-    const t = norm(title).replace(/\bred (bull|star|devils)\b/g, " ");
+    // Team names and grader labels that carry a colour word are not parallels.
+    const t = NOT_PARALLEL_PHRASES.reduce(
+      (x, p) => x.replace(new RegExp(`(^|[^a-z0-9])${esc(p)}(?=[^a-z0-9]|$)`, "g"), "$1 "),
+      canon(norm(title)),
+    );
     if (!isNum(s.price) || s.price <= 0) errors.push({ code: "input", sale: i, message: "kept sale price must be a positive number" });
     if (!title) errors.push({ code: "input", sale: i, message: "kept sale has no title" });
     if (!s.url) warnings.push({ code: "no_url", sale: i, message: "kept sale has no url" });
@@ -260,13 +335,9 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
       }
     }
 
-    // parallel_word (words in the card's own item/set/parallel are allowed)
-    const badWords = PARALLEL_WORDS.filter((w) => hasWord(t, w) && !hasWord(cardText, w));
-    // A single word that is part of an allowed phrase in the title ("gold" in "rose gold" on a Rose Gold card) is fine;
-    // a phrase not on the card ("rose gold" on a Gold card) is not.
-    const phraseOk = (w: string) =>
-      PARALLEL_WORDS.some((p) => p !== w && p.includes(w) && hasWord(t, p) && hasWord(cardText, p));
-    const words = badWords.filter((w) => !phraseOk(w));
+    // parallel_word (phrases in the card's own item/set/parallel are allowed; "Gold" is not "Rose Gold")
+    const titlePhrases = parallelPhrases(t);
+    const words = [...titlePhrases].filter((p) => !cardPhrases.has(p));
     if (words.length) {
       errors.push({
         code: "parallel_word",
@@ -274,13 +345,19 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
         message: `title has ${words.join(", ")} (card parallel: ${isBase ? "base" : card.parallel})`,
       });
     }
-    const serials = serialsIn(title).filter((n) => n !== printRun);
+    const hits = serialHits(title).filter((h) => h.den !== printRun);
+    // "24/25" as the card's own season is the season, not a serial (a "#24/25" stays a serial).
+    const serials = hits.filter((h) => h.hash || !h.num || h.num.length !== 2 || !seasons.has(`${h.num}/${String(h.den).padStart(2, "0")}`));
     if (serials.length) {
       errors.push({
         code: "parallel_word",
         sale: i,
-        message: `title has serial /${serials.join(", /")} (card print run: ${printRun ? `/${printRun}` : "none"})`,
+        message: `title has serial /${serials.map((h) => h.den).join(", /")} (card print run: ${printRun ? `/${printRun}` : "none"})`,
       });
+    }
+    // A parallel card's sale with neither its parallel name nor its print run in the title: the photo must show it.
+    if (!isBase && !words.length && ![...ownParallel].some((p) => titlePhrases.has(p)) && !(printRun && serialsIn(title).includes(printRun))) {
+      warnings.push({ code: "parallel_unconfirmed", sale: i, message: `title shows neither ${card.parallel} nor its print run: check the photo` });
     }
 
     // auto_mismatch
@@ -289,11 +366,13 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
     if (card.isAuto) {
       if (!AUTO_WORDS.some((w) => hasWord(t, w))) {
         errors.push({ code: "auto_mismatch", sale: i, message: "card is an auto; title has no auto word" });
-      } else if (memInTitle.length) {
+      } else if (!cardHasMem && memInTitle.length) {
         errors.push({ code: "auto_mismatch", sale: i, message: `card is an on-card auto; title has ${memInTitle.join(", ")}` });
+      } else if (cardHasMem && !MEM_WORDS.some((w) => hasWord(t, w))) {
+        errors.push({ code: "auto_mismatch", sale: i, message: "card is a patch auto; title has no patch/relic word" });
       }
     } else if (autoInTitle.length || memInTitle.length) {
-      errors.push({ code: "auto_mismatch", sale: i, message: `card is not an auto; title has ${[...autoInTitle, ...memInTitle].join(", ")}` });
+      errors.push({ code: "auto_mismatch", sale: i, message: `card is not an auto; title has ${[...new Set([...autoInTitle, ...memInTitle])].join(", ")}` });
     }
 
     // grade_mismatch
@@ -306,9 +385,11 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
       const wantGrade = Number(wantGradeStr);
       const other = shown.filter((g) => g.grader !== wantGrader || (g.grade !== null && g.grade !== wantGrade));
       const exact = shown.some((g) => g.grader === wantGrader && g.grade === wantGrade);
-      if (other.length || authentic) {
+      const qualifier = QUALIFIER_RE.exec(title);
+      if (other.length || authentic || qualifier) {
         const what = other.map((g) => `${g.grader} ${g.grade ?? ""}`.trim());
         if (authentic) what.push("Authentic/Altered");
+        if (qualifier) what.push(`qualifier ${qualifier[3]}`);
         errors.push({ code: "grade_mismatch", sale: i, message: `proposed ${grade}; title shows ${what.join(", ")}` });
       } else if (!exact) {
         errors.push({ code: "grade_mismatch", sale: i, message: `proposed ${grade}; title shows no grade` });
@@ -328,8 +409,8 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
         if (!l || (l.kind !== "purchase" && l.kind !== "sale") || !isNum(l.amount)) return false;
         const lt = toTime(l.date);
         if (!Number.isFinite(lt)) return false;
-        // Same date: calendar days may differ by one across time zones.
-        const sameDate = Math.abs(lt - ts) <= 1.5 * DAY_MS;
+        // Same date: UTC calendar days may differ by one across time zones (ledger dates are date-only).
+        const sameDate = Math.abs(Math.floor(lt / DAY_MS) - Math.floor(ts / DAY_MS)) <= 1;
         const amt = Math.abs(l.amount);
         return sameDate && Math.abs(s.price - amt) <= OWN_PRICE_TOL * amt;
       });
