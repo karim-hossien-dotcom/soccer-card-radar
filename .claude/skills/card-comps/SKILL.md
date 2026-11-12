@@ -14,9 +14,8 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
   by a rule below with its inputs shown.
 - No usable sale and no trustworthy CL value (Karim, Nov 3 2026): the job applies an estimate itself, without asking:
   CardComp source `estimate`, method naming the rule (parallel_ratio, base_move, grade_ratio, proxy), inputs in the
-  report. A real exact sale replaces it as soon as one exists. Method: the thin-market formula in
-  docs/research/2026-11-02-thin-market-pricing.md (approved by Karim Nov 3 2026; formula `thin_blend`, full write-up in the card-mcp project doc
-  research/2026-11-02-thin-market-pricing.md). Run it with the engine (shipped Nov 3 2026): write the signals to a JSON file and run
+  report. A real exact sale replaces it as soon as one exists. Method: the thin-market formula `thin_blend` (approved by Karim Nov 3 2026; write-up only in the card-mcp project doc
+  research/2026-11-02-thin-market-pricing.md, amended by research/2026-11-12-thin-blend-amendment.md, which wins on conflict). Run it with the engine (shipped Nov 3 2026): write the signals to a JSON file and run
   `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` from the repo, always passing `now`, an `indexFactor` on every sale older
   than 2 weeks (player's Card Ladder index now ÷ index at the sale date, read from /players/<Name> Chart.instances; never
   leave it to default to 1 when the index has moved), and dated ratio
