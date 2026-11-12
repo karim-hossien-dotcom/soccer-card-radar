@@ -30,6 +30,13 @@ Status: approved. Order: PC1 + PC2 (packages/shared) and V3a (comp-evidence.md) 
 - Update thin-blend tests and the CLI test; keep the output shape.
 
 ## PC3 Open items tracked to closure (F8)
+Status: ready for review (feat/PC3). Change note: migration `20261112e_open_item.sql` (file only, not applied; `c` is PC1's,
+`d` is Card.isAuto on main) with one open row per (job, cardId, title) via a partial unique index NULLS NOT DISTINCT, the
+upsert/close SQL in its header, RLS on + anon/authenticated revoked; `packages/db/test/open_item.check.sh` (throwaway Postgres).
+`apps/dashboard/src/lib/open-items.ts`: `openItems` (open only, oldest first, age in whole days) + `planUpsert` (same rule
+as the SQL). Radar home "Latest runs" section gains an "Open items (N)" card (card items link to the Vault drawer); OpenItem
+loads separately, so a missing table shows "Couldn't load open items" in that card only. UAT: `test/uat/pc3.uat.js`
++ `make-pc3-fixture.js`, screenshots docs/backlog/uat/PC3/. Jobs' scheduled-task prompts still need the upsert step (coordinator).
 - Table `OpenItem` (id, job, cardId nullable, title, reason, firstSeen, lastSeen, closedAt, closedHow). Migration file only.
 - Radar home "Latest runs" panel gains "Open items (N)" with age in days, oldest first; closed items drop off. Extend the existing panel, no new page.
 - Jobs upsert by (job, cardId, title): new -> insert, still open -> lastSeen, resolved -> closedAt + closedHow.

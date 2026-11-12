@@ -1,4 +1,5 @@
 import { formatEt, type Change, type JobPanel } from "@/lib/job-runs";
+import type { OpenItemView } from "@/lib/open-items";
 
 // J3: server-rendered (no "use client"): times are formatted once on the server, so nothing can mismatch on hydration.
 const KIND: Record<Change["kind"], string> = { value: "Value", card_added: "Card added", cost: "Cost", photo: "Photo", estimate: "Estimate" };
@@ -9,7 +10,10 @@ const cardHref = (id: string) => `/collection?card=${encodeURIComponent(id)}`;
 const panel = { background: "var(--surface)", border: "1px solid var(--rule)", borderRadius: "var(--radius)", boxShadow: "var(--shadow)", padding: "14px 16px", minWidth: 0 } as const;
 const list = { margin: "6px 0 0", paddingLeft: 18, display: "grid", gap: 6, fontSize: "var(--t-sm)", overflowWrap: "anywhere" } as const;
 
-export default function LatestRuns({ panels }: { panels: JobPanel[] }) {
+// PC3: open items stay listed (oldest first, age in days) until a job closes them; openError = OpenItem unreadable.
+type Props = { panels: JobPanel[]; openItems?: OpenItemView[]; openError?: string | null };
+
+export default function LatestRuns({ panels, openItems = [], openError = null }: Props) {
   return (
     <section aria-label="Latest runs" style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", alignItems: "start" }}>
       {panels.map(({ job, label, run, empty }) => (
@@ -51,6 +55,20 @@ export default function LatestRuns({ panels }: { panels: JobPanel[] }) {
           )}
         </article>
       ))}
+      <article aria-label="Open items" style={panel}>
+        <h2 style={{ fontSize: "var(--t-lg)", fontWeight: 750 }}>Open items ({openError ? "?" : openItems.length})</h2>
+        {openError ? <p className="muted" style={{ marginTop: 6 }}>Couldn&apos;t load open items: {openError}</p>
+          : !openItems.length ? <p className="muted" style={{ marginTop: 6 }}>None open</p> : (
+          <ul style={list}>
+            {openItems.map((o) => (
+              <li key={o.id}>
+                {o.cardId ? <a href={cardHref(o.cardId)}>{o.title}</a> : o.title}
+                <span className="muted"> ({o.jobLabel}, {o.age}){o.reason ? `: ${o.reason}` : ""}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </article>
     </section>
   );
 }

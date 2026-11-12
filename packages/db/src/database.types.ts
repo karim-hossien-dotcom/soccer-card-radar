@@ -615,6 +615,18 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["JobRun"]["Insert"]>;
         Relationships: [];
       };
+      OpenItem: {
+        Row: {
+          id: string; job: string; cardId: string | null; title: string; reason: string;
+          firstSeen: string; lastSeen: string; closedAt: string | null; closedHow: string | null;
+        };
+        Insert: {
+          id?: string; job: string; cardId?: string | null; title: string; reason?: string;
+          firstSeen?: string; lastSeen?: string; closedAt?: string | null; closedHow?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["OpenItem"]["Insert"]>;
+        Relationships: [];
+      };
       AlertSent: {
         Row: {
           id: string;
