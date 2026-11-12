@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { compGuard, serialsIn, GRADE_LABEL_RE, type CompGuardInput, type GuardSale } from "./comp-guard.ts";
+import { compGuard, serialsIn, authenticGrader, GRADE_LABEL_RE, type CompGuardInput, type GuardSale } from "./comp-guard.ts";
 
 // All cards, prices, titles and sellers below are made up (the repo is public).
 const NOW = "2026-11-12T12:00:00Z";
@@ -606,4 +606,58 @@ test("review(PC1b) a print run written after the number with a space keeps the n
   assert.deepEqual(codes(titled(`${T} /25`, gold)), []);
   assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player 7 /25", gold)), []);
   onlyCode(titled("2019 Fictional Chrome Test Player Gold 07/25", { ...gold, number: "25" }), "card", 0);
+});
+
+/** PC1c: the made-up base card as a CGC Authentic slab, valued on the raw key. */
+const authSlab = (grade = "AUTH", grader: string | null = "CGC"): CompGuardInput => {
+  const a = base();
+  a.card = { ...a.card, grader, grade, status: "graded" };
+  return a;
+};
+
+test("PC1c authenticGrader: AUTH / Authentic (any case, grader from card.grader or the grade text); numbers and Altered are not", () => {
+  assert.equal(authenticGrader({ grader: "CGC", grade: "AUTH" }), "CGC");
+  assert.equal(authenticGrader({ grader: "cgc", grade: "Authentic" }), "CGC");
+  assert.equal(authenticGrader({ grader: null, grade: "PSA Authentic" }), "PSA");
+  assert.equal(authenticGrader({ grader: "Beckett", grade: "auth" }), "BGS");
+  assert.equal(authenticGrader({ grader: "CGC", grade: "10" }), null);
+  assert.equal(authenticGrader({ grader: "CGC", grade: "Altered" }), null);
+  assert.equal(authenticGrader({ grader: null, grade: "AUTH" }), null);
+  assert.equal(authenticGrader({ grader: null, grade: null }), null);
+});
+
+test("PC1c grade_mismatch: an Authentic card's raw comp keeps same-grader Authentic sales and raw sales", () => {
+  for (const [grade, grader] of [["AUTH", "CGC"], ["Authentic", "CGC"], ["CGC AUTH", null]] as const) {
+    const a = authSlab(grade, grader);
+    a.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 CGC Authentic");
+    a.sales[1] = sale(20, 30, "2019 Fictional Chrome Test Player #7 CGC AUTH");
+    const r = compGuard(a);
+    assert.equal(r.ok, true, `${grader} ${grade}: ${JSON.stringify(r.errors)}`);
+  }
+});
+
+test("PC1c grade_mismatch: an Authentic card still rejects number grades, another grader and Altered", () => {
+  for (const title of [
+    "2019 Fictional Chrome Test Player #7 CGC 9.5",
+    "2019 Fictional Chrome Test Player #7 CGC Authentic 10",
+    "2019 Fictional Chrome Test Player #7 CGC Auth DNA 9.5",
+    "2019 Fictional Chrome Test Player #7 CGC Authentic PSA 9",
+    "2019 Fictional Chrome Test Player #7 PSA Authentic",
+    "2019 Fictional Chrome Test Player #7 CGC Altered",
+    "2019 Fictional Chrome Test Player #7 CGC Authentic Altered",
+    "2019 Fictional Chrome Test Player #7 CGC",
+  ]) {
+    const a = authSlab();
+    a.sales[0] = sale(18, 10, title);
+    onlyCode(a, "grade_mismatch", 0);
+  }
+});
+
+test("PC1c: a raw card (not Authentic) still rejects an Authentic slab sale", () => {
+  const raw = base();
+  raw.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 CGC Authentic");
+  onlyCode(raw, "grade_mismatch", 0);
+  const altered = authSlab("Altered");
+  altered.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 CGC Authentic");
+  onlyCode(altered, "grade_mismatch", 0);
 });

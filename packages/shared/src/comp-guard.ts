@@ -252,6 +252,22 @@ function gradesIn(title: string): { grader: string; grade: number | null }[] {
 }
 
 const AUTHENTIC_RE = /(^|[^a-z])(authentic|auth|altered)([^a-z]|$)/i;
+/** PC1c: Authentic only (not Altered). */
+const AUTH_ONLY_RE = /(^|[^a-z])(authentic|auth)([^a-z]|$)/i;
+const ALTERED_RE = /(^|[^a-z])altered([^a-z]|$)/i;
+/** PC1c: a number written after Authentic ("CGC Authentic 10", "Auth Auto 10") is a grade on the slab. */
+const AUTH_NUMBER_RE = /(^|[^a-z])(authentic|auth)\s*(?:(?:auto(?:graph)?|dna)\s*)?\d{1,2}(?:\.\d)?(?![\d./])/i;
+
+/**
+ * PC1c: the grader of an Authentic slab (card.grade "AUTH" / "Authentic", grader from card.grader or a leading
+ * "CGC AUTH" in card.grade), else null. Such a card is valued on the raw key.
+ */
+export function authenticGrader(card: Pick<GuardCard, "grader" | "grade">): string | null {
+  const m = /^\s*(?:([A-Za-z]+)\s+)?(auth|authentic)\s*$/i.exec(String(card.grade ?? ""));
+  if (!m) return null;
+  const g = String(card.grader ?? m[1] ?? "").trim().toUpperCase().replace("BECKETT", "BGS");
+  return g || null;
+}
 /** review(PC1): PSA qualifier grades ("PSA 9 OC", "PSA 8 (ST)") are not the straight grade. Upper case only. */
 const QUALIFIER_RE = /(^|[^A-Za-z0-9])(PSA|SGC|BGS|CGC)\s*\d{1,2}(?:\.\d)?\s*\(?(OC|ST|PD|OF|MK|MC)\)?(?![A-Za-z])/;
 
@@ -413,6 +429,7 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
   const isBase = !parallelText || parallelText === "base";
   const printRun = isNum(card.printRun) && card.printRun > 0 ? card.printRun : null;
   const gradeMatch = /^(PSA|BGS|SGC|CGC) ([0-9.]+)$/.exec(grade);
+  const authGrader = authenticGrader(card);
   const ageLimit = isEstimate ? ESTIMATE_MAX_DAYS : MARKET_DAYS;
   let newestKeptAge = Infinity;
 
@@ -553,7 +570,12 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
     const shown = gradesIn(title);
     const authentic = AUTHENTIC_RE.test(title) && shown.length > 0;
     if (grade === "raw") {
-      if (shown.length) errors.push({ code: "grade_mismatch", sale: i, message: `raw card; title shows ${shown.map((g) => g.grader + (g.grade ?? "")).join(", ")}` });
+      // PC1c: an Authentic slab (valued on raw) keeps sales of the same grader's Authentic slab; a number grade,
+      // another grader or Altered still rejects.
+      const sameAuth = !!authGrader && AUTH_ONLY_RE.test(title) && !ALTERED_RE.test(title);
+      const bad = sameAuth ? shown.filter((g) => g.grader !== authGrader || g.grade !== null) : shown;
+      if (bad.length) errors.push({ code: "grade_mismatch", sale: i, message: `raw card; title shows ${bad.map((g) => g.grader + (g.grade ?? "")).join(", ")}` });
+      else if (sameAuth && AUTH_NUMBER_RE.test(title)) errors.push({ code: "grade_mismatch", sale: i, message: "Authentic card; title shows a number grade" });
     } else if (gradeMatch) {
       const [, wantGrader, wantGradeStr] = gradeMatch;
       const wantGrade = Number(wantGradeStr);

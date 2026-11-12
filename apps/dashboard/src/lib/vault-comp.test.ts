@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { vaultComp, maxBidInputs, compLabel, type VaultComp } from "./vault-comp.ts";
+import { vaultComp, maxBidInputs, compLabel, vaultGradeKey, vaultGradeLabel, isNoNumberGrade, type VaultComp } from "./vault-comp.ts";
 import { snipeMaxBid, DEFAULT_CONFIG } from "../../../../packages/shared/src/snipe-score.ts";
 
 const c = (grade: string, price: number, method: string, source: string, asOf: string): VaultComp => ({ grade, price, method, source, asOf });
@@ -69,4 +69,31 @@ test("price-record labels: owner value / workbook value / sale method", () => {
 test("max-bid inputs: comps only, no grade comp -> null (no band/multiple estimate)", () => {
   assert.deepEqual(maxBidInputs([c("raw", 50, "median", "cardladder_manual", "2026-10-20")]), { raw: 50, psa9: null, psa10: null });
   assert.deepEqual(maxBidInputs([]), { raw: null, psa9: null, psa10: null });
+});
+
+test("PC1c: Authentic / AUTH / Altered slabs (any grader) are valued on the raw key; number grades keep their key", () => {
+  for (const [grader, grade] of [["CGC", "AUTH"], ["CGC", "Authentic"], ["PSA", "auth"], ["BGS", "Altered"], ["SGC", " AUTH "]]) {
+    assert.equal(vaultGradeKey(grader, grade), "raw", `${grader} ${grade}`);
+    assert.equal(isNoNumberGrade(grade), true);
+  }
+  assert.equal(vaultGradeKey("CGC", "9.5"), "CGC 9.5");
+  assert.equal(vaultGradeKey("PSA", "10"), "PSA 10");
+  assert.equal(vaultGradeKey(null, null), "raw");
+  assert.equal(vaultGradeKey("PSA", null), "raw");
+  assert.equal(isNoNumberGrade("10"), false);
+
+  // Made-up Authentic slab: value now = newest raw comp, never a graded comp of the same card.
+  const comps = [c("raw", 40, "median", "ebay_sold", "2026-11-10"), c("CGC 9", 90, "median", "ebay_sold", "2026-11-11"), c("raw", 30, "median", "ebay_sold", "2026-10-01")];
+  assert.equal(vaultComp(comps, vaultGradeKey("CGC", "AUTH"))?.price, 40);
+});
+
+test("PC1c: drawer grade label reads 'CGC Authentic' for AUTH or Authentic, 'Altered' for Altered; others unchanged", () => {
+  assert.equal(vaultGradeLabel("CGC", "AUTH", "graded"), "CGC Authentic");
+  assert.equal(vaultGradeLabel("CGC", "Authentic", "graded"), "CGC Authentic");
+  assert.equal(vaultGradeLabel("PSA", "auth", "graded"), "PSA Authentic");
+  assert.equal(vaultGradeLabel("BGS", "ALTERED", "graded"), "BGS Altered");
+  assert.equal(vaultGradeLabel("PSA", "10", "graded"), "PSA 10");
+  assert.equal(vaultGradeLabel("BGS", "9.5", "graded"), "BGS 9.5");
+  assert.equal(vaultGradeLabel(null, null, "at_grader"), "At PSA");
+  assert.equal(vaultGradeLabel(null, null, "raw"), "Raw");
 });

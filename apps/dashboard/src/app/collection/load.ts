@@ -1,7 +1,7 @@
 import { supabase } from "@soccer-card-radar/db";
 import { valueCard, configFromAssumptions, snipeMaxBid, snipeConfigFromAssumptions, type CardStatus, type Decision } from "@soccer-card-radar/shared";
 import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
-import { byRecency, vaultComp, maxBidInputs, isSaleComp, type VaultComp } from "@/lib/vault-comp";
+import { byRecency, vaultComp, maxBidInputs, isSaleComp, vaultGradeKey, vaultGradeLabel, type VaultComp } from "@/lib/vault-comp";
 import { valueEst, toCompRow, isMissingColumn, COMP_COLS, COMP_COLS_LEGACY, type ValueEst } from "@/lib/value-est";
 import { toSport, type Sport } from "@/lib/vault-filter";
 import { isMissingTable, type CompSaleRow } from "@/lib/comp-evidence";
@@ -14,7 +14,7 @@ export type CollectionCard = {
   sport: Sport; // V2: 'soccer' | 'basketball'
   item: string;
   player: string;
-  gradeLabel: string; // "PSA 10", "BGS 9.5", "Raw"
+  gradeLabel: string; // "PSA 10", "BGS 9.5", "CGC Authentic", "Raw"
   cert: string | null;
   qty: number;
   dateAdded: string | null;
@@ -36,7 +36,7 @@ export type CollectionCard = {
   band: string | null;
   maxBid: number | null;
   comps: CompRow[];
-  compGrade: string; // grade the current value is priced at ("raw" for raw / at PSA)
+  compGrade: string; // grade the current value is priced at ("raw" for raw / at PSA / Authentic or Altered slabs)
   compAsOf: string | null; // date of the comp behind valueNow
   stale: boolean; // compAsOf older than STALE_DAYS (or no comp)
   pop: PopRow | null; // latest PSA population for this card's spec
@@ -138,8 +138,8 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
   return rows.cards.map((card) => {
     const comps = compsBy.get(card.id) ?? [];
     const ledger = ledgerBy.get(card.id) ?? [];
-    const gradeLabel = card.grader && card.grade ? `${card.grader} ${card.grade}` : card.status === "at_grader" ? "At PSA" : "Raw";
-    const curGrade = card.grader && card.grade ? `${card.grader} ${card.grade}` : "raw";
+    const gradeLabel = vaultGradeLabel(card.grader, card.grade, card.status);
+    const curGrade = vaultGradeKey(card.grader, card.grade);
     const at = (grade: string) => vaultComp(comps.filter(isSaleComp), grade)?.price ?? null;
 
     const nowComp = vaultComp(comps, curGrade);

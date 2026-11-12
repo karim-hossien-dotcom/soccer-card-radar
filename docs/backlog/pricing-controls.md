@@ -172,7 +172,16 @@ market sources only (estimates keep rule names, owner_set any); one-year card + 
 - Fix commit: f287509. Verdict: nothing Critical/Important open -> ready for prod.
 
 ## PC1c Authentic slabs (Karim, Nov 12 2026: value the CGC Authentic Mainoo Ruby /19 from the same card's sales and similar print runs)
-Status: approved
+Status: ready for review. Change note: `apps/dashboard/src/lib/vault-comp.ts` `vaultGradeKey` (Authentic/AUTH/Altered,
+any grader, case-insensitive -> "raw") and `vaultGradeLabel` ("CGC Authentic" for AUTH or Authentic, "<grader> Altered");
+`app/collection/load.ts` uses both (drawer Grade row, list tile, "Priced: raw comp"). `packages/shared/src/comp-guard.ts`
+`authenticGrader(card)` (grade AUTH/Authentic; grader from card.grader or a "CGC AUTH" grade); on a raw proposal for such
+a card, a kept sale titled with the same grader + Authentic/Auth passes `grade_mismatch`; a number after the grader or
+after Authentic ("CGC Authentic 10", "Auth DNA 9.5"), another grader, or Altered in the title still rejects. Engineer
+choices for review: an Altered card is valued on raw (Vault AC) but its guard keeps only raw sales (guard AC names AUTH/
+Authentic only); signal sales still get `grade_label` on Authentic titles (not in AC). Tests: comp-guard.test.ts "PC1c ..."
+(4; 2 fail on main), vault-comp.test.ts "PC1c ..." (2). shared 129/129, dashboard 119/119, `pnpm build` 5/5; v3 UAT 65/65
+(1280 + 390), plus an ad-hoc fixture drawer check ("CGC Authentic", value = raw comp) not committed.
 - Vault: a card whose grade is Authentic/AUTH/Altered (any grader) is valued on the `raw` comp key (vault grade key "raw"), labelled "CGC Authentic" in the drawer.
 - comp-guard: for such a card (card.grade AUTH/Authentic), a kept sale whose title shows the same grader + Authentic passes `grade_mismatch`; any numeric grade still rejects.
 - Tests for both; fixture data only.

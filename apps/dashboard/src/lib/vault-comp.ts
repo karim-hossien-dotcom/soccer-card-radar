@@ -34,6 +34,27 @@ export const compLabel = (c: Pick<VaultComp, "method" | "source">) =>
 export const vaultComp = <T extends VaultComp>(comps: T[], grade: string): T | undefined =>
   comps.filter((c) => c.grade === grade).sort(byRecency)[0];
 
+/** PC1c: slab grades with no number (Authentic / AUTH / Altered, any grader). */
+const NO_NUMBER_GRADE_RE = /^(auth|authentic|altered)$/i;
+export const isNoNumberGrade = (grade: string | null | undefined) => !!grade && NO_NUMBER_GRADE_RE.test(grade.trim());
+
+/**
+ * Comp key a Vault card is valued on: "<grader> <grade>" for a number grade; "raw" for a raw card, a card at the
+ * grader, and (PC1c) an Authentic / Altered slab, which is valued from the same card's raw sales.
+ */
+export const vaultGradeKey = (grader: string | null | undefined, grade: string | null | undefined) =>
+  grader && grade && !isNoNumberGrade(grade) ? `${grader} ${grade}` : "raw";
+
+/** Drawer / list grade label: "PSA 10", "CGC Authentic" (AUTH or Authentic), "CGC Altered"; "At PSA" or "Raw" otherwise. */
+export const vaultGradeLabel = (grader: string | null | undefined, grade: string | null | undefined, status: string) => {
+  if (grader && grade) {
+    const g = grade.trim();
+    if (!isNoNumberGrade(g)) return `${grader} ${grade}`;
+    return `${grader} ${/^alt/i.test(g) ? "Altered" : "Authentic"}`;
+  }
+  return status === "at_grader" ? "At PSA" : "Raw";
+};
+
 /** C5: Vault max-bid inputs follow the Vault value at each grade. */
 export const maxBidInputs = (comps: VaultComp[]) => ({
   raw: vaultComp(comps, "raw")?.price ?? null,
