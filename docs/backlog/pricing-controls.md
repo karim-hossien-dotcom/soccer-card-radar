@@ -3,7 +3,7 @@
 Status: approved. Order: PC1 + PC2 (packages/shared) and V3a (comp-evidence.md) in parallel, then PC3, then V3b.
 
 ## PC1 comp-guard: the rules become code (F2)
-Status: ready for review (branch feat/PC1-PC2). Change note: `packages/shared/src/comp-guard.ts` + `bin/comp-guard.ts`
+Status: ready for prod (reviewed + QA green Nov 12 2026, see Review below; migration still NOT applied) (branch feat/PC1-PC2). Change note: `packages/shared/src/comp-guard.ts` + `bin/comp-guard.ts`
 (script `comp-guard`, exit 0 ok / 1 errors / 2 usage); all 12 codes plus `reject_reason_missing`, `reject_reason_on_kept`
 and `input`; warnings `no_url`, `own_check_empty`, `no_market_12m`. Migration `20261112c_comp_grade_check.sql` written,
 NOT applied. Engineer choices for review: `no_evidence`/`n_mismatch` exempt estimate, owner_set, ratio_to_base;
@@ -31,7 +31,7 @@ parallel words are allowed in titles; "Red Bull/Star/Devils" are not colour word
 - Never prints or commits real data; fixtures are made up.
 
 ## PC2 thin_blend fixes (F4, Karim decision Nov 12: his purchases do not go into values)
-Status: ready for review (branch feat/PC1-PC2). Change note: `purchase` kind removed; a purchase signal makes the whole
+Status: ready for prod (reviewed + QA green Nov 12 2026, see Review below) (branch feat/PC1-PC2). Change note: `purchase` kind removed; a purchase signal makes the whole
 result empty with excluded "error: purchase is not a value signal" and the CLI exits 2 with that error. Sales older than
 730 days are excluded with reason "age" (PURCHASE_MAX_DAYS replaced by MAX_SALE_DAYS). A sale older than 14 days with no
 indexFactor doubles its signal's variance (halves weight), sets `signals[i].indexHalved`, adds `flags: ["no_index"]` and
@@ -41,6 +41,48 @@ indexFactor 1, expected numbers recomputed independently.
 - Drop any sale older than 24 months (listed in `excluded` with reason age).
 - No indexFactor on a sale older than 2 weeks -> that signal's weight is halved and confidence capped at 1 (output flag `no_index`).
 - Update thin-blend tests and the CLI test; keep the output shape.
+
+### Review PC1 + PC2 (reviewer, Nov 12 2026; base e603b78, engineer e722f37)
+Fixes: 82eba78 review(PC1), 0ef21c6 review(PC2). Each new review(PC1) test fails on e722f37 (9 of 10; the insert-name test is a regression guard).
+- Important, fixed (false rejects): BGS "Black Label", SGC "Gold Label", "Black Stars", "Black Cats", "Yellow Submarine",
+  "Blue Samurai" were rejected as colour words; "2024/2025" was read as serial /2025; "24/25" in the card's own season
+  was read as /25 (reverses the engineer choice only for the card's own season; "#24/25" and another season's "24/25"
+  still reject). comp-guard.ts `NOT_PARALLEL_PHRASES`, `serialHits`, `cardSeasons`.
+- Important, fixed (false accepts): a "Gold" title passed for a Rose Gold card (card words were allowed one by one;
+  now phrases are matched longest first, `parallelPhrases`); "Refractors", "Multicolor", "Multi Colour", "TieDye",
+  "Prizms", Vinyl, Copper, Lime, Sepia, Negative, Ice, Laser, Logofractor, Rainbow, Foil passed on a base card; "1 of 1"
+  and "numbered to 25" were not serials; "RPA" passed for an on-card auto; a patch-auto card accepted titles with no
+  patch word; "PSA 9 OC" (qualifiers OC/ST/PD/OF/MK/MC) passed as PSA 9; a ledger buy dated the day before an evening
+  UTC sale timestamp was missed (±1.5 days in ms, now ±1 UTC calendar day); method `single` skipped the median check.
+- Added warning `parallel_unconfirmed` (parallel card, title shows neither its parallel nor its print run). Warning, not
+  error: the skill allows a colourless title once the photo shows the serial, and the guard cannot see photos.
+- PC2: no code findings. Numbers re-derived by hand (case A ln V 4.2253, case B' 74.45 / 37.12-149.32). The design
+  write-up research/2026-11-02-thin-market-pricing.md is a card-mcp project doc, not in the repo (it holds purchase
+  prices); reviewer has no project-write tool, so the coordinator must add the Nov 12 note there. The shipped
+  thin-blend.md ticket now says the purchase signal is superseded.
+- Left for Karim / PM (rules, not bugs): see "Strictness trade-offs" below.
+- Card-comps: no raw value from graded prices or the reverse; no invented numbers; owner_set / ratio_to_base exempt. No
+  secrets, real cards, costs or seller ids in the diff (fixtures are made up). No bids, scans, env or DB changes;
+  migration 20261112c not applied.
+- Build/test: `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5 ok; shared 113/113; dashboard 103/103;
+  grade-screen test_borders ok, test_api 17 ok + 1 old skip.
+
+Strictness trade-offs (open, need a rule):
+1. Parallel sale titled with no colour and no serial: kept with warning `parallel_unconfirmed`. Making it an error means
+   no false accepts from base sales, but rejects real sales whose photo shows the serial.
+2. Estimates: kept sales get the full sale check against the target card, so grade_ratio / parallel_ratio / proxy
+   inputs (other grade, other parallel) fail it. Jobs must pass only exact-card sales as kept for an estimate; ratio and
+   proxy inputs need their own field or a separate guard run.
+3. Raw titles that say "PSA 10 ready" / "PSA candidate" are rejected as graded. "Facsimile signature", "no auto" are
+   rejected as autos. Safe direction, may cost thin cards their few sales.
+4. A player name with a colour word (e.g. a player surnamed White) allows that colour for his cards; a White parallel
+   then passes unless the title shows a serial.
+5. No card-identity check (year / set / number): "#103" passes for "#4". Rule 1 of the sale check is not in code.
+6. BGS 10 and BGS 10 Black Label are one label "BGS 10"; both count as the same grade.
+7. Method `mean` is not checked against anything; only median/single are. The skill says value = median.
+8. Verifier rule "value moved >50% from the last comp without a reason" is not in comp-guard (not in PC1 scope).
+9. 90-day edge uses fractional days (same as thin_blend): a date-only sale exactly 90 calendar days old fails if `now`
+   has a time after midnight.
 
 ## PC3 Open items tracked to closure (F8)
 - Table `OpenItem` (id, job, cardId nullable, title, reason, firstSeen, lastSeen, closedAt, closedHow). Migration file only.
