@@ -4,6 +4,10 @@ Source: Karim approved the thin-market formula `thin_blend` on 2026-11-03 (card-
 write-up is in the card-mcp project doc research/2026-11-02-thin-market-pricing.md. It is not in the repo because it
 holds purchase prices. Ticket numbers below are synthetic. Do not put Karim's real costs or purchases in code, tests,
 fixtures or screenshots (the repo is public).
+**Superseded in part (Karim, Nov 12 2026; ticket PC2 in pricing-controls.md):** there is no `purchase` signal any more.
+Karim's purchases are never a value input (an input with one is refused: "purchase is not a value signal", CLI exit 2).
+Any sale older than 24 months is dropped (reason "age"); a sale older than 2 weeks with no indexFactor halves its
+signal's weight, sets confidence 1 and flag `no_index`. The purchase rules and worked numbers below are history only.
 Success metric: the Vault shows every thin card's value as one number with an 80% range, a confidence from 1 to 5 and
 the method tag. Each number comes from packages/shared code, not from hand arithmetic.
 Status: TB1 **shipped** 2026-11-03 (134e162). TB2 **shipped** 2026-11-03 (migration 20261103b applied first; includes the 390px tile offset and Snipe hydration fixes). Owner: engineer.
