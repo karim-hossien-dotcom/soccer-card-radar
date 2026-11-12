@@ -12,6 +12,12 @@ board, the eBay scan, or any existing table.
 - First pull: Veriswap search results for the active snipe targets, top 20 per search, exact-card matches only, linked by
   `targetId`. Pulled by hand in Karim's signed-in Chrome; no background scraping.
 
+## Scope (Karim, Nov 12 2026)
+- Trade targets are 2017-18 Topps Chrome UCL only: Cristiano Ronaldo, Mbappe, Messi, Salah; no base; PSA 9 and PSA 10.
+  No rookies, Kaboom or Manga. Every card of Karim's is tradeable if it is a trade up.
+- Trade targets are kept apart from SnipeTarget so the eBay Snipe board does not change. Asks are in `VeriswapListing`
+  (rows with no `targetId`); provisional comps in docs/research/2026-11-12-veriswap-2017-chrome.md.
+
 ## V3 Trades tab
 - Route `/trades`, one nav entry "Trades" after Snipe. Reads `VeriswapListing` and `SnipeTarget` only.
 - Table 1, target asks: card, grade, ask, comp for that grade (PSA 10 -> psa10, PSA 9 -> psa9; other graders/grades show no
