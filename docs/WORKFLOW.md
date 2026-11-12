@@ -27,6 +27,7 @@ UAT environment: local (`pnpm --filter @soccer-card-radar/dashboard dev`, port 3
 | Daily 11:47 UTC | eBay auction scan for the Snipe board | Vercel cron /api/scan |
 | Daily 12:17 UTC | Log paid wins | Vercel cron /api/snipe/wins |
 | Sun 7:43pm | Prices: Vault comps (writes by the card-comps rules) + snipe-target comps and rule max bids + audit checks -> audits/<date>-prices.md | scheduled task |
+| Sun 11:13pm | Independent price audit (report only, fresh agent; re-checks every value against the sale check / comp-guard) -> audits/<date>-price-audit.md | scheduled task (cloud) |
 | Mon 1:23pm | Players: player form (unapproved rows) + rookie radar with Card Ladder prices -> research/<date>-players.md | scheduled task |
 | 1st of month 8:19pm | Photos audit -> audits/<date>-photos.md | scheduled task |
 
