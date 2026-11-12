@@ -289,7 +289,7 @@ export interface Database {
           source: "ebay" | "cardladder" | "psa_apr";
           url: string | null;
           kept: boolean;
-          rejectReason: "card" | "parallel" | "auto" | "grade" | "lot" | "own" | "unclear" | "age" | null;
+          rejectReason: "card" | "parallel_word" | "auto_mismatch" | "grade_mismatch" | "lot" | "own_sale" | "unclear" | "sale_age" | null;
           createdAt: string | null;
         };
         Insert: {
@@ -301,7 +301,7 @@ export interface Database {
           source: "ebay" | "cardladder" | "psa_apr";
           url?: string | null;
           kept: boolean;
-          rejectReason?: "card" | "parallel" | "auto" | "grade" | "lot" | "own" | "unclear" | "age" | null;
+          rejectReason?: "card" | "parallel_word" | "auto_mismatch" | "grade_mismatch" | "lot" | "own_sale" | "unclear" | "sale_age" | null;
           createdAt?: string | null;
         };
         Update: Partial<Database["public"]["Tables"]["CompSale"]["Insert"]>;

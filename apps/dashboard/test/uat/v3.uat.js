@@ -1,7 +1,8 @@
 // V3a UAT (Karim 2026-11-12): the sales behind each Vault value, in the card drawer's "Price records", 1280 + 390px.
-// Needs: node test/uat/make-v3-fixture.js $F; COLLECTION_FIXTURE=$F AUTH_PASSWORD= next dev --port 3100; then node test/uat/v3.uat.js
+// Needs: node test/uat/make-v3-fixture.js $F; COLLECTION_FIXTURE=$F AUTH_PASSWORD= next dev --port 3100;
+// then COLLECTION_FIXTURE=$F node test/uat/v3.uat.js (same path: the "Update comps" step restores the file afterwards).
 // SYNTHETIC fixture only (repo is public; screenshots include the drawer and sale titles).
-// The last step POSTs one "Update comps" row into the fixture file: regenerate the fixture before re-running.
+// Idempotent: the last step POSTs one "Update comps" row into the fixture file and puts the file back byte for byte.
 // Hand totals (display only, must not move): value 40 + 300 + 25 + 35 + 60 = $460, cost 20 + 150 + 10 + 15 + 30 = $225.
 const fs = require('fs');
 const { chromium } = require('playwright');
@@ -25,7 +26,9 @@ async function open(p, player) {
 }
 const close = (p) => p.click('[role=dialog] button[aria-label=Close]');
 const drawerFits = (p) => dlg(p).evaluate((d) => d.scrollWidth <= d.clientWidth + 1);
-const isAmber = (loc) => loc.evaluate((e) => getComputedStyle(e).color === 'rgb(194, 65, 45)');
+// --amber (#b45309), not --loss (#c2412d, the red-orange warn).
+const AMBER_RGB = 'rgb(180, 83, 9)';
+const isAmber = (loc) => loc.evaluate((e, want) => getComputedStyle(e).color === want, AMBER_RGB);
 // Drawer screenshot with "Price records" scrolled to the bottom of the drawer's view (the drawer scrolls itself).
 const shot = async (p, opts) => {
   await dlg(p).evaluate((d) => {
@@ -38,6 +41,10 @@ const shot = async (p, opts) => {
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
   const b = await chromium.launch(process.env.CHROME ? { executablePath: process.env.CHROME } : {});
+  const FIXTURE = process.env.COLLECTION_FIXTURE;
+  const before = FIXTURE && fs.existsSync(FIXTURE) ? fs.readFileSync(FIXTURE) : null;
+  ok(before !== null, 'COLLECTION_FIXTURE set to the fixture the server reads');
+  if (before === null) { await b.close(); return; }
   for (const [name, viewport] of [['1280', { width: 1280, height: 900 }], ['390', { width: 390, height: 844 }]]) {
     const ctx = await b.newContext({ viewport, reducedMotion: 'reduce' });
     const p = await ctx.newPage();
@@ -94,7 +101,7 @@ const shot = async (p, opts) => {
     const at = (re) => rs.findIndex((t) => re.test(t));
     const iRaw = at(/^raw \$35\.00/), iOld = at(/^raw \$30\.00/), i9 = at(/^PSA 9 \$120\.00/), i10 = at(/^PSA 10 \$250\.00/);
     ok(rs[iRaw + 1].startsWith('n=2 · Oct 20 – Nov 9 · eBay, PSA APR'), `${name}: (d) newest raw evidence (${rs[iRaw + 1]})`);
-    ok(rs[i9 + 1].startsWith('n=1 · Nov 1 · Card Ladder') && /4 rejected: 1 older than 90 days, 1 other card, 1 lot, 1 unclear title\/photo/.test(rs[i9 + 1]), `${name}: (d) PSA 9 evidence + card/lot/unclear/age (${rs[i9 + 1]})`);
+    ok(rs[i9 + 1].startsWith('n=1 · Nov 1 · Card Ladder') && /4 rejected: 1 lot, 1 older than 90 days, 1 other card, 1 unclear title\/photo/.test(rs[i9 + 1]), `${name}: (d) PSA 9 evidence + card/lot/unclear/age (${rs[i9 + 1]})`);
     ok(rs[i10 + 1] === ESTIMATE && await isAmber(records(p).locator('[data-evidence=none]')), `${name}: (d) PSA 10 estimate amber "${ESTIMATE}"`);
     ok(iOld >= 0 && (iOld + 1 === rs.length || /^(raw|PSA)/.test(rs[iOld + 1])), `${name}: (d) older raw comp has no evidence line`);
     ok(!rs.some((t) => /OLD COMP SALE/.test(t)) && (await records(p).locator('[data-evidence]').count()) === 3, `${name}: (d) 3 evidence lines (one per grade)`);
@@ -128,16 +135,32 @@ const shot = async (p, opts) => {
   ok((await req.get(`${BASE}/api/comps?cardId=nope`, { headers: { Origin: BASE } })).status() === 400, 'api: bad cardId 400');
   ok((await req.get(`${BASE}/api/comps?cardId=00000000-0000-4000-8000-000000000301`, { headers: { Origin: 'https://evil.example.com' } })).status() === 403, 'api: other site 403');
 
-  // AC 4: a comp saved through "Update comps" has no sales -> amber.
-  const today = new Date().toISOString().slice(0, 10);
-  const post = await req.post(`${BASE}/api/comps`, { headers: { Origin: BASE }, data: { rows: [{ cardId: '00000000-0000-4000-8000-000000000301', grade: 'PSA 8', price: 70, sampleSize: 3, asOf: today }] } });
-  ok(post.ok(), 'Update comps: PSA 8 row saved to the fixture');
-  const p = await ctx.newPage({ viewport: { width: 1280, height: 900 } });
-  await p.goto(`${BASE}/collection`, { waitUntil: 'networkidle' });
-  await open(p, 'Test Evidence');
-  const rs = await rows(p);
-  const i8 = rs.findIndex((t) => /^PSA 8 \$70\.00/.test(t));
-  ok(i8 >= 0 && rs[i8 + 1] === AMBER, `Update comps row amber (${rs[i8 + 1]})`);
   await ctx.close();
+
+  // Same amber in a dark-scheme browser (the app has one palette; the flag must not change colour).
+  const dark = await b.newContext({ viewport: { width: 1280, height: 900 }, colorScheme: 'dark', reducedMotion: 'reduce' });
+  const pd = await dark.newPage();
+  await pd.goto(`${BASE}/collection`, { waitUntil: 'networkidle' });
+  await open(pd, 'Test Workbook');
+  ok(await isAmber(records(pd).locator('[data-evidence=none]')), `dark scheme: amber flag is ${AMBER_RGB}`);
+  await dark.close();
+
+  // AC 4: a comp saved through "Update comps" has no sales -> amber. Writes the fixture; restored in finally.
+  const ctx2 = await b.newContext({ viewport: { width: 1280, height: 900 } });
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const post = await ctx2.request.post(`${BASE}/api/comps`, { headers: { Origin: BASE }, data: { rows: [{ cardId: '00000000-0000-4000-8000-000000000301', grade: 'PSA 8', price: 70, sampleSize: 3, asOf: today }] } });
+    ok(post.ok(), 'Update comps: PSA 8 row saved to the fixture');
+    const p = await ctx2.newPage();
+    await p.goto(`${BASE}/collection`, { waitUntil: 'networkidle' });
+    await open(p, 'Test Evidence');
+    const rs = await rows(p);
+    const i8 = rs.findIndex((t) => /^PSA 8 \$70\.00/.test(t));
+    ok(i8 >= 0 && rs[i8 + 1] === AMBER, `Update comps row amber (${rs[i8 + 1]})`);
+  } finally {
+    fs.writeFileSync(FIXTURE, before);
+    await ctx2.close();
+  }
+  ok(fs.readFileSync(FIXTURE).equals(before), 'fixture file restored (UAT is idempotent)');
   await b.close();
 })();

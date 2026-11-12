@@ -21,8 +21,8 @@ test("zero sales -> kind none with the amber text", () => {
 
 test("only rejected sales -> kind none, same text, rejected counted", () => {
   const e = compEvidence(comp, [
-    sale({ kept: false, rejectReason: "grade", price: 50 }),
-    sale({ kept: false, rejectReason: "auto", price: 90, date: "2026-11-02" }),
+    sale({ kept: false, rejectReason: "grade_mismatch", price: 50 }),
+    sale({ kept: false, rejectReason: "auto_mismatch", price: 90, date: "2026-11-02" }),
   ]);
   assert.equal(e.kind, "none");
   assert.equal(e.kind === "none" && e.text, NO_EVIDENCE);
@@ -41,9 +41,9 @@ test("kept + rejected -> n, range, sources, newest-first list and reason counts"
     sale({ date: "2026-11-09", price: 44, title: "B", source: "cardladder" }),
     sale({ date: "2026-08-20", price: 38, title: "C", source: "ebay" }),
     sale({ date: "2026-10-15", price: 41, title: "D", source: "ebay" }),
-    sale({ date: "2026-11-10", price: 200, title: "PARALLEL", kept: false, rejectReason: "parallel" }),
-    sale({ date: "2026-07-01", price: 5, title: "OLD", kept: false, rejectReason: "parallel" }),
-    sale({ date: "2026-11-05", price: 39, title: "MINE", kept: false, rejectReason: "own" }),
+    sale({ date: "2026-11-10", price: 200, title: "PARALLEL", kept: false, rejectReason: "parallel_word" }),
+    sale({ date: "2026-07-01", price: 5, title: "OLD", kept: false, rejectReason: "parallel_word" }),
+    sale({ date: "2026-11-05", price: 39, title: "MINE", kept: false, rejectReason: "own_sale" }),
   ];
   const e = compEvidence(comp, rows);
   assert.equal(e.kind, "sales");
@@ -54,7 +54,7 @@ test("kept + rejected -> n, range, sources, newest-first list and reason counts"
   assert.deepEqual(e.sources, ["ebay", "cardladder"]); // most kept sales first
   assert.deepEqual(e.kept.map((k) => k.title), ["B", "D", "A", "C"]);
   assert.ok(!e.kept.some((k) => /PARALLEL|OLD|MINE/.test(k.title)), "rejected never in the kept list");
-  assert.deepEqual(e.rejected.map((r) => [r.reason, r.count]), [["parallel", 2], ["own", 1]]);
+  assert.deepEqual(e.rejected.map((r) => [r.reason, r.count]), [["parallel_word", 2], ["own_sale", 1]]);
   assert.equal(evidenceLine(e), "n=4 · Aug 20 – Nov 9 · eBay, Card Ladder");
   assert.equal(rejectedLine(e.rejected), "3 rejected: 2 other parallel, 1 Karim's own sale/buy");
 });
@@ -65,7 +65,7 @@ test("a kept flag with a reason is not trusted as kept (rejected never inflates 
 });
 
 test("every sale-check code has a label", () => {
-  assert.deepEqual(Object.keys(REASON_LABEL).sort(), ["age", "auto", "card", "grade", "lot", "own", "parallel", "unclear"]);
+  assert.deepEqual(Object.keys(REASON_LABEL).sort(), ["auto_mismatch", "card", "grade_mismatch", "lot", "own_sale", "parallel_word", "sale_age", "unclear"]);
   assert.equal(rejectedLine([]), null);
 });
 

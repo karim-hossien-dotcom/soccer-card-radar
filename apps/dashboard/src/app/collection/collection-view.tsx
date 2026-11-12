@@ -359,7 +359,7 @@ function Evidence({ comp, sales }: { comp: CollectionCard["comps"][number]; sale
   const e = compEvidence(comp, sales);
   const rej = rejectedLine(e.rejected);
   if (e.kind === "none") {
-    return <div className={s.ev}><span className={s.warn} data-evidence="none">{e.text}</span>{rej && <span className={s.muted}>{rej}</span>}</div>;
+    return <div className={s.ev}><span className={s.amber} data-evidence="none">{e.text}</span>{rej && <span className={s.muted}>{rej}</span>}</div>;
   }
   return (
     <div className={s.ev} data-evidence="sales">

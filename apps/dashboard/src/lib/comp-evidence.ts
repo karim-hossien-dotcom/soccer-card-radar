@@ -4,7 +4,12 @@
  */
 
 export type SaleSource = "ebay" | "cardladder" | "psa_apr";
-export type RejectReason = "card" | "parallel" | "auto" | "grade" | "lot" | "own" | "unclear" | "age";
+/**
+ * Sale-check reject codes. The automated ones are comp-guard's sale-level error codes (packages/shared comp-guard.ts),
+ * so a job can store comp-guard output as is; card (check 1) and unclear (check 6) are set by the person/agent checking.
+ */
+export type RejectReason =
+  | "card" | "parallel_word" | "auto_mismatch" | "grade_mismatch" | "lot" | "own_sale" | "unclear" | "sale_age";
 
 /** One CompSale row as /api/comps?cardId= returns it. */
 export type CompSaleRow = {
@@ -15,13 +20,13 @@ export type CompSaleRow = {
 /** Sale-check codes (checks 1-7, 'lot' split out of check 4) -> drawer labels. */
 export const REASON_LABEL: Record<RejectReason, string> = {
   card: "other card",
-  parallel: "other parallel",
-  auto: "auto/relic",
-  grade: "other grade/grader",
+  parallel_word: "other parallel",
+  auto_mismatch: "auto/relic",
+  grade_mismatch: "other grade/grader",
   lot: "lot",
-  own: "Karim's own sale/buy",
+  own_sale: "Karim's own sale/buy",
   unclear: "unclear title/photo",
-  age: "older than 90 days",
+  sale_age: "older than 90 days",
 };
 
 export const SOURCE_LABEL: Record<SaleSource, string> = { ebay: "eBay", cardladder: "Card Ladder", psa_apr: "PSA APR" };
@@ -49,7 +54,7 @@ export function compEvidence(
   for (const r of mine) if (!r.kept && r.rejectReason) counts.set(r.rejectReason, (counts.get(r.rejectReason) ?? 0) + 1);
   const rejected = [...counts.entries()]
     .map(([reason, count]) => ({ reason, label: REASON_LABEL[reason] ?? reason, count }))
-    .sort((a, b) => b.count - a.count || a.reason.localeCompare(b.reason));
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)); // tie: by the label shown
 
   const kept = mine
     .filter((r) => r.kept && !r.rejectReason)

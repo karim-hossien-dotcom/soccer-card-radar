@@ -1,8 +1,10 @@
 -- V3a: the sales behind each CardComp (kept and rejected by the card-comps "Sale check"), shown in the Vault drawer.
 -- Applied by hand only after Karim's yes. Idempotent: safe to re-run.
--- Reason codes (fixed, never free text, so no eBay username or cost can land here):
---   card (1 other card), parallel (2 other parallel), auto (3 auto/relic), grade (4 other grade/grader), lot (4 lot),
---   own (5 Karim's own sale/buy), unclear (6 unclear title/photo), age (7 older than 90 days).
+-- Reason codes (fixed, never free text, so no eBay username or cost can land here). The automated ones are
+-- comp-guard's sale-level error codes (packages/shared/src/comp-guard.ts), so its output is stored as is:
+--   card (1 other card), parallel_word (2 other parallel), auto_mismatch (3 auto/relic),
+--   grade_mismatch (4 other grade/grader), lot (4 lot), own_sale (5 Karim's own sale/buy),
+--   unclear (6 unclear title/photo), sale_age (7 older than 90 days).
 create table if not exists "CompSale" (
   "id"           bigserial primary key,
   "compId"       bigint not null references "CardComp" ("id") on delete cascade,
@@ -23,7 +25,7 @@ begin
   end if;
   if not exists (select 1 from pg_constraint where conname = 'CompSale_reason_check') then
     alter table "CompSale" add constraint "CompSale_reason_check"
-      check ("rejectReason" in ('card', 'parallel', 'auto', 'grade', 'lot', 'own', 'unclear', 'age'));
+      check ("rejectReason" in ('card', 'parallel_word', 'auto_mismatch', 'grade_mismatch', 'lot', 'own_sale', 'unclear', 'sale_age'));
   end if;
   if not exists (select 1 from pg_constraint where conname = 'CompSale_sale_key') then
     alter table "CompSale" add constraint "CompSale_sale_key" unique ("compId", "source", "date", "price", "title");

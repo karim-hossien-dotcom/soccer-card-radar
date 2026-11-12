@@ -210,7 +210,7 @@ export async function fetchCompSales(cardId: string): Promise<CompSaleRow[]> {
   return ((r.data ?? []) as unknown as CompSaleRow[]).map((s) => ({ ...s, compId: Number(s.compId), price: Number(s.price) }));
 }
 
-export type NewComp ={ cardId: string; grade: string; price: number; sampleSize: number; asOf: string };
+export type NewComp = { cardId: string; grade: string; price: number; sampleSize: number; asOf: string };
 
 /** A4: manual Card Ladder entry. Idempotent per (card, grade, source, date): re-saving the same day overwrites. */
 export async function saveComps(rows: NewComp[]): Promise<number> {

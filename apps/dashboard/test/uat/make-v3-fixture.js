@@ -6,7 +6,7 @@
 //   (d) Test Grades     raw, comps at raw (newest + an older one with sales), PSA 9 (kept + card/lot/unclear/age
 //                       rejected), PSA 10 thin_blend estimate with no sale -> amber "no exact sale — estimate"
 //   (e) Test Owner      raw, owner_set comp, no sales -> amber
-// Every sale-check code (card, parallel, auto, grade, lot, own, unclear, age) appears at least once.
+// Every sale-check code (card, parallel_word, auto_mismatch, grade_mismatch, lot, own_sale, unclear, sale_age) appears at least once.
 // Usage: node test/uat/make-v3-fixture.js /path/v3.json   then   COLLECTION_FIXTURE=/path/v3.json next dev --port 3100
 const fs = require('fs');
 const out = process.argv[2];
@@ -44,11 +44,11 @@ const data = {
     kept(301, '2026-09-15', 40, 'SYNTHETIC TEST CUP TEST EVIDENCE #1 BASE', 'ebay', 'https://example.com/sale/a2'),
     kept(301, '2026-10-30', 41, 'SYNTHETIC #1 TEST EVIDENCE 2014 CUP', 'ebay'),
     kept(301, '2026-11-09', 42, 'SYNTHETIC 2014 TEST CUP TEST EVIDENCE', 'cardladder'),
-    rej(301, '2026-11-05', 400, 'SYNTHETIC 2014 TEST CUP #1 TEST EVIDENCE GOLD PARALLEL', 'parallel'),
-    rej(301, '2026-11-02', 39, 'SYNTHETIC 2014 TEST CUP #1 TEST EVIDENCE (OWNER BUY)', 'own'),
+    rej(301, '2026-11-05', 400, 'SYNTHETIC 2014 TEST CUP #1 TEST EVIDENCE GOLD PARALLEL', 'parallel_word'),
+    rej(301, '2026-11-02', 39, 'SYNTHETIC 2014 TEST CUP #1 TEST EVIDENCE (OWNER BUY)', 'own_sale'),
     // (b) PSA 10 comp 311: only rejected -> amber.
-    rej(311, '2026-11-01', 150, 'SYNTHETIC TEST REJECTED PSA 9', 'grade'),
-    rej(311, '2026-11-03', 900, 'SYNTHETIC TEST REJECTED AUTO PSA 10', 'auto'),
+    rej(311, '2026-11-01', 150, 'SYNTHETIC TEST REJECTED PSA 9', 'grade_mismatch'),
+    rej(311, '2026-11-03', 900, 'SYNTHETIC TEST REJECTED AUTO PSA 10', 'auto_mismatch'),
     // (d) older raw comp 340: has sales, but it is not the comp behind the value -> no evidence line.
     kept(340, '2026-09-01', 29, 'SYNTHETIC OLD COMP SALE ONE', 'ebay'),
     kept(340, '2026-09-20', 31, 'SYNTHETIC OLD COMP SALE TWO', 'ebay'),
@@ -60,7 +60,7 @@ const data = {
     rej(342, '2026-11-02', 15, 'SYNTHETIC TEST GRADES #99 OTHER CARD PSA 9', 'card'),
     rej(342, '2026-11-03', 300, 'SYNTHETIC LOT OF 3 TEST GRADES PSA 9', 'lot'),
     rej(342, '2026-11-04', 90, 'SYNTHETIC TEST ?? PSA', 'unclear'),
-    rej(342, '2026-06-01', 80, 'SYNTHETIC TEST GRADES PSA 9 OLD', 'age'),
+    rej(342, '2026-06-01', 80, 'SYNTHETIC TEST GRADES PSA 9 OLD', 'sale_age'),
   ],
   ledger: [buy(1, 20), buy(2, 150), buy(3, 10), buy(4, 15), buy(5, 30)],
   assumptions: Object.entries({
