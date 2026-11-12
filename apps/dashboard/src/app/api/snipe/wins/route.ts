@@ -58,10 +58,11 @@ async function run({ write, days, importIds }: Mode) {
 
   const describe = (line: OrderLine, targetId: string | null = null) => {
     const f = cardFromTitle(line.title);
-    const player = f.status === "sealed" ? "Sealed box" : (targetId ? targetPlayer.get(targetId) : null) ?? playerFromTitle(line.title, known);
+    const player = (targetId ? targetPlayer.get(targetId) : null) ?? playerFromTitle(line.title, known);
     return { line, targetId, f, player };
   };
   // Backfill import: only lines that are in the review list right now (paid, not already in the Vault).
+  // Sealed product is never in cards or review (plan puts it in p.skipped), so it is never inserted.
   const toWrite = importIds ? p.review.filter((r) => importIds.has(r.lineItemId)).map((r) => describe(r)) : p.cards.map((x) => describe(x.line, x.targetId));
 
   if (write) {
@@ -87,6 +88,7 @@ async function run({ write, days, importIds }: Mode) {
     [importIds ? "imported" : "newCards"]: toWrite.map(row),
     alreadyInVault: p.matched.length,
     needsReview: importIds ? undefined : p.review.map((r) => row(describe(r))),
+    skippedSealed: p.skipped.map((l) => ({ lineItemId: l.lineItemId, date: nyDate(l.boughtAt), cost: l.cost, title: l.title, reason: "sealed product: not added to the Vault" })),
   };
 }
 

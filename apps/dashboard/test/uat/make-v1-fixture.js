@@ -1,6 +1,6 @@
 // V1 UAT fixture. FULLY SYNTHETIC: made-up players, items, costs and values (does not read test/fixtures/collection.json,
 // which holds live costs). Safe to screenshot.
-// Cards: 3 raw with PSA 10/9/8 comps, 1 raw lot with psa10 null (not gradeable), 1 at PSA, 1 graded, 1 sealed.
+// Cards: 3 raw with PSA 10/9/8 comps, 1 raw lot with psa10 null (not gradeable), 1 at PSA, 1 graded (sealed card removed in V2).
 // Usage: node test/uat/make-v1-fixture.js /path/v1.json   then   COLLECTION_FIXTURE=/path/v1.json next dev --port 3100
 const fs = require('fs');
 const out = process.argv[2];
@@ -17,9 +17,7 @@ const data = {
     card(3, { status: 'raw', player: 'Test Charlie', item: 'SYNTHETIC 2017 TEST CHROME #3 TEST CHARLIE' }),
     card(4, { status: 'raw', player: 'Test Delta', item: 'SYNTHETIC 2018 TEST NOW #4 TEST DELTA (Qty 2)' }),
     card(5, { status: 'at_grader', player: 'Test Echo', item: 'SYNTHETIC 2014 TEST SET #5 TEST ECHO', submissionId: 'SYN-0001' }),
-    card(6, { status: 'graded', grader: 'PSA', grade: '9', cert: '00000106', player: 'Test Foxtrot', item: 'SYNTHETIC 2017 TEST SET #6 TEST FOXTROT' }),
-    card(7, { status: 'sealed', player: 'Test Golf', item: 'SYNTHETIC 2018 TEST CHROME HOBBY BOX' }),
-  ],
+    card(6, { status: 'graded', grader: 'PSA', grade: '9', cert: '00000106', player: 'Test Foxtrot', item: 'SYNTHETIC 2017 TEST SET #6 TEST FOXTROT' }),  ],
   comps: [
     comp(1, 'raw', 40), comp(1, 'PSA 10', 300), comp(1, 'PSA 9', 120), comp(1, 'PSA 8', 70),
     comp(2, 'raw', 60), comp(2, 'PSA 10', 500), comp(2, 'PSA 9', 150), comp(2, 'PSA 8', 90),
@@ -27,9 +25,8 @@ const data = {
     comp(4, 'raw', 25), // lot (Qty 2): value engine gives no PSA 10/9/8 -> psa10 null
     comp(5, 'raw', 100), comp(5, 'PSA 10', 900), comp(5, 'PSA 9', 250), comp(5, 'PSA 8', 140),
     comp(6, 'PSA 9', 210),
-    comp(7, 'raw', 95),
   ],
-  ledger: [buy(1, 20), buy(2, 35), buy(3, 15), buy(4, 10), buy(5, 130), buy(6, 150), buy(7, 80)],
+  ledger: [buy(1, 20), buy(2, 35), buy(3, 15), buy(4, 10), buy(5, 130), buy(6, 150)],
   assumptions: Object.entries({
     fee_to_grade_a_raw_in_hand_card: 25,
     psa_10_psa_9_multiple_no_psa_10_comp: 2, psa_9_psa_10_multiple_no_psa_9_comp: 0.5, psa_8_psa_9_multiple_no_psa_8_comp: 0.6,

@@ -14,9 +14,9 @@ export type ScenarioCard = {
   cost: number | null;
 };
 
-/** "Price as" value: graded and sealed cards keep their own comp; a missing grade value falls back to value now. */
+/** "Price as" value: graded cards keep their own comp; a missing grade value falls back to value now. */
 export function scenarioValue(c: ScenarioCard, sc: Scenario): number | null {
-  if (sc === "now" || c.status === "graded" || c.status === "sealed") return c.valueNow;
+  if (sc === "now" || c.status === "graded") return c.valueNow;
   const v = sc === "10" ? c.psa10 : sc === "9" ? c.psa9 : c.psa8;
   return v ?? c.valueNow;
 }

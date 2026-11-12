@@ -13,14 +13,13 @@ const B = card("b", { valueNow: 60, psa10: 500, psa9: 150, psa8: 90, cost: 35 })
 const NO10 = card("no10", { valueNow: 25, psa10: null, psa9: 80, psa8: 50, cost: 10 });
 const AT = card("at", { status: "at_grader", valueNow: 100, psa10: 900, psa9: 250, psa8: 140, cost: 130 });
 const GRADED = card("g", { status: "graded", valueNow: 210, psa10: 999, psa9: 999, psa8: 999, cost: 150 });
-const SEALED = card("s", { status: "sealed", valueNow: 95, psa10: null, psa9: null, psa8: null, cost: 80 });
 const NOCOST = card("nc", { cost: null, valueNow: 15, psa10: 90, psa9: 40, psa8: 25 });
 const NOVAL = card("nv", { valueNow: null, psa10: null, psa9: null, psa8: null, cost: 12 });
-const ALL = [A, B, NO10, AT, GRADED, SEALED, NOCOST, NOVAL];
+const ALL = [A, B, NO10, AT, GRADED, NOCOST, NOVAL];
 
-// main's Vault code before V1, copied verbatim (regression reference).
+// main's Vault code before V1 (regression reference); V2 removed the sealed branch (no sealed rows in the Vault).
 function mainScenarioValue(c: ScenarioCard, sc: Scenario): number | null {
-  if (sc === "now" || c.status === "graded" || c.status === "sealed") return c.valueNow;
+  if (sc === "now" || c.status === "graded") return c.valueNow;
   const v = sc === "10" ? c.psa10 : sc === "9" ? c.psa9 : c.psa8;
   return v ?? c.valueNow;
 }
@@ -41,10 +40,9 @@ test("scenarioValue and vaultTotals equal main at every Price as setting", () =>
   }
 });
 
-test("Price as falls back to value now when the grade has no value; graded and sealed use value now", () => {
+test("Price as falls back to value now when the grade has no value; graded uses value now", () => {
   assert.equal(scenarioValue(NO10, "10"), 25);
   assert.equal(scenarioValue(GRADED, "10"), 210);
-  assert.equal(scenarioValue(SEALED, "9"), 95);
   assert.equal(cardGain(A, "10"), 280);
   assert.equal(cardGain(NOCOST, "10"), null);
   assert.equal(cardGain(NOVAL, "10"), null);
@@ -66,9 +64,9 @@ test("selectionTotals follows Price as for the same selection (Now/10/9/8)", () 
   }
 });
 
-test("selectionTotals uses the tile fallback: no grade value -> value now; graded/sealed -> value now", () => {
-  const t = selectionTotals(ALL, ["no10", "g", "s"], "10");
-  assert.deepEqual(t, { count: 3, value: 25 + 210 + 95, cost: 10 + 150 + 80, gain: 15 + 60 + 15 });
+test("selectionTotals uses the tile fallback: no grade value -> value now; graded -> value now", () => {
+  const t = selectionTotals(ALL, ["no10", "g"], "10");
+  assert.deepEqual(t, { count: 2, value: 25 + 210, cost: 10 + 150, gain: 15 + 60 });
 });
 
 test("selectionTotals: no cost adds value only; no value adds cost only (as the Vault totals do)", () => {

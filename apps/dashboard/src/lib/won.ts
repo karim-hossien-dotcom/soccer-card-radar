@@ -13,6 +13,8 @@ export type Plan = {
   cards: { line: OrderLine; targetId: string | null }[];
   review: OrderLine[];
   matched: OrderLine[];
+  /** V2: sealed product (boxes, packs) is never added to the Vault; reported as skipped. */
+  skipped: OrderLine[];
 };
 
 const tag = (xml: string, name: string) => xml.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`))?.[1] ?? null;
@@ -64,12 +66,13 @@ const DAY = 86_400_000;
  *   a line with the same landed cost within 3 days is treated as already there.
  * - Paid lines from logFrom on are logged; older paid lines go to `review` for the owner to confirm.
  * - Non-card purchases are ignored.
+ * - Sealed product (cardFromTitle status "sealed") goes to `skipped`, never to cards or review.
  * - Unpaid lines wait (their tax and shipping are final once paid); cancelled lines are ignored.
  */
 export function plan(lines: OrderLine[], bids: BidRow[], logged: Set<string>, existing: Existing[], logFrom: string, now = new Date()): Plan {
   const live = lines.filter((l) => !l.cancelled);
   const byItem = new Map(live.map((l) => [l.itemId, l]));
-  const out: Plan = { bids: [], cards: [], review: [], matched: [] };
+  const out: Plan = { bids: [], cards: [], review: [], matched: [], skipped: [] };
   for (const b of bids) {
     if (b.status !== "approved") continue;
     const l = byItem.get(itemIdOf(b.externalId));
@@ -80,6 +83,7 @@ export function plan(lines: OrderLine[], bids: BidRow[], logged: Set<string>, ex
   const pool = existing.filter((e) => e.occurredOn).map((e) => ({ ...e, used: false }));
   for (const l of live) {
     if (!l.paid || !l.boughtAt || logged.has(l.lineItemId) || !isCard(l.title)) continue;
+    if (cardFromTitle(l.title).status === "sealed") { out.skipped.push(l); continue; }
     const day = Date.parse(nyDate(l.boughtAt));
     const hit = pool.find((e) => !e.used && Math.abs(e.amount - l.cost) < 0.01 && Math.abs(Date.parse(e.occurredOn!) - day) <= 3 * DAY);
     if (hit) { hit.used = true; out.matched.push(l); continue; }

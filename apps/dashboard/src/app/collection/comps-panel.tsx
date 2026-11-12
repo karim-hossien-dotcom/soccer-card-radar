@@ -32,7 +32,7 @@ export default function CompsPanel({ cards, inView, onClose }: { cards: Collecti
   const parsed = useMemo(() => (text.trim() ? parseCompPaste(text, cards, today) : null), [text, cards, today]);
 
   const copyTemplate = async () => {
-    const rows = inView.filter((c) => c.status !== "sealed").map((c) => ({
+    const rows = inView.map((c) => ({
       id: c.id, cert: c.cert, item: c.item, player: c.player, grade: c.compGrade,
       extraGrades: c.compGrade === "raw" ? ["PSA 10", "PSA 9"] : [],
     }));
@@ -80,7 +80,7 @@ export default function CompsPanel({ cards, inView, onClose }: { cards: Collecti
         <h2>Update comps</h2>
         <p className={s.note}>Copy the template for the cards in view, add this week&apos;s Card Ladder prices in the &quot;new price&quot; column, then paste the sheet back. Rows without a new price are ignored.</p>
         <div className={s.row}>
-          <button className={s.btn} onClick={copyTemplate}>Copy template ({inView.filter((c) => c.status !== "sealed").length} cards)</button>
+          <button className={s.btn} onClick={copyTemplate}>Copy template ({inView.length} cards)</button>
           <button className={s.btn} onClick={refreshPsa} disabled={busy}>Refresh PSA pop</button>
         </div>
         <textarea className={s.paste} aria-label="Paste comps" placeholder={"Paste the filled template, or lines like:\nref, grade, price[, sales][, YYYY-MM-DD]\n6f1c2a9e, PSA 10, 250, 4"} value={text} onChange={(e) => setText(e.target.value)} rows={8} spellCheck={false} />

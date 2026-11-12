@@ -122,11 +122,6 @@ const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5 · clear';
     ok(await p.evaluate((k) => sessionStorage.getItem(k), KEY) === null, `${name}: clear removes the storage key`);
     await p.reload({ waitUntil: 'networkidle' });
     ok((await sumText(p)) === '', `${name}: still cleared after reload`);
-    // Sealed tile has a checkbox too.
-    await setSeg(p, 'Show', 'Sealed');
-    await box(p, 'Test Golf').check();
-    ok((await sumText(p)).startsWith('1 selected · Value $95 · Cost $80'), `${name}: sealed card selectable ($95 / $80)`);
-    await sum(p).locator('button', { hasText: 'clear' }).click();
     ok(!hyd.length && !errs.length, `${name}: no hydration warning or page error ${hyd.concat(errs).join('; ')}`);
     await ctx.close();
 
