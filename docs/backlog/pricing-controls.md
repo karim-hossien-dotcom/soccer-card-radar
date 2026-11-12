@@ -172,7 +172,7 @@ market sources only (estimates keep rule names, owner_set any); one-year card + 
 - Fix commit: f287509. Verdict: nothing Critical/Important open -> ready for prod.
 
 ## PC1c Authentic slabs (Karim, Nov 12 2026: value the CGC Authentic Mainoo Ruby /19 from the same card's sales and similar print runs)
-Status: ready for review. Change note: `apps/dashboard/src/lib/vault-comp.ts` `vaultGradeKey` (Authentic/AUTH/Altered,
+Status: ready for prod. Change note: `apps/dashboard/src/lib/vault-comp.ts` `vaultGradeKey` (Authentic/AUTH/Altered,
 any grader, case-insensitive -> "raw") and `vaultGradeLabel` ("CGC Authentic" for AUTH or Authentic, "<grader> Altered");
 `app/collection/load.ts` uses both (drawer Grade row, list tile, "Priced: raw comp"). `packages/shared/src/comp-guard.ts`
 `authenticGrader(card)` (grade AUTH/Authentic; grader from card.grader or a "CGC AUTH" grade); on a raw proposal for such
@@ -185,3 +185,31 @@ Authentic only); signal sales still get `grade_label` on Authentic titles (not i
 - Vault: a card whose grade is Authentic/AUTH/Altered (any grader) is valued on the `raw` comp key (vault grade key "raw"), labelled "CGC Authentic" in the drawer.
 - comp-guard: for such a card (card.grade AUTH/Authentic), a kept sale whose title shows the same grader + Authentic passes `grade_mismatch`; any numeric grade still rejects.
 - Tests for both; fixture data only.
+
+### Review (PC1c, reviewer + QA, Nov 12 2026; reviewed 47bf89a against base bf3b891)
+Coordinator decisions applied: (1) Altered card keeps raw sales only (as built; test added); (2) graders other than
+PSA/BGS/SGC/CGC (VGC ...) valued as raw in the Vault key and in comp-guard; (3) an Authentic card's raw proxy/ratio
+signal keeps same-grader Authentic sales (grader + Authentic only).
+- Important, fixed: `vault-comp.ts` `vaultGradeKey("VGC","9")` returned "VGC 9", so a VGC slab was valued on a VGC comp
+  (CLAUDE.md: other graders are valued as raw). Now PSA/BGS/SGC/CGC only (Beckett -> BGS), anything else "raw";
+  label still reads "VGC 9".
+- Important, fixed: `comp-guard.ts` `authenticGrader` accepted any grader, so a VGC AUTH card kept "VGC Authentic"
+  sales. Now PSA/BGS/SGC/CGC only.
+- Important, fixed (AC "any numeric grade still rejects"): `AUTH_NUMBER_RE` missed grade words between Authentic and
+  the number; "CGC Authentic Gem Mint 10", "CGC Authentic Mint 9", "CGC Authentic Grade 9" passed for an Authentic card.
+  Grade words (gem, mint, mt, nm, pristine, grade, graded, signature, auto, dna) and / : - separators now allowed.
+- Coordinator decision (3), done: signal sales of an Authentic card (signal grade null or raw) with the same grader's
+  Authentic title pass `grade_label` (shared helper `sameGraderAuthentic`); another grader, a number, Altered, a
+  qualifier or a graded signal still reject.
+- Fix commit: 774d73a. New tests (comp-guard.test.ts "review(PC1c) ..." x4, vault-comp.test.ts "review(PC1c) ..." x1):
+  run against 47bf89a's code, 4 of 5 fail; the Altered test passes on both (decision 1: keep as built).
+- Checked, no finding: no secrets (made-up titles, synthetic fixture); no new UI (existing drawer Grade/Priced rows and
+  tile); no bids, scans, env or data changes; no raw value derived from graded prices (Authentic/VGC read the raw comp).
+- Minor, left: a bare number right after Authentic ("CGC Authentic 7 Test Player") is read as a grade and rejected
+  (conservative; "#7" is fine). comp-guard does not cross-check proposed.grade against the card's own grade (pre-existing,
+  outside PC1c).
+- Build/test: `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; shared 133/133; dashboard 120/120; grade-screen
+  test_borders + test_api ok (1 pre-existing skip). QA: v3 UAT 65/65 (1280 + 390, synthetic fixture); ad-hoc fixture
+  check (synthetic CGC AUTH and VGC 9 cards, not committed): drawer Grade "CGC Authentic" / "VGC 9", Priced "raw comp",
+  Value now = the raw comp, not the graded comp; no horizontal overflow at 1280 or 390.
+- Verdict: nothing Critical/Important open -> ready for prod (Karim's "ship" still gates the merge).
