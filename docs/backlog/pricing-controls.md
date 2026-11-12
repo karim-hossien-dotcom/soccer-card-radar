@@ -34,3 +34,10 @@ Status: approved. Order: PC1 + PC2 (packages/shared) and V3a (comp-evidence.md) 
 - Radar home "Latest runs" panel gains "Open items (N)" with age in days, oldest first; closed items drop off. Extend the existing panel, no new page.
 - Jobs upsert by (job, cardId, title): new -> insert, still open -> lastSeen, resolved -> closedAt + closedHow.
 - Test: age rendering and close behaviour; fixture data only.
+
+## PC1b comp-guard identity + estimate inputs (follow-up from PC1 review, coordinator defaults Nov 12 2026)
+Status: approved (part of Karim's "do them all" on the root-cause audit)
+- `identity`: when Card.cardNumber is set, a kept sale title must contain that number (with or without hyphen/#, e.g. "R-1", "R1", "#4"); a different "#nnn" rejects. When the card's season is known, a title showing another season/year rejects.
+- Estimates: comp-guard input gets `signals: [{kind, ratio, sales}]` separate from `sales`; only exact-card sales go in `sales`; ratio/proxy sales are checked for auto status, grade label, lots and own-sale, not for the target's parallel/number.
+- `value_jump`: a value more than 50% away from the previous comp for the same card and grade needs `reason` in the input, else error.
+- Coordinator defaults on the other review trade-offs: a parallel sale with neither the parallel word nor serial in the title stays a warning (verifier checks the photo); "PSA 10 ready" / "facsimile" rejects stay; BGS Black Label shares "BGS 10"; method `mean` is not allowed (median, single, estimate, owner only).
