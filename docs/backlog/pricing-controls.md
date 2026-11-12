@@ -139,4 +139,4 @@ market sources only (estimates keep rule names, owner_set any); one-year card + 
   No UI, no migration, no bid or scan code in the diff.
 - Build/test: `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; shared 125/125; dashboard 103/103;
   grade-screen test_borders + test_api ok (1 known skip).
-- Verdict: nothing Critical/Important open -> ready for prod.
+- Fix commit: f287509. Verdict: nothing Critical/Important open -> ready for prod.
