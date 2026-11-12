@@ -18,7 +18,7 @@ turn from amber to evidenced as they are refreshed.
 ## V3a CompSale table + evidence under each grade's value in the card drawer
 Size: M (one day). Branch: feat/V3a.
 
-Status: ready for prod (reviewer + QA, Nov 12 2026; migration NOT applied, Karim's yes needed). Engineer change note: migration `20261112b_comp_sale.sql` (file only, NOT
+Status: shipped Nov 12 2026 (migration applied). Engineer change note: migration `20261112b_comp_sale.sql` (file only, NOT
 applied; run twice on a scratch local Postgres 16: no error; kept+reason, bad code, bad source, price 0 and duplicate
 all rejected; CardComp delete cascades; RLS on, anon/authenticated revoked incl. the id sequence). CompSale types;
 `id` in COMP_COLS/COMP_COLS_LEGACY; `lib/comp-evidence.ts` + tests; `GET /api/comps?cardId=` (requireAdmin, fixture

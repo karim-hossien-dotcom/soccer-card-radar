@@ -61,6 +61,21 @@ n=1 with no low/high and confidence above 2; the grade label is not raw/PSA/BGS/
 workbook_import; the value moved more than 50% from the last comp without the reason shown. Rejected values go back
 for redo, then stay "open" in the report (first line Incomplete: N open). Only verified rows are inserted.
 
+## Writing a value (shipped Nov 12 2026: comp-guard, CompSale, OpenItem). Every job, every value, in this order
+1. Build the comp-guard input: `card` (from the Card row: item, year, setName, cardNumber, parallel, printRun, isAuto,
+   grader, grade, status), `proposed` (grade, price, low, high, sampleSize, source, method, confidence), `sales` (exact-card
+   sales only, each with kept true/false and rejectReason when false), `signals` (estimates only: ratio/proxy inputs),
+   `ledger` (the card's LedgerEntry rows), `ownSellerIds` (Karim's eBay account), `previous` (newest comp for the same
+   grade) and `reason` (required when the value moves more than 50%).
+2. Run `pnpm -s --filter @soccer-card-radar/shared comp-guard <input.json>` from a repo checkout. Exit 1 = not written:
+   fix and retry, or record it as an open item. Exit 2 = bad input.
+3. Only on exit 0: INSERT the CardComp row, then INSERT one "CompSale" row per sale for that comp id (date, price, title,
+   source ebay|cardladder|psa_apr, url, kept, rejectReason = comp-guard code: card, parallel_word, auto_mismatch,
+   grade_mismatch, lot, own_sale, sale_age; or unclear when the photo/title can't settle it). Rejected sales are stored too.
+4. Open items: for each item still open at the end, upsert into "OpenItem" (job, cardId, title, reason) with
+   `on conflict (job, "cardId", title) where "closedAt" is null do update set "lastSeen" = now(), reason = excluded.reason`;
+   for each item from an earlier run that this run resolved, set closedAt = now() and closedHow (one line: what fixed it).
+
 ## Parallels
 - Inversion: a numbered parallel valued below its own base -> hand to researcher-2.
 - Base-move rule (Karim): if a parallel's own sales are older than its base's latest sales and the base has moved >20%:

@@ -3,7 +3,7 @@
 Status: approved. Order: PC1 + PC2 (packages/shared) and V3a (comp-evidence.md) in parallel, then PC3, then V3b.
 
 ## PC1 comp-guard: the rules become code (F2)
-Status: ready for prod (reviewed + QA green Nov 12 2026, see Review below; migration still NOT applied) (branch feat/PC1-PC2). Change note: `packages/shared/src/comp-guard.ts` + `bin/comp-guard.ts`
+Status: shipped Nov 12 2026 (migration applied). Change note: `packages/shared/src/comp-guard.ts` + `bin/comp-guard.ts`
 (script `comp-guard`, exit 0 ok / 1 errors / 2 usage); all 12 codes plus `reject_reason_missing`, `reject_reason_on_kept`
 and `input`; warnings `no_url`, `own_check_empty`, `no_market_12m`. Migration `20261112c_comp_grade_check.sql` written,
 NOT applied. Engineer choices for review: `no_evidence`/`n_mismatch` exempt estimate, owner_set, ratio_to_base;
@@ -31,7 +31,7 @@ parallel words are allowed in titles; "Red Bull/Star/Devils" are not colour word
 - Never prints or commits real data; fixtures are made up.
 
 ## PC2 thin_blend fixes (F4, Karim decision Nov 12: his purchases do not go into values)
-Status: ready for prod (reviewed + QA green Nov 12 2026, see Review below) (branch feat/PC1-PC2). Change note: `purchase` kind removed; a purchase signal makes the whole
+Status: shipped Nov 12 2026 (migration applied). Change note: `purchase` kind removed; a purchase signal makes the whole
 result empty with excluded "error: purchase is not a value signal" and the CLI exits 2 with that error. Sales older than
 730 days are excluded with reason "age" (PURCHASE_MAX_DAYS replaced by MAX_SALE_DAYS). A sale older than 14 days with no
 indexFactor doubles its signal's variance (halves weight), sets `signals[i].indexHalved`, adds `flags: ["no_index"]` and
@@ -85,7 +85,7 @@ Strictness trade-offs (open, need a rule):
    has a time after midnight.
 
 ## PC3 Open items tracked to closure (F8)
-Status: ready for prod (feat/PC3; reviewed + QA green Nov 12 2026, waiting for Karim's "ship"). Change note: migration `20261112e_open_item.sql` (file only, not applied; `c` is PC1's,
+Status: shipped Nov 12 2026 (migration applied). Change note: migration `20261112e_open_item.sql` (file only, not applied; `c` is PC1's,
 `d` is Card.isAuto on main) with one open row per (job, cardId, title) via a partial unique index NULLS NOT DISTINCT, the
 upsert/close SQL in its header, RLS on + anon/authenticated revoked; `packages/db/test/open_item.check.sh` (throwaway Postgres).
 `apps/dashboard/src/lib/open-items.ts`: `openItems` (open only, oldest first, age in whole days) + `planUpsert` (same rule
@@ -121,7 +121,7 @@ loads separately, so a missing table shows "Couldn't load open items" in that ca
 - Branch merges cleanly with main (37a9daa).
 
 ## PC1b comp-guard identity + estimate inputs (follow-up from PC1 review, coordinator defaults Nov 12 2026)
-Status: ready for prod (branch feat/PC1-PC2, reviewed Nov 12 2026). Change note: `packages/shared/src/comp-guard.ts`.
+Status: shipped Nov 12 2026 (migration applied). Change note: `packages/shared/src/comp-guard.ts`.
 - Per-sale identity error is code `card` (not `identity`: coordinator, Nov 12, so it fits V3a's CompSale.rejectReason
   CHECK). Number: digit groups match with or without hyphen / space / # and leading zeros ("R-1", "R1", "#R1", "#07");
   grades ("PSA 10"), serials ("07/10", "#/10", "1 of 1") and seasons are blanked first so "PSA 10" is not card #10.
