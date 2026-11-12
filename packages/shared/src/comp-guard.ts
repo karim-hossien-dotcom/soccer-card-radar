@@ -44,6 +44,25 @@ export interface GuardLedger {
   kind: string;
 }
 
+/**
+ * PC1b: an estimate's ratio / proxy input (grade_ratio, parallel_ratio, base_move, proxy ...). Its sales are of
+ * another card or grade, so they are checked for auto status, grade label, lots, own sales and age only, never
+ * against the target card's parallel, number or season. Only exact-card sales go in `sales`.
+ */
+export interface GuardSignal {
+  kind: string;
+  ratio?: number | null;
+  grade?: string | null; // grade of the signal's sales, when it is a graded input
+  sales: GuardSale[];
+}
+
+/** PC1b: the latest comp already stored for the same card and grade. */
+export interface GuardPrevious {
+  grade: string;
+  price: number;
+  date?: string | null;
+}
+
 export interface CompGuardInput {
   now: string | Date;
   card: GuardCard;
@@ -51,6 +70,10 @@ export interface CompGuardInput {
   sales: GuardSale[];
   ledger?: GuardLedger[];
   ownSellerIds?: string[];
+  signals?: GuardSignal[];
+  previous?: GuardPrevious | null;
+  /** Why the value moved more than VALUE_JUMP from `previous` (required then). */
+  reason?: string | null;
 }
 
 export type GuardCode =
@@ -67,12 +90,16 @@ export type GuardCode =
   | "lot"
   | "own_sale"
   | "thin"
+  | "card"
+  | "value_jump"
+  | "method_forbidden"
   | "reject_reason_missing"
   | "reject_reason_on_kept";
 
 export interface GuardIssue {
   code: GuardCode | string;
-  sale?: number; // index into input.sales
+  sale?: number; // index into input.sales, or into input.signals[signal].sales when `signal` is set
+  signal?: number; // index into input.signals
   message: string;
 }
 
@@ -90,6 +117,10 @@ export const FORBIDDEN_SOURCES = ["workbook_import"];
 export const MARKET_DAYS = 90;
 export const ESTIMATE_MAX_DAYS = 730; // 24 months
 export const OWN_PRICE_TOL = 0.01; // ±1%
+export const VALUE_JUMP = 0.5; // a value more than 50% away from the previous comp needs a reason
+/** Market comps are a median (one sale = single). Averages are never a value (skill: value = median). */
+export const MARKET_METHODS = ["median", "single"];
+export const FORBIDDEN_METHODS = ["mean", "average", "avg"];
 const DAY_MS = 86_400_000;
 
 /** Parallel / colour words (card-comps sale check 2). Multi-word phrases are matched as phrases, longest first. */
@@ -223,6 +254,58 @@ const AUTHENTIC_RE = /(^|[^a-z])(authentic|auth|altered)([^a-z]|$)/i;
 /** review(PC1): PSA qualifier grades ("PSA 9 OC", "PSA 8 (ST)") are not the straight grade. Upper case only. */
 const QUALIFIER_RE = /(^|[^A-Za-z0-9])(PSA|SGC|BGS|CGC)\s*\d{1,2}(?:\.\d)?\s*\(?(OC|ST|PD|OF|MK|MC)\)?(?![A-Za-z])/;
 
+/** Letter / digit groups of a card number: "R-1" -> ["r", "1"], "#4" -> ["4"], "TC-KM" -> ["tc", "km"]. */
+function numberParts(n: unknown): string[] {
+  return String(n ?? "").toLowerCase().match(/[a-z]+|\d+/g) ?? [];
+}
+const numberCore = (n: unknown) => numberParts(n).map((p) => (/^\d+$/.test(p) ? String(Number(p)) : p)).join("");
+
+/**
+ * Title with grades, serials and seasons blanked, so a bare card number is not found inside "PSA 10", "07/10",
+ * "1 of 1" or "2024-25".
+ */
+function numberText(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(new RegExp(`(${GRADERS.join("|")})(?![a-z])\\s*(?:(?:gem\\s*(?:mint|mt)|mint|mt|nm\\s*mt|pristine|black\\s*label)\\s*)?\\d{1,2}(?:\\.\\d)?`, "gi"), " ")
+    .replace(/\d*\s*\/\s*\d+/g, " ")
+    .replace(/\d+ of \d+/g, " ")
+    .replace(/(19|20)\d{2}\s*[-/]\s*\d{2,4}/g, " ")
+    .replace(/(numbered|#'?d)\s*(to)?\s*\d+/g, " ");
+}
+
+/** "#nnn" / "#R-1" card numbers written in a title (with a digit; not "#24/25" serials, "#/99" or "#'d"). */
+function hashNumbers(title: string): string[] {
+  const out: string[] = [];
+  const re = /#\s*([a-z]{0,4}[-\s]?\d{1,4}[a-z]?)(?![a-z0-9])(?!\s*\/)/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(title))) out.push(m[1]);
+  return out;
+}
+
+/** Seasons / years a title shows: "2024-25", "2024/2025", "24-25" (hyphen only) as pairs, other 19xx/20xx as singles. */
+function titleYears(title: string): { pairs: [number, number][]; singles: number[] } {
+  const pairs: [number, number][] = [];
+  const full = (y: string, base?: number) =>
+    y.length === 4 ? Number(y) : base !== undefined ? Math.floor(base / 100) * 100 + Number(y) : 2000 + Number(y);
+  let t = title.toLowerCase();
+  t = t.replace(/(^|[^\d#/])((?:19|20)\d{2})\s*[-/]\s*(\d{2}|(?:19|20)\d{2})(?![\d/])/g, (all, pre, a, b) => {
+    const A = Number(a);
+    const B = full(b, A);
+    if (B !== A + 1 && !(b.length === 2 && B % 100 === (A + 1) % 100)) return all;
+    pairs.push([A, A + 1]);
+    return `${pre} `;
+  });
+  t = t.replace(/(^|[^\d#/a-z])(\d{2})-(\d{2})(?![\d/])/g, (all, pre, a, b) => {
+    if ((Number(a) + 1) % 100 !== Number(b)) return all;
+    const A = full(a);
+    pairs.push([A, A + 1]);
+    return `${pre} `;
+  });
+  const singles = (t.match(/(?<![\d#/])(?:19|20)\d{2}(?!\d)/g) ?? []).map(Number);
+  return { pairs, singles };
+}
+
 export function compGuard(input: CompGuardInput): CompGuardResult {
   const errors: GuardIssue[] = [];
   const warnings: GuardIssue[] = [];
@@ -256,22 +339,45 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
   if (FORBIDDEN_SOURCES.includes(source)) {
     errors.push({ code: "source_forbidden", message: `source ${source} is never a new comp` });
   }
+  // PC1b: value = median (skill). Market comps are median / single; estimates name their rule; no averages anywhere.
+  const method = String(proposed.method ?? "");
+  if (FORBIDDEN_METHODS.includes(method.toLowerCase())) {
+    errors.push({ code: "method_forbidden", message: `method ${method} is not allowed (value = median)` });
+  } else if (!noSalesOk && !MARKET_METHODS.includes(method)) {
+    errors.push({ code: "method_forbidden", message: `method ${method || "(none)"} for source ${source || "(none)"}: market comps are median or single` });
+  }
+  // PC1b value_jump: more than 50% from the previous comp of the same grade needs a reason.
+  const prev = input.previous;
+  if (prev && typeof prev === "object" && prev.grade === grade && isNum(prev.price) && prev.price > 0 && isNum(proposed.price)) {
+    const move = (proposed.price - prev.price) / prev.price;
+    const reason = typeof input.reason === "string" ? input.reason.trim() : "";
+    if (Math.abs(move) > VALUE_JUMP + 1e-9 && !reason) {
+      errors.push({
+        code: "value_jump",
+        message: `price ${proposed.price} is ${Math.round(move * 100)}% from the previous ${grade} comp ${prev.price}; give a reason`,
+      });
+    }
+  }
 
-  // Kept / rejected bookkeeping.
-  const kept: { i: number; s: GuardSale }[] = [];
-  sales.forEach((s, i) => {
-    if (!s || typeof s !== "object") {
-      errors.push({ code: "input", sale: i, message: "sale is not an object" });
-      return;
-    }
-    const reason = typeof s.rejectReason === "string" ? s.rejectReason.trim() : "";
-    if (s.kept === true) {
-      if (reason) errors.push({ code: "reject_reason_on_kept", sale: i, message: "kept sale carries a rejectReason" });
-      kept.push({ i, s });
-    } else if (!reason) {
-      errors.push({ code: "reject_reason_missing", sale: i, message: "rejected sale has no rejectReason" });
-    }
-  });
+  // Kept / rejected bookkeeping (sales and signal sales alike).
+  const bookkeep = (list: GuardSale[], at: (i: number) => Partial<GuardIssue>) => {
+    const out: { i: number; s: GuardSale }[] = [];
+    list.forEach((s, i) => {
+      if (!s || typeof s !== "object") {
+        errors.push({ code: "input", ...at(i), message: "sale is not an object" });
+        return;
+      }
+      const reason = typeof s.rejectReason === "string" ? s.rejectReason.trim() : "";
+      if (s.kept === true) {
+        if (reason) errors.push({ code: "reject_reason_on_kept", ...at(i), message: "kept sale carries a rejectReason" });
+        out.push({ i, s });
+      } else if (!reason) {
+        errors.push({ code: "reject_reason_missing", ...at(i), message: "rejected sale has no rejectReason" });
+      }
+    });
+    return out;
+  };
+  const kept = bookkeep(sales, (i) => ({ sale: i }));
 
   if (!noSalesOk && kept.length === 0) {
     errors.push({ code: "no_evidence", message: `source ${source || "(none)"} needs kept sales; none given` });
@@ -294,7 +400,6 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
     errors.push({ code: "thin", message: `one sale with no low/high cannot be confidence ${proposed.confidence}` });
   }
 
-  // Per kept sale.
   const cardText = canon(norm([card.item, card.set, card.parallel].filter(Boolean).join(" ")));
   const cardPhrases = parallelPhrases(cardText);
   const ownParallel = parallelPhrases(canon(norm(card.parallel)));
@@ -307,31 +412,102 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
   const ageLimit = isEstimate ? ESTIMATE_MAX_DAYS : MARKET_DAYS;
   let newestKeptAge = Infinity;
 
+  // PC1b card identity: number parts and the card's years / seasons.
+  const numParts = numberParts(card.number);
+  const numCore = numberCore(card.number);
+  const numRe = numParts.length
+    ? new RegExp(`(^|[^a-z0-9])#?\\s*${numParts.map((p) => (/^\d+$/.test(p) ? `0*${Number(p)}` : esc(p))).join("[-\\s.]?")}(?![a-z0-9])`)
+    : null;
+  const yearStr = String(card.year ?? "");
+  const cardYears = (yearStr.match(/(19|20)\d{2}/g) ?? []).map(Number);
+  const seasonM = yearStr.match(/((?:19|20)\d{2})\s*[-/]\s*(\d{2,4})(?!\d)/);
+  const okSingles = new Set<number>(cardYears);
+  if (seasonM) okSingles.add(Number(seasonM[1]) + 1);
+  // Years in the card's own item / set name ("World Cup 2022") are part of the name, not another season.
+  for (const y of norm([card.item, card.set].filter(Boolean).join(" ")).match(/(19|20)\d{2}/g) ?? []) okSingles.add(Number(y));
+  const pairOk = ([a, b]: [number, number]) => (seasonM ? a === Number(seasonM[1]) : okSingles.has(a) || okSingles.has(b));
+
+  const ownSaleCheck = (s: GuardSale, ts: number, at: Partial<GuardIssue>) => {
+    if (s.seller && ownIds.includes(norm(s.seller))) {
+      errors.push({ code: "own_sale", ...at, message: "seller is Karim's own account" });
+    } else if (Number.isFinite(ts) && isNum(s.price)) {
+      const hit = ledger.find((l) => {
+        if (!l || (l.kind !== "purchase" && l.kind !== "sale") || !isNum(l.amount)) return false;
+        const lt = toTime(l.date);
+        if (!Number.isFinite(lt)) return false;
+        // Same date: UTC calendar days may differ by one across time zones (ledger dates are date-only).
+        const sameDate = Math.abs(Math.floor(lt / DAY_MS) - Math.floor(ts / DAY_MS)) <= 1;
+        const amt = Math.abs(l.amount);
+        return sameDate && Math.abs(s.price - amt) <= OWN_PRICE_TOL * amt;
+      });
+      if (hit) errors.push({ code: "own_sale", ...at, message: `same date and price as a ledger ${hit.kind}` });
+    }
+  };
+  const lotCheck = (t: string, at: Partial<GuardIssue>) => {
+    if (/(^|[^a-z0-9])(lot|lots|bundle)([^a-z0-9]|$)|(^|[^a-z0-9])x ?[2-9]([^0-9]|$)|(^|[^a-z0-9])[2-9]x([^a-z0-9]|$)|set of/.test(t)) {
+      errors.push({ code: "lot", ...at, message: "title looks like a lot / multiple cards" });
+    }
+  };
+  const autoCheck = (t: string, at: Partial<GuardIssue>) => {
+    const autoInTitle = AUTO_WORDS.filter((w) => hasWord(t, w) && !hasWord(cardText, w));
+    const memInTitle = MEM_WORDS.filter((w) => hasWord(t, w) && !hasWord(cardText, w));
+    if (card.isAuto) {
+      if (!AUTO_WORDS.some((w) => hasWord(t, w))) {
+        errors.push({ code: "auto_mismatch", ...at, message: "card is an auto; title has no auto word" });
+      } else if (!cardHasMem && memInTitle.length) {
+        errors.push({ code: "auto_mismatch", ...at, message: `card is an on-card auto; title has ${memInTitle.join(", ")}` });
+      } else if (cardHasMem && !MEM_WORDS.some((w) => hasWord(t, w))) {
+        errors.push({ code: "auto_mismatch", ...at, message: "card is a patch auto; title has no patch/relic word" });
+      }
+    } else if (autoInTitle.length || memInTitle.length) {
+      errors.push({ code: "auto_mismatch", ...at, message: `card is not an auto; title has ${[...new Set([...autoInTitle, ...memInTitle])].join(", ")}` });
+    }
+  };
+  const ageCheck = (s: GuardSale, limit: number, at: Partial<GuardIssue>): number => {
+    const ts = toTime(s.date);
+    if (!Number.isFinite(ts)) {
+      errors.push({ code: "input", ...at, message: "kept sale date is not a date" });
+    } else if (Number.isFinite(now)) {
+      const age = (now - ts) / DAY_MS;
+      if (age < -1) errors.push({ code: "input", ...at, message: "kept sale date is in the future" });
+      if (age > limit) {
+        errors.push({ code: "sale_age", ...at, message: `kept sale is ${Math.floor(age)} days old (limit ${limit} for source ${source || "(none)"})` });
+      }
+    }
+    return ts;
+  };
+  const cleanTitle = (title: string) =>
+    NOT_PARALLEL_PHRASES.reduce((x, p) => x.replace(new RegExp(`(^|[^a-z0-9])${esc(p)}(?=[^a-z0-9]|$)`, "g"), "$1 "), canon(norm(title)));
+
+  // Per kept sale (exact-card sales).
   for (const { i, s } of kept) {
     const title = typeof s.title === "string" ? s.title : "";
     // Team names and grader labels that carry a colour word are not parallels.
-    const t = NOT_PARALLEL_PHRASES.reduce(
-      (x, p) => x.replace(new RegExp(`(^|[^a-z0-9])${esc(p)}(?=[^a-z0-9]|$)`, "g"), "$1 "),
-      canon(norm(title)),
-    );
+    const t = cleanTitle(title);
     if (!isNum(s.price) || s.price <= 0) errors.push({ code: "input", sale: i, message: "kept sale price must be a positive number" });
     if (!title) errors.push({ code: "input", sale: i, message: "kept sale has no title" });
     if (!s.url) warnings.push({ code: "no_url", sale: i, message: "kept sale has no url" });
 
     // sale_age
-    const ts = toTime(s.date);
-    if (!Number.isFinite(ts)) {
-      errors.push({ code: "input", sale: i, message: "kept sale date is not a date" });
-    } else if (Number.isFinite(now)) {
-      const age = (now - ts) / DAY_MS;
-      if (age < -1) errors.push({ code: "input", sale: i, message: "kept sale date is in the future" });
-      newestKeptAge = Math.min(newestKeptAge, age);
-      if (age > ageLimit) {
-        errors.push({
-          code: "sale_age",
-          sale: i,
-          message: `kept sale is ${Math.floor(age)} days old (limit ${ageLimit} for source ${source || "(none)"})`,
-        });
+    const ts = ageCheck(s, ageLimit, { sale: i });
+    if (Number.isFinite(ts) && Number.isFinite(now)) newestKeptAge = Math.min(newestKeptAge, (now - ts) / DAY_MS);
+
+    // card (PC1b identity): the card's number, no other "#nnn", no other season / year.
+    if (title) {
+      if (numRe && !numRe.test(numberText(title))) {
+        errors.push({ code: "card", sale: i, message: `title does not show card number ${card.number}` });
+      }
+      const otherNums = numCore ? hashNumbers(title).filter((h) => numberCore(h) !== numCore) : [];
+      if (otherNums.length) {
+        errors.push({ code: "card", sale: i, message: `title shows #${otherNums.join(", #")} (card #${card.number})` });
+      }
+      if (cardYears.length) {
+        const ty = titleYears(title);
+        const other = [
+          ...ty.pairs.filter((p) => !pairOk(p)).map(([a, b]) => `${a}-${String(b).slice(2)}`),
+          ...ty.singles.filter((y) => !okSingles.has(y)).map(String),
+        ];
+        if (other.length) errors.push({ code: "card", sale: i, message: `title shows ${other.join(", ")} (card year ${yearStr})` });
       }
     }
 
@@ -360,20 +536,7 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
       warnings.push({ code: "parallel_unconfirmed", sale: i, message: `title shows neither ${card.parallel} nor its print run: check the photo` });
     }
 
-    // auto_mismatch
-    const autoInTitle = AUTO_WORDS.filter((w) => hasWord(t, w) && !hasWord(cardText, w));
-    const memInTitle = MEM_WORDS.filter((w) => hasWord(t, w) && !hasWord(cardText, w));
-    if (card.isAuto) {
-      if (!AUTO_WORDS.some((w) => hasWord(t, w))) {
-        errors.push({ code: "auto_mismatch", sale: i, message: "card is an auto; title has no auto word" });
-      } else if (!cardHasMem && memInTitle.length) {
-        errors.push({ code: "auto_mismatch", sale: i, message: `card is an on-card auto; title has ${memInTitle.join(", ")}` });
-      } else if (cardHasMem && !MEM_WORDS.some((w) => hasWord(t, w))) {
-        errors.push({ code: "auto_mismatch", sale: i, message: "card is a patch auto; title has no patch/relic word" });
-      }
-    } else if (autoInTitle.length || memInTitle.length) {
-      errors.push({ code: "auto_mismatch", sale: i, message: `card is not an auto; title has ${[...new Set([...autoInTitle, ...memInTitle])].join(", ")}` });
-    }
+    autoCheck(t, { sale: i });
 
     // grade_mismatch
     const shown = gradesIn(title);
@@ -396,32 +559,60 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
       }
     }
 
-    // lot
-    if (/(^|[^a-z0-9])(lot|lots|bundle)([^a-z0-9]|$)|(^|[^a-z0-9])x ?[2-9]([^0-9]|$)|(^|[^a-z0-9])[2-9]x([^a-z0-9]|$)|set of/.test(t)) {
-      errors.push({ code: "lot", sale: i, message: "title looks like a lot / multiple cards" });
-    }
+    lotCheck(t, { sale: i });
+    ownSaleCheck(s, ts, { sale: i });
+  }
 
-    // own_sale
-    if (s.seller && ownIds.includes(norm(s.seller))) {
-      errors.push({ code: "own_sale", sale: i, message: "seller is Karim's own account" });
-    } else if (Number.isFinite(ts) && isNum(s.price)) {
-      const hit = ledger.find((l) => {
-        if (!l || (l.kind !== "purchase" && l.kind !== "sale") || !isNum(l.amount)) return false;
-        const lt = toTime(l.date);
-        if (!Number.isFinite(lt)) return false;
-        // Same date: UTC calendar days may differ by one across time zones (ledger dates are date-only).
-        const sameDate = Math.abs(Math.floor(lt / DAY_MS) - Math.floor(ts / DAY_MS)) <= 1;
-        const amt = Math.abs(l.amount);
-        return sameDate && Math.abs(s.price - amt) <= OWN_PRICE_TOL * amt;
+  // PC1b signals: ratio / proxy inputs of an estimate. Checked for auto status, grade label, lots, own sales and
+  // age (24 months); not for the target's parallel, number or season (they are another card or grade by design).
+  let signalKept = 0;
+  if (input.signals !== undefined && input.signals !== null) {
+    if (!Array.isArray(input.signals)) {
+      errors.push({ code: "input", message: "signals must be an array" });
+    } else if (input.signals.length && !noSalesOk) {
+      errors.push({ code: "input", message: `signals are for estimates (source ${source || "(none)"}); a market comp uses exact-card sales only` });
+    } else {
+      input.signals.forEach((sig, j) => {
+        if (!sig || typeof sig !== "object" || typeof sig.kind !== "string" || !sig.kind.trim() || !Array.isArray(sig.sales)) {
+          errors.push({ code: "input", signal: j, message: "signal needs kind and a sales array" });
+          return;
+        }
+        if (sig.kind === "purchase") {
+          errors.push({ code: "input", signal: j, message: "purchase is not a value signal" });
+          return;
+        }
+        if (sig.ratio !== undefined && sig.ratio !== null && (!isNum(sig.ratio) || sig.ratio <= 0)) {
+          errors.push({ code: "input", signal: j, message: "signal ratio must be a positive number" });
+        }
+        if (sig.grade !== undefined && sig.grade !== null && !GRADE_LABEL_RE.test(String(sig.grade))) {
+          errors.push({ code: "grade_label", signal: j, message: `signal grade "${sig.grade}" is not raw or PSA/BGS/SGC/CGC + number` });
+        }
+        for (const { i, s } of bookkeep(sig.sales, (i) => ({ signal: j, sale: i }))) {
+          signalKept++;
+          const at = { signal: j, sale: i };
+          const title = typeof s.title === "string" ? s.title : "";
+          if (!isNum(s.price) || s.price <= 0) errors.push({ code: "input", ...at, message: "kept sale price must be a positive number" });
+          if (!title) errors.push({ code: "input", ...at, message: "kept sale has no title" });
+          if (!s.url) warnings.push({ code: "no_url", ...at, message: "kept sale has no url" });
+          const ts = ageCheck(s, ESTIMATE_MAX_DAYS, at);
+          autoCheck(cleanTitle(title), at);
+          // grade label: a slab shown as Authentic / Altered or with a qualifier is not a gradeable label.
+          const shown = gradesIn(title);
+          const qualifier = QUALIFIER_RE.exec(title);
+          if ((AUTHENTIC_RE.test(title) && shown.length > 0) || qualifier) {
+            errors.push({ code: "grade_label", ...at, message: `title shows ${qualifier ? `qualifier ${qualifier[3]}` : "Authentic/Altered"}` });
+          }
+          lotCheck(cleanTitle(title), at);
+          ownSaleCheck(s, ts, at);
+        }
       });
-      if (hit) errors.push({ code: "own_sale", sale: i, message: `same date and price as a ledger ${hit.kind}` });
     }
   }
 
   if (isEstimate && kept.length && newestKeptAge > 365) {
     warnings.push({ code: "no_market_12m", message: "newest kept sale is older than 12 months: confidence 1, report 'no market in 12 months'" });
   }
-  if (!ownIds.length && !ledger.length && kept.length) {
+  if (!ownIds.length && !ledger.length && (kept.length || signalKept)) {
     warnings.push({ code: "own_check_empty", message: "no ownSellerIds and no ledger: own-sale check had nothing to compare" });
   }
   return done();

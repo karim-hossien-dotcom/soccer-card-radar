@@ -315,7 +315,7 @@ test("review(PC1) grader labels and club nicknames with colour words are not par
 });
 
 test("review(PC1) an insert name with colour words in the card's own item is allowed; other colours are not", () => {
-  const card = { item: "2019 Fictional Chrome Black Gold Test Player #BG7" };
+  const card = { item: "2019 Fictional Chrome Black Gold Test Player #BG7", number: "BG7" };
   assert.deepEqual(codes(titled("2019 Fictional Chrome Black Gold Test Player #BG7", card)), []);
   onlyCode(titled("2019 Fictional Chrome Black Gold Test Player #BG7 Red", card), "parallel_word", 0);
 });
@@ -370,12 +370,12 @@ test("review(PC1) serials: 1 of 1, numbered to, any /xx not the print run; seaso
 
 test("review(PC1) auto: non-auto rejects AU/signed/RPA; patch auto and on-card auto are different cards", () => {
   for (const w of ["AU", "Signed", "Signature", "Autographed", "RPA", "Relic", "Jersey"]) onlyCode(titled(`${T} ${w}`), "auto_mismatch", 0);
-  const onCard = { isAuto: true, item: "2019 Fictional Chrome Test Player Autograph #A7" };
+  const onCard = { isAuto: true, item: "2019 Fictional Chrome Test Player Autograph #A7", number: "A7" };
   assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player Autograph #A7", onCard)), []);
   onlyCode(titled("2019 Fictional Chrome Test Player #A7 RPA", onCard), "auto_mismatch", 0);
   onlyCode(titled("2019 Fictional Chrome Test Player #A7 Auto Patch", onCard), "auto_mismatch", 0);
   onlyCode(titled("2019 Fictional Chrome Test Player #A7", onCard), "auto_mismatch", 0);
-  const patch = { isAuto: true, item: "2019 Fictional Chrome Test Player Auto Patch #AP7" };
+  const patch = { isAuto: true, item: "2019 Fictional Chrome Test Player Auto Patch #AP7", number: "AP7" };
   assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player Auto Patch #AP7", patch)), []);
   assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player #AP7 RPA", patch)), []);
   onlyCode(titled("2019 Fictional Chrome Test Player #AP7 On Card Auto", patch), "auto_mismatch", 0);
@@ -411,4 +411,163 @@ test("review(PC1) not_median also checks method single", () => {
   const inp = titled(T);
   inp.proposed = { ...inp.proposed, method: "single", price: 25 };
   onlyCode(inp, "not_median");
+});
+
+// ---- PC1b: card identity, estimate signals, value_jump, method (made-up cards only) ----
+
+test("PC1b card: number with or without hyphen / #; missing number rejects", () => {
+  const r1 = { number: "R-1", item: "2019 Fictional Chrome Test Player Rookie Rush #R-1" };
+  for (const t of ["2019 Fictional Chrome Test Player R-1", "2019 Fictional Chrome Test Player R1", "2019 Fictional Chrome Test Player #R1", "2019 Fictional Chrome #R-1 Test Player"]) {
+    assert.deepEqual(codes(titled(t, r1)), [], t);
+  }
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player #07")), []); // leading zero
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player 7 RC")), []); // bare number
+  onlyCode(titled("2019 Fictional Chrome Test Player RC"), "card", 0);
+  onlyCode(titled("2019 Fictional Chrome Test Player R-11", r1), "card", 0);
+});
+
+test("PC1b card: a different #nnn rejects", () => {
+  onlyCode(titled("2019 Fictional Chrome Test Player #103"), "card", 0);
+  onlyCode(titled("2019 Fictional Chrome Test Player #7 #103"), "card", 0);
+  onlyCode(titled("2019 Fictional Chrome Test Player #R-2 7", { number: "7" }), "card", 0);
+});
+
+test("PC1b card: the number is not found inside a grade, serial or print run", () => {
+  const ten = { number: "10", item: "2019 Fictional Chrome Test Player #10" };
+  onlyCode(titled("2019 Fictional Chrome Test Player PSA 10", { ...ten, grader: "PSA", grade: "10", status: "graded" }, "PSA 10"), "card", 0);
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player #10 PSA 10", { ...ten, grader: "PSA", grade: "10", status: "graded" }, "PSA 10")), []);
+  const gold = { ...ten, parallel: "Gold", printRun: 10 };
+  onlyCode(titled("2019 Fictional Chrome Test Player Gold 07/10", gold), "card", 0);
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player #10 Gold 07/10", gold)), []);
+  // "#/10" and "#'d to 10" are serials, not a card number
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player #10 Gold #/10", gold)), []);
+});
+
+test("PC1b card: another season or year rejects; the card's own season forms pass", () => {
+  onlyCode(titled("2020 Fictional Chrome Test Player #7"), "card", 0);
+  onlyCode(titled("2017-18 Fictional Chrome Test Player #7"), "card", 0);
+  assert.deepEqual(codes(titled("2018-19 Fictional Chrome Test Player #7")), []); // single year 2019 is in the season
+  assert.deepEqual(codes(titled("2019-20 Fictional Chrome Test Player #7")), []);
+  const season = { year: "2024-25", item: "2024-25 Fictional Chrome Test Player #7" };
+  for (const t of ["2024-25 Fictional Chrome Test Player #7", "2024/25 Fictional Chrome Test Player #7", "2024/2025 Fictional Chrome Test Player #7", "24-25 Fictional Chrome Test Player #7", "2025 Fictional Chrome Test Player #7", "Fictional Chrome Test Player #7"]) {
+    assert.deepEqual(codes(titled(t, season)), [], t);
+  }
+  onlyCode(titled("2023-24 Fictional Chrome Test Player #7", season), "card", 0);
+  onlyCode(titled("23-24 Fictional Chrome Test Player #7", season), "card", 0);
+  onlyCode(titled("2025-26 Fictional Chrome Test Player #7", season), "card", 0);
+  // a year in the card's own set name is not another season; no card year = no season check
+  const wc = { year: "2021", set: "Fictional Cup 2022", item: "2021 Fictional Cup 2022 Test Player #7" };
+  assert.deepEqual(codes(titled("2021 Fictional Cup 2022 Test Player #7", wc)), []);
+  assert.deepEqual(codes(titled("2020 Fictional Chrome Test Player #7", { year: null })), []);
+});
+
+const estimate = (): CompGuardInput => {
+  const e = base();
+  e.proposed = { ...e.proposed, source: "estimate", method: "parallel_ratio", sampleSize: 0, low: null, high: null, price: 40, confidence: 1 };
+  e.card = { ...e.card, parallel: "Gold", printRun: 50 };
+  e.sales = [];
+  e.signals = [
+    { kind: "parallel_ratio", ratio: 2, sales: [sale(20, 30, "2019 Fictional Chrome Test Player #7"), sale(30, 400, "2018 Fictional Chrome Test Player #12 Gold /50")] },
+    { kind: "grade_ratio", ratio: 0.5, grade: "PSA 10", sales: [sale(80, 50, "2019 Fictional Chrome Test Player #7 PSA 10")] },
+  ];
+  return e;
+};
+
+test("PC1b signals: other parallel / number / season / grade pass; only the listed checks run", () => {
+  const r = compGuard(estimate());
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+});
+
+test("PC1b signals: auto, grade label, lot, own sale and 24-month age are checked, with signal + sale index", () => {
+  const auto = estimate();
+  auto.signals![0].sales[1] = sale(30, 400, "2018 Fictional Chrome Test Player Gold /50 Auto");
+  onlyCode(auto, "auto_mismatch", 1);
+  assert.equal(compGuard(auto).errors[0].signal, 0);
+
+  const label = estimate();
+  label.signals![1].sales[0] = sale(80, 50, "2019 Fictional Chrome Test Player #7 PSA 9 OC");
+  onlyCode(label, "grade_label", 0);
+  const authentic = estimate();
+  authentic.signals![1].sales[0] = sale(80, 50, "2019 Fictional Chrome Test Player #7 CGC Authentic");
+  onlyCode(authentic, "grade_label", 0);
+  const badGrade = estimate();
+  badGrade.signals![1].grade = "CGC AUTH";
+  onlyCode(badGrade, "grade_label");
+
+  const lot = estimate();
+  lot.signals![0].sales[0] = sale(20, 30, "Lot of 3 2019 Fictional Chrome Test Player");
+  onlyCode(lot, "lot", 0);
+
+  const own = estimate();
+  own.signals![0].sales[0] = { ...own.signals![0].sales[0], seller: "my-own-account" };
+  onlyCode(own, "own_sale", 0);
+  const ledger = estimate();
+  ledger.ledger = [{ date: day(50), amount: 80, kind: "purchase" }];
+  onlyCode(ledger, "own_sale", 0);
+  assert.equal(compGuard(ledger).errors[0].signal, 1);
+
+  const old = estimate();
+  old.signals![0].sales[1] = sale(30, 731, "2018 Fictional Chrome Test Player #12 Gold /50");
+  onlyCode(old, "sale_age", 1);
+});
+
+test("PC1b signals: reject bookkeeping, purchase kind, bad ratio, market comp with signals", () => {
+  const rej = estimate();
+  rej.signals![0].sales[1] = { ...rej.signals![0].sales[1], kept: false };
+  onlyCode(rej, "reject_reason_missing", 1);
+  const dropped = estimate();
+  dropped.signals![0].sales[1] = { ...sale(30, 400, "2018 Fictional Chrome Lot x3"), kept: false, rejectReason: "lot" };
+  assert.deepEqual(codes(dropped), []);
+  const purchase = estimate();
+  purchase.signals!.push({ kind: "purchase", sales: [] });
+  onlyCode(purchase, "input");
+  const ratio = estimate();
+  ratio.signals![0].ratio = 0;
+  onlyCode(ratio, "input");
+  const market = base();
+  market.signals = [{ kind: "proxy", sales: [] }];
+  onlyCode(market, "input");
+  // exact-card sales of an estimate still get the full check
+  const exact = estimate();
+  exact.sales = [sale(40, 100, "2019 Fictional Chrome Test Player #12 Gold /50")];
+  onlyCode(exact, "card", 0);
+});
+
+test("PC1b value_jump: >50% from the previous comp of the same grade needs a reason", () => {
+  const up = base();
+  up.previous = { grade: "raw", price: 13 }; // 20 is +54%
+  onlyCode(up, "value_jump");
+  up.reason = "new parallel identified on the cert page";
+  assert.deepEqual(codes(up), []);
+  const down = base();
+  down.previous = { grade: "raw", price: 41 }; // 20 is -51%
+  onlyCode(down, "value_jump");
+  const edge = base();
+  edge.previous = { grade: "raw", price: 40 }; // exactly -50%: allowed
+  assert.deepEqual(codes(edge), []);
+  const blank = base();
+  blank.previous = { grade: "raw", price: 100 };
+  blank.reason = "   ";
+  onlyCode(blank, "value_jump");
+  const otherGrade = base();
+  otherGrade.previous = { grade: "PSA 10", price: 100 };
+  assert.deepEqual(codes(otherGrade), []);
+});
+
+test("PC1b method_forbidden: mean / average never; market comps median or single only", () => {
+  for (const m of ["mean", "Average", "avg"]) {
+    const inp = base();
+    inp.proposed.method = m;
+    onlyCode(inp, "method_forbidden");
+  }
+  const est = base();
+  est.proposed = { ...est.proposed, source: "estimate", method: "mean", confidence: 1 };
+  onlyCode(est, "method_forbidden");
+  const other = base();
+  other.proposed.method = "thin_blend";
+  onlyCode(other, "method_forbidden");
+  const owner = base();
+  owner.proposed = { ...owner.proposed, source: "owner_set", method: "owner", sampleSize: 0 };
+  owner.sales = [];
+  assert.deepEqual(codes(owner), []);
 });

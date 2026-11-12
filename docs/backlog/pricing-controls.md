@@ -89,3 +89,27 @@ Strictness trade-offs (open, need a rule):
 - Radar home "Latest runs" panel gains "Open items (N)" with age in days, oldest first; closed items drop off. Extend the existing panel, no new page.
 - Jobs upsert by (job, cardId, title): new -> insert, still open -> lastSeen, resolved -> closedAt + closedHow.
 - Test: age rendering and close behaviour; fixture data only.
+
+## PC1b comp-guard identity + estimate inputs (follow-up from PC1 review, coordinator defaults Nov 12 2026)
+Status: ready for review (branch feat/PC1-PC2, Nov 12 2026). Change note: `packages/shared/src/comp-guard.ts`.
+- Per-sale identity error is code `card` (not `identity`: coordinator, Nov 12, so it fits V3a's CompSale.rejectReason
+  CHECK). Number: digit groups match with or without hyphen / space / # and leading zeros ("R-1", "R1", "#R1", "#07");
+  grades ("PSA 10"), serials ("07/10", "#/10", "1 of 1") and seasons are blanked first so "PSA 10" is not card #10.
+  Any "#nnn" with a digit that is not the card number rejects. Season: card "2024-25" accepts 2024-25, 2024/25,
+  2024/2025, 24-25 (hyphen; "24/25" stays with the serial rule), 2024, 2025; card "2019" accepts 2019, 2018-19,
+  2019-20; years in the card's own item/set name are allowed; no card year = no season check.
+- `signals: [{kind, ratio?, grade?, sales}]` (only for estimate / owner_set / ratio_to_base, else `input`): signal
+  sales get reject bookkeeping, auto_mismatch, grade_label (signal.grade pattern; Authentic/Altered/qualifier title),
+  lot, own_sale and a 24-month sale_age; not parallel, number or season. Issues carry `signal` + `sale` indexes.
+  `kind: "purchase"` -> input error "purchase is not a value signal"; ratio must be > 0.
+- `value_jump`: input `previous: {grade, price}` (same grade only) and `reason`; |move| > 50% with a blank reason errors.
+- `method_forbidden`: mean / average / avg anywhere; market sources must be median or single (estimates name their
+  rule, owner_set any).
+- Engineer choices for review: season match on a single-year card accepts the adjacent season pairs (Topps soccer
+  "2019" is often titled "2018-19"), a bare other year rejects; fixtures in 3 review(PC1) tests got their card number
+  set (they changed the item to #BG7 / #A7 / #AP7 but kept number 7, which `card` now catches).
+- Tests: `src/comp-guard.test.ts` "PC1b ..." (9 tests). shared 122/122, dashboard 103/103, `pnpm build` 5/5.
+- `identity`: when Card.cardNumber is set, a kept sale title must contain that number (with or without hyphen/#, e.g. "R-1", "R1", "#4"); a different "#nnn" rejects. When the card's season is known, a title showing another season/year rejects.
+- Estimates: comp-guard input gets `signals: [{kind, ratio, sales}]` separate from `sales`; only exact-card sales go in `sales`; ratio/proxy sales are checked for auto status, grade label, lots and own-sale, not for the target's parallel/number.
+- `value_jump`: a value more than 50% away from the previous comp for the same card and grade needs `reason` in the input, else error.
+- Coordinator defaults on the other review trade-offs: a parallel sale with neither the parallel word nor serial in the title stays a warning (verifier checks the photo); "PSA 10 ready" / "facsimile" rejects stay; BGS Black Label shares "BGS 10"; method `mean` is not allowed (median, single, estimate, owner only).
