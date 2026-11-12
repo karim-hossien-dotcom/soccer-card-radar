@@ -1,6 +1,6 @@
 # Vault: Basketball filter replaces Sealed (Karim, Nov 12 2026: "Remove the closed or sealed items from our vault and replace that filter with basketball")
 
-Status: ready for review (branch feat/V2)
+Status: ready for prod (branch feat/V2; awaiting Karim's "ship")
 
 Change note (engineer, Nov 12 2026): new `src/lib/vault-filter.ts` (Show filter + sport default, unit-tested); load.ts adds
 `sport` (missing/unknown reads as soccer); Show drops Sealed, adds "Basketball (N)" when N > 0; header "N cards"; sealed
@@ -18,3 +18,23 @@ dropping its sealed card. Screenshots: docs/backlog/uat/V2/ (synthetic).
 - /api/snipe/wins: sealed product lines (cardFromTitle status "sealed") are skipped and reported as skipped, never inserted into the Vault.
 - Tests: dashboard tests green; add a test that Basketball filters by sport and that the wins job skips sealed titles.
 - Screenshots use fixture data only (repo is public).
+
+## Review (reviewer, Nov 12 2026; diff 18edbec..f01f233)
+- Acceptance criteria: all met.
+  - load.ts reads `sport` (`select("*")`, load.ts:76; `toSport`, load.ts:160); missing/unknown reads as soccer (vault-filter.ts:7, tested).
+  - Show drops Sealed, adds "Basketball (N)" only when N > 0 (collection-view.tsx:136); Basketball narrows by sport, other options keep all sports (vault-filter.ts:9-14, vault-filter.test.ts).
+  - Header "N cards" (collection-view.tsx:114); sealed branches gone from load.ts, snapshot.ts, comps-panel, vault-scenario. `CardStatus` keeps "sealed" (value-engine.ts:7) as the ticket allows.
+  - Wins job: `plan()` skips sealed before matching (won.ts:86); route never inserts them (cards/review only) and reports `skippedSealed` (route.ts:91). New won.test.ts test fails without the change (`p.skipped` undefined).
+- Card values / card-comps: no valuation logic changed beyond removing the unused sealed branch. No secrets; fixtures and screenshots are synthetic. No duplicate UI (existing Show segment extended). No bids, scans or env changes.
+- Critical: none. Important: none.
+- Minor (fixed, bf880c2): make-v1-fixture.js:20 closing `],` appended to the end of the card(6) line.
+- Minor (left): the "hidden when N = 0" UI branch is covered only by the `sportCount` unit test, not by UAT (V2 fixture has 2 basketball cards); V1 UAT (no basketball) shows no Basketball option implicitly. Low risk.
+- Minor (left, not this ticket): a sealed line that would have matched an old ledger row now goes to skipped; harmless since sealed rows are deleted from the DB.
+
+## QA (Nov 12 2026, worktree of origin/feat/V2 + bf880c2)
+- `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5 tasks green.
+- Dashboard tests 99/99; shared 78/78; grade-screen test_borders 8 ok, test_api 17 ok + 1 pre-existing skip.
+- Playwright `test/uat/v2.uat.js` (make-v2-fixture.js, AUTH_PASSWORD empty, port 3100, Chromium 1194): 24/24 ok at 1280 and 390.
+- V1 regression `test/uat/v1.uat.js` with the edited V1 fixture: 70/70 ok.
+- Screenshots docs/backlog/uat/V2/ checked: synthetic fixture data only.
+
