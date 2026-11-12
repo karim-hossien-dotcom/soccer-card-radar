@@ -1,6 +1,6 @@
 # Vault: Basketball filter replaces Sealed (Karim, Nov 12 2026: "Remove the closed or sealed items from our vault and replace that filter with basketball")
 
-Status: shipped (branch feat/V2; awaiting Karim's "ship")
+Status: shipped (main 5231554)
 
 Change note (engineer, Nov 12 2026): new `src/lib/vault-filter.ts` (Show filter + sport default, unit-tested); load.ts adds
 `sport` (missing/unknown reads as soccer); Show drops Sealed, adds "Basketball (N)" when N > 0; header "N cards"; sealed
@@ -40,7 +40,7 @@ dropping its sealed card. Screenshots: docs/backlog/uat/V2/ (synthetic).
 
 
 ## V2b Top totals follow the filter or the selection (Karim, Nov 12 2026: "i need it to work both ways filter or selected")
-Status: shipped (branch feat/V2; awaiting Karim's "ship"). Ships together with V2.
+Status: shipped (main 5231554). Ships together with V2.
 
 Change note (engineer, Nov 12 2026): `selectionTotals` (vault-scenario.ts) takes an optional `inView` list: no known tick ->
 totals of the filter (`selecting` false); ticks -> ticked cards in view only, `hidden` = ticked cards the filter hides. Without
