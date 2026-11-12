@@ -444,7 +444,8 @@ test("PC1b card: the number is not found inside a grade, serial or print run", (
 });
 
 test("PC1b card: another season or year rejects; the card's own season forms pass", () => {
-  onlyCode(titled("2020 Fictional Chrome Test Player #7"), "card", 0);
+  onlyCode(titled("2021 Fictional Chrome Test Player #7"), "card", 0); // review(PC1b): bare 2020 now needs number + set
+  onlyCode(titled("2020 Other Set Test Player #7"), "card", 0);
   onlyCode(titled("2017-18 Fictional Chrome Test Player #7"), "card", 0);
   assert.deepEqual(codes(titled("2018-19 Fictional Chrome Test Player #7")), []); // single year 2019 is in the season
   assert.deepEqual(codes(titled("2019-20 Fictional Chrome Test Player #7")), []);
@@ -570,4 +571,39 @@ test("PC1b method_forbidden: mean / average never; market comps median or single
   owner.proposed = { ...owner.proposed, source: "owner_set", method: "owner", sampleSize: 0 };
   owner.sales = [];
   assert.deepEqual(codes(owner), []);
+});
+
+// ---- review(PC1b): false rejects / accepts found in review (made-up cards only) ----
+
+test("review(PC1b) one-year card: the other year of its season alone passes only with card number and set", () => {
+  assert.deepEqual(codes(titled("2020 Fictional Chrome Test Player #7")), []);
+  assert.deepEqual(codes(titled("2018 Fictional Chrome Test Player #7")), []);
+  assert.deepEqual(codes(titled("2024 Fictional Chrome Test Player #7", { year: "2025" })), []);
+  onlyCode(titled("2020 Other Set Test Player #7"), "card", 0); // set missing
+  onlyCode(titled("2020 Chrome Test Player #7"), "card", 0); // only part of the set
+  onlyCode(titled("2020 Fictional Chrome Test Player #7", { set: null }), "card", 0); // no set to check
+  onlyCode(titled("2020 Fictional Chrome Test Player #7", { number: null }), "card", 0); // no number to check
+  onlyCode(titled("2020 Fictional Chrome Test Player #7 #12"), "card", 0); // another number
+  const noNum = compGuard(titled("2020 Fictional Chrome Test Player"));
+  assert.equal(noNum.errors.length, 2, JSON.stringify(noNum.errors)); // number missing and the year is not excused
+  onlyCode(titled("2017 Fictional Chrome Test Player #7"), "card", 0); // not adjacent
+  onlyCode(titled("2021 Fictional Chrome Test Player #7"), "card", 0);
+  onlyCode(titled("2023 Fictional Chrome Test Player #7", { year: "2024-25" }), "card", 0); // season cards unchanged
+});
+
+test("review(PC1b) 24/25 is a season only when it is the card's season; 24-25 is not card #24 / #25", () => {
+  assert.deepEqual(codes(titled("24/25 Fictional Chrome Test Player #7", { year: "2024-25" })), []);
+  onlyCode(titled("23/24 Fictional Chrome Test Player #7", { year: "2024-25" }), "parallel_word", 0);
+  onlyCode(titled("25/26 Fictional Chrome Test Player #7", { year: "2024-25" }), "parallel_word", 0);
+  for (const n of ["24", "25"]) {
+    onlyCode(titled("24-25 Fictional Chrome Test Player", { year: "2024-25", number: n }), "card", 0);
+    assert.deepEqual(codes(titled(`24-25 Fictional Chrome Test Player #${n}`, { year: "2024-25", number: n })), []);
+  }
+});
+
+test("review(PC1b) a print run written after the number with a space keeps the number", () => {
+  const gold = { parallel: "Gold", printRun: 25 };
+  assert.deepEqual(codes(titled(`${T} /25`, gold)), []);
+  assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player 7 /25", gold)), []);
+  onlyCode(titled("2019 Fictional Chrome Test Player Gold 07/25", { ...gold, number: "25" }), "card", 0);
 });

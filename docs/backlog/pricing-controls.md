@@ -91,7 +91,7 @@ Strictness trade-offs (open, need a rule):
 - Test: age rendering and close behaviour; fixture data only.
 
 ## PC1b comp-guard identity + estimate inputs (follow-up from PC1 review, coordinator defaults Nov 12 2026)
-Status: ready for review (branch feat/PC1-PC2, Nov 12 2026). Change note: `packages/shared/src/comp-guard.ts`.
+Status: ready for prod (branch feat/PC1-PC2, reviewed Nov 12 2026). Change note: `packages/shared/src/comp-guard.ts`.
 - Per-sale identity error is code `card` (not `identity`: coordinator, Nov 12, so it fits V3a's CompSale.rejectReason
   CHECK). Number: digit groups match with or without hyphen / space / # and leading zeros ("R-1", "R1", "#R1", "#07");
   grades ("PSA 10"), serials ("07/10", "#/10", "1 of 1") and seasons are blanked first so "PSA 10" is not card #10.
@@ -109,7 +109,34 @@ Status: ready for review (branch feat/PC1-PC2, Nov 12 2026). Change note: `packa
   "2019" is often titled "2018-19"), a bare other year rejects; fixtures in 3 review(PC1) tests got their card number
   set (they changed the item to #BG7 / #A7 / #AP7 but kept number 7, which `card` now catches).
 - Tests: `src/comp-guard.test.ts` "PC1b ..." (9 tests). shared 122/122, dashboard 103/103, `pnpm build` 5/5.
-- `identity`: when Card.cardNumber is set, a kept sale title must contain that number (with or without hyphen/#, e.g. "R-1", "R1", "#4"); a different "#nnn" rejects. When the card's season is known, a title showing another season/year rejects.
+- `card` (was worded `identity`; code `card` per coordinator, Nov 12): when Card.cardNumber is set, a kept sale title must contain that number (with or without hyphen/#, e.g. "R-1", "R1", "#4"); a different "#nnn" rejects. When the card's season is known, a title showing another season/year rejects; a one-year card ("2019") also accepts the other year of its season alone ("2018" or "2020") only when the title shows the card number and every word of the set (coordinator, Nov 12 2026). "24/25" without hyphen is the season only when it is the card's season.
 - Estimates: comp-guard input gets `signals: [{kind, ratio, sales}]` separate from `sales`; only exact-card sales go in `sales`; ratio/proxy sales are checked for auto status, grade label, lots and own-sale, not for the target's parallel/number.
 - `value_jump`: a value more than 50% away from the previous comp for the same card and grade needs `reason` in the input, else error.
 - Coordinator defaults on the other review trade-offs: a parallel sale with neither the parallel word nor serial in the title stays a warning (verifier checks the photo); "PSA 10 ready" / "facsimile" rejects stay; BGS Black Label shares "BGS 10"; method `mean` is not allowed (median, single, estimate, owner only).
+
+### Review (PC1b, reviewer, Nov 12 2026; diff 2dae713..af0e1ef)
+Coordinator decisions applied: code `card` is right (wording above updated); the median/single method rule is for
+market sources only (estimates keep rule names, owner_set any); one-year card + other season year needs number and set;
+"24/25" is a season only when it equals the card's season.
+- Important (fixed): "24/25" accepted as season for the wrong season. `cardSeasons` gave a "2024-25" card the pairs
+  23/24 and 24/25, so "23/24 ... #7" was kept for a 2024-25 card. Season cards now have only their own pair
+  (`packages/shared/src/comp-guard.ts` cardSeasons). One-year cards keep both adjacent pairs, matching the hyphen rule.
+- Important (fixed): false accept of card number from a two-digit season. "24-25 Fictional Chrome Test Player" passed
+  as card #24 / #25; `numberText` now blanks consecutive "dd-dd" seasons.
+- Important (fixed): false reject of the common "#7 /25" form. `numberText` blanked "7 /25" as one serial, so every
+  "number space /printrun" title failed `card`; only digits written against the slash are now the serial.
+- Decision implemented: a one-year card accepts the bare other year of its season only with number + all set words
+  (no set or no number on the card = reject). The engineer's test line expecting "2020 ... #7" to reject was changed
+  to "2021" and "2020 Other Set" (comp-guard.test.ts "PC1b card: another season ...").
+- Tests: 3 new "review(PC1b) ..." tests in `packages/shared/src/comp-guard.test.ts`; all 3 fail without the fix.
+- Minor (left): "#1 Draft Pick #7" rejects (any other "#n" is read as a card number; reject-safe). "07 / 25" with
+  spaces on both sides of the slash keeps "07" as a number. "23/24" on a 2024-25 card rejects as a serial
+  (parallel_word), not `card`; for a /24 parallel it would read as the serial. Signal sales are not checked against
+  `signal.grade` (only the label), as the ticket scopes it. Years in the card's own item/set also excuse a season pair
+  (e.g. set "Cup 2022" lets "2021-22" through for a 2021 card).
+- Card-comps check: no raw value from graded or the reverse, no invented number, owner_set / ratio_to_base untouched;
+  `kind: "purchase"` signals reject (skill: purchases are never an estimate input). No secrets; fixtures are made up.
+  No UI, no migration, no bid or scan code in the diff.
+- Build/test: `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; shared 125/125; dashboard 103/103;
+  grade-screen test_borders + test_api ok (1 known skip).
+- Verdict: nothing Critical/Important open -> ready for prod.

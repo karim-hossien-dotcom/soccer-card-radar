@@ -215,7 +215,8 @@ function cardSeasons(year: unknown): Set<string> {
   const out = new Set<string>();
   const ys = (String(year ?? "").match(/(19|20)\d{2}/g) ?? []).map(Number);
   const two = String(year ?? "").match(/(19|20)(\d{2})\s*[-/]\s*(\d{2})(?!\d)/);
-  if (two) out.add(`${two[2]}/${two[3]}`);
+  // review(PC1b): a season card ("2024-25") has exactly one season pair; "23/24" is not its season.
+  if (two) return out.add(`${two[2]}/${two[3]}`);
   for (const y of ys) {
     const p = (n: number) => String(((n % 100) + 100) % 100).padStart(2, "0");
     out.add(`${p(y - 1)}/${p(y)}`);
@@ -268,9 +269,12 @@ function numberText(title: string): string {
   return title
     .toLowerCase()
     .replace(new RegExp(`(${GRADERS.join("|")})(?![a-z])\\s*(?:(?:gem\\s*(?:mint|mt)|mint|mt|nm\\s*mt|pristine|black\\s*label)\\s*)?\\d{1,2}(?:\\.\\d)?`, "gi"), " ")
-    .replace(/\d*\s*\/\s*\d+/g, " ")
+    // review(PC1b): only digits written against the slash are the serial ("#7 /25" keeps card #7).
+    .replace(/\d*\/\s*\d+/g, " ")
     .replace(/\d+ of \d+/g, " ")
     .replace(/(19|20)\d{2}\s*[-/]\s*\d{2,4}/g, " ")
+    // review(PC1b): two-digit seasons ("24-25") are not card #24 / #25.
+    .replace(/(^|[^\da-z#])(\d{2})-(\d{2})(?![\d/])/g, (all, pre, a, b) => ((Number(a) + 1) % 100 === Number(b) ? `${pre} ` : all))
     .replace(/(numbered|#'?d)\s*(to)?\s*\d+/g, " ");
 }
 
@@ -426,6 +430,10 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
   // Years in the card's own item / set name ("World Cup 2022") are part of the name, not another season.
   for (const y of norm([card.item, card.set].filter(Boolean).join(" ")).match(/(19|20)\d{2}/g) ?? []) okSingles.add(Number(y));
   const pairOk = ([a, b]: [number, number]) => (seasonM ? a === Number(seasonM[1]) : okSingles.has(a) || okSingles.has(b));
+  // review(PC1b, coordinator Nov 12 2026): a one-year card ("2019") also accepts the other year of its season ("2018"
+  // or "2020" alone) only when the title also shows the card number and every word of the set; otherwise it rejects.
+  const adjacentYears = !seasonM && cardYears.length === 1 ? new Set([cardYears[0] - 1, cardYears[0] + 1]) : new Set<number>();
+  const setWords = canon(norm(card.set)).split(" ").filter((w) => w && !/^(19|20)\d{2}$/.test(w));
 
   const ownSaleCheck = (s: GuardSale, ts: number, at: Partial<GuardIssue>) => {
     if (s.seller && ownIds.includes(norm(s.seller))) {
@@ -494,7 +502,8 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
 
     // card (PC1b identity): the card's number, no other "#nnn", no other season / year.
     if (title) {
-      if (numRe && !numRe.test(numberText(title))) {
+      const numShown = !!numRe && numRe.test(numberText(title));
+      if (numRe && !numShown) {
         errors.push({ code: "card", sale: i, message: `title does not show card number ${card.number}` });
       }
       const otherNums = numCore ? hashNumbers(title).filter((h) => numberCore(h) !== numCore) : [];
@@ -503,9 +512,11 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
       }
       if (cardYears.length) {
         const ty = titleYears(title);
+        const titleText = canon(norm(title));
+        const numberAndSet = numShown && !otherNums.length && setWords.length > 0 && setWords.every((w) => hasWord(titleText, w));
         const other = [
           ...ty.pairs.filter((p) => !pairOk(p)).map(([a, b]) => `${a}-${String(b).slice(2)}`),
-          ...ty.singles.filter((y) => !okSingles.has(y)).map(String),
+          ...ty.singles.filter((y) => !okSingles.has(y) && !(numberAndSet && adjacentYears.has(y))).map(String),
         ];
         if (other.length) errors.push({ code: "card", sale: i, message: `title shows ${other.join(", ")} (card year ${yearStr})` });
       }
