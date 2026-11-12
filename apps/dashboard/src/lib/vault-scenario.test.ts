@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  scenarioValue, cardGain, vaultTotals, selectionTotals, toggleSelection, parseSelection,
+  scenarioValue, cardGain, vaultTotals, selectionTotals, totalsLabel, toggleSelection, parseSelection,
   readStoredSelection, writeStoredSelection, SELECTION_KEY, SCENARIOS, type ScenarioCard, type Scenario,
 } from "./vault-scenario.ts";
 
@@ -108,10 +108,23 @@ test("V2b: ticked cards hidden by the filter are not counted, only noted", () =>
   const view = [A, B, AT];
   // a in view; g and no10 hidden by the filter.
   assert.deepEqual(selectionTotals(ALL, ["a", "g", "no10"], "10", view), { selecting: true, count: 1, hidden: 2, value: 300, cost: 20, gain: 280 });
-  // Every tick hidden: still in selection mode (ticks narrow the filter), nothing counted.
-  assert.deepEqual(selectionTotals(ALL, ["g", "no10"], "now", view), { selecting: true, count: 0, hidden: 2, value: 0, cost: 0, gain: 0 });
+  // Every tick hidden: back to the filter totals (not $0), the hidden ticks still noted.
+  for (const sc of SCENARIOS) {
+    assert.deepEqual(selectionTotals(ALL, ["g", "no10"], sc, view), { selecting: false, count: 0, hidden: 2, ...vaultTotals(view, sc) }, sc);
+  }
+  assert.deepEqual(selectionTotals(ALL, ["g", "no10"], "now", view), { selecting: false, count: 0, hidden: 2, value: 40 + 60 + 100, cost: 20 + 35 + 130, gain: 20 + 25 - 30 });
   // Switching back to a filter that shows them counts them again (ticks are kept by the caller).
   assert.deepEqual(selectionTotals(ALL, ["a", "g", "no10"], "10", ALL), { selecting: true, count: 3, hidden: 0, value: 300 + 210 + 25, cost: 20 + 150 + 10, gain: 280 + 60 + 15 });
+});
+
+test("V2b: selection label keeps the Price as context", () => {
+  const view = [A, B, AT];
+  assert.equal(totalsLabel(selectionTotals(ALL, [], "now", view), "now"), "Value now");
+  assert.equal(totalsLabel(selectionTotals(ALL, [], "9", view), "9"), "Value if PSA 9");
+  assert.equal(totalsLabel(selectionTotals(ALL, ["a", "b"], "now", view), "now"), "2 selected · Value now");
+  assert.equal(totalsLabel(selectionTotals(ALL, ["a", "g"], "10", view), "10"), "1 selected · Value if PSA 10");
+  // Every tick hidden: filter totals, so the plain filter label.
+  assert.equal(totalsLabel(selectionTotals(ALL, ["g"], "8", view), "8"), "Value if PSA 8");
 });
 
 test("toggleSelection adds and removes without mutating the input", () => {

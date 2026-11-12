@@ -9,7 +9,7 @@ import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
 import { estTileTag, estDrawerText } from "@/lib/value-est";
 import {
-  type Scenario, scenarioValue, cardGain, selectionTotals, toggleSelection, readStoredSelection, writeStoredSelection,
+  type Scenario, scenarioValue, cardGain, selectionTotals, totalsLabel, toggleSelection, readStoredSelection, writeStoredSelection,
 } from "@/lib/vault-scenario";
 import { type ShowFilter, matchesShow, sportCount } from "@/lib/vault-filter";
 
@@ -116,7 +116,8 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
         <div className={s.heroKpis}>
           <div className={s.big}>
             <span aria-live="polite">
-              {totals.selecting ? <>{totals.count} selected{" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button></> : scen === "now" ? "Value now" : `Value if PSA ${scen}`}
+              {totalsLabel(totals, scen)}
+              {(totals.selecting || totals.hidden > 0) && <>{" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button></>}
             </span>
             <b><CountUp value={totals.value} /></b>
             {totals.hidden > 0 && <span className={s.selOut}>+{totals.hidden} selected outside this filter</span>}

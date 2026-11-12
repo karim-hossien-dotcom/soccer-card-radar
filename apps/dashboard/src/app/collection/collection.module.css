@@ -150,6 +150,9 @@
   .heroKpis b { font-size: 20px; }
   .movers { grid-template-columns: 1fr; }
   .label { min-height: 40px; }
+  /* Phone tap target >= 44px tall for "clear": inline padding grows the hit area without moving the line (negative
+     side margins cancel the side padding); relative puts it above the value for hit testing. */
+  .reset { position: relative; padding: 15px 10px; margin: 0 -10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tile { transform: none !important; }

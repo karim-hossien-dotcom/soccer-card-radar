@@ -26,14 +26,17 @@ const sumText = async (p) => {
   for (let i = 0; i < 20; i++) { await p.waitForTimeout(100); const cur = JSON.stringify(await sumTextOnce(p)); if (cur === prev) return JSON.parse(cur); prev = cur; }
   return JSON.parse(prev);
 };
+// Review (V2b): the label keeps the Price as context ("N selected · Value now · clear"); the summary string drops it (checked
+// via label()), and when every tick is hidden the bar shows the filter totals with only the note: "Value $x · … · +N outside".
+const label = async (p) => norm(await p.locator('[aria-label="Collection totals"] [class*="heroKpis"] > div').nth(0).locator('span').first().innerText());
 const sumTextOnce = async (p) => {
   const k = p.locator('[aria-label="Collection totals"] [class*="heroKpis"] > div');
-  const label = norm(await k.nth(0).locator('span').first().innerText());
-  if (!/selected/.test(label)) return '';
+  const sel = (await label(p)).match(/^(\d+ selected) · /);
   const out = k.nth(0).locator('[class*="selOut"]');
   const note = (await out.count()) ? ` · ${norm(await out.innerText())}` : '';
+  if (!sel && !note) return '';
   const b = async (i) => norm(await k.nth(i).locator('b').innerText());
-  return `${label.replace(/ · clear$/, '')} · Value ${await b(0)} · Cost ${await b(1)} · Gain ${await b(2)}${note}`;
+  return `${sel ? `${sel[1]} · ` : ''}Value ${await b(0)} · Cost ${await b(1)} · Gain ${await b(2)}${note}`;
 };
 const hero = async (p) => {
   let prev = JSON.stringify(await heroOnce(p));
@@ -110,14 +113,27 @@ const RAW10 = '2 selected · Value $325 · Cost $30 · Gain +$295 · +1 selected
     await box(p, 'Test Alpha').check();
     await box(p, 'Test Delta').check();
     ok((await sumText(p)) === RAWNOW, `${name}: Raw: 2 ticked in view at Now, Echo noted outside: "${await sumText(p)}"`);
+    ok((await label(p)) === '2 selected · Value now · clear', `${name}: selection label keeps "Value now": "${await label(p)}"`);
+    // "clear" tap target: >= 44px tall on phone (top and bottom edges hit the button); at 1280 no padding (layout unchanged).
+    await p.evaluate(() => window.scrollTo(0, 0));
+    const tap = await clearBtn(p).evaluate((el) => {
+      const r = el.getBoundingClientRect(), x = r.left + r.width / 2;
+      const hit = (y) => document.elementFromPoint(x, y) === el;
+      return { h: r.height, edges: hit(r.top + 2) && hit(r.bottom - 2), pad: getComputedStyle(el).paddingTop };
+    });
+    if (name === '390') ok(tap.h >= 44 && tap.edges, `${name}: clear tap target ${tap.h.toFixed(0)}px tall, edges hit it (${JSON.stringify(tap)})`);
+    else ok(tap.pad === '0px', `${name}: clear unpadded at desktop (${JSON.stringify(tap)})`);
     // Price as PSA 10.
     await setSeg(p, 'Price as', 'PSA 10');
     ok((await sumText(p)) === RAW10, `${name}: Raw: 2 ticked in view at PSA 10 by hand: "${await sumText(p)}"`);
+    ok((await label(p)) === '2 selected · Value if PSA 10 · clear', `${name}: selection label keeps "Value if PSA 10": "${await label(p)}"`);
     ok(norm(await val(p, 'Test Delta').innerText()) === '$25', `${name}: Delta tile falls back to $25 at PSA 10 (summary uses the same)`);
     // Sort and filter changes keep it.
     await p.selectOption('select[aria-label="Sort"]', 'name');
     await setSeg(p, 'Show', 'Graded');
-    ok((await sumText(p)) === '0 selected · Value $0 · Cost $0 · Gain +$0 · +3 selected outside this filter', `${name}: Graded: ticks hidden are not counted, only noted: "${await sumText(p)}"`);
+    // Every tick hidden: filter totals (Foxtrot, graded: $210 / $150), not $0; ticks noted; clear still offered.
+    ok((await sumText(p)) === 'Value $210 · Cost $150 · Gain +$60 · +3 selected outside this filter', `${name}: Graded: every tick hidden -> filter totals, ticks noted: "${await sumText(p)}"`);
+    ok((await label(p)) === 'Value if PSA 10 · clear', `${name}: Graded: filter label with clear: "${await label(p)}"`);
     await setSeg(p, 'Show', 'All');
     ok(await box(p, 'Test Echo').isChecked() && await box(p, 'Test Alpha').isChecked() && !(await box(p, 'Test Bravo').isChecked()), `${name}: checkboxes reflect the selection in All`);
     ok((await sumText(p)) === SEL10, `${name}: All counts all 3 ticks again (ticks kept across sort and filter): "${await sumText(p)}"`);

@@ -6,6 +6,7 @@
 // V2b (Karim 2026-11-12): top bar follows the filter, or the ticked cards in the filter.
 //   Basketball, tick Hoops One + Two: 2 selected $360 / $235 / +$125. Raw: Hoops One only $60 / $35 / +$25, "+1 outside";
 //   Raw at PSA 10: Hoops One $500 / $35 / +$465. Clear: back to "Value now" $710 / $535.
+//   Review: labels keep Price as ("1 selected · Value if PSA 10"); At PSA at PSA 10 (both ticks hidden) -> Charlie $900 / $130.
 const fs = require('fs');
 const { chromium } = require('playwright');
 const SHOTS = process.env.SHOTS || 'docs/backlog/uat/V2';
@@ -79,27 +80,32 @@ const noOverflow = (p) => p.evaluate(() => document.documentElement.scrollWidth 
     ok(h.label === 'Value now' && h.value === '$360', `${name}: V2b none ticked -> filter totals (${JSON.stringify(h)})`);
     await tick(p, 'Test Hoops One');
     h = await hero(p);
-    ok(h.label === '1 selected · clear' && h.value === '$60' && h.cost === '$35' && h.gain === '+$25' && !h.outside, `${name}: V2b 1 ticked in view (${JSON.stringify(h)})`);
+    ok(h.label === '1 selected · Value now · clear' && h.value === '$60' && h.cost === '$35' && h.gain === '+$25' && !h.outside, `${name}: V2b 1 ticked in view (${JSON.stringify(h)})`);
     await tick(p, 'Test Hoops Two');
     h = await hero(p);
-    ok(h.label === '2 selected · clear' && h.value === '$360' && h.cost === '$235' && h.gain === '+$125' && h.inView === '2', `${name}: V2b 2 ticked (${JSON.stringify(h)})`);
+    ok(h.label === '2 selected · Value now · clear' && h.value === '$360' && h.cost === '$235' && h.gain === '+$125' && h.inView === '2', `${name}: V2b 2 ticked (${JSON.stringify(h)})`);
     ok((await p.locator('[aria-label="Selected cards"]').count()) === 0, `${name}: V2b no separate selection line`);
     await setSeg(p, 'Show', 'Raw');
     h = await hero(p);
-    ok(h.label === '1 selected · clear' && h.value === '$60' && h.cost === '$35' && h.outside === '+1 selected outside this filter', `${name}: V2b Raw counts only the ticked card in view, notes the hidden one (${JSON.stringify(h)})`);
+    ok(h.label === '1 selected · Value now · clear' && h.value === '$60' && h.cost === '$35' && h.outside === '+1 selected outside this filter', `${name}: V2b Raw counts only the ticked card in view, notes the hidden one (${JSON.stringify(h)})`);
     await setSeg(p, 'Price as', 'PSA 10');
     h = await hero(p);
-    ok(h.label === '1 selected · clear' && h.value === '$500' && h.gain === '+$465', `${name}: V2b selection at PSA 10 (${JSON.stringify(h)})`);
+    ok(h.label === '1 selected · Value if PSA 10 · clear' && h.value === '$500' && h.gain === '+$465', `${name}: V2b selection at PSA 10 (${JSON.stringify(h)})`);
     ok(await noOverflow(p), `${name}: V2b no horizontal scroll with the outside note`);
     await p.evaluate(() => window.scrollTo(0, 0));
     await p.screenshot({ path: `${SHOTS}/vault-v2b-outside-${name}.png` });
+    // Review (V2b): every tick hidden (At PSA = Test Charlie only) -> filter totals at PSA 10, not $0; note and clear stay.
+    await setSeg(p, 'Show', 'At PSA');
+    h = await hero(p);
+    ok(h.label === 'Value if PSA 10 · clear' && h.value === '$900' && h.cost === '$130' && h.gain === '+$770' && h.outside === '+2 selected outside this filter', `${name}: V2b every tick hidden -> filter totals, ticks noted (${JSON.stringify(h)})`);
+    await setSeg(p, 'Show', 'Raw');
     await setSeg(p, 'Price as', 'Now');
     await setSeg(p, 'Show', 'Basketball');
     h = await hero(p);
     ok(h.value === '$360' && !h.outside, `${name}: V2b switching back counts both ticks again (${JSON.stringify(h)})`);
     await setSeg(p, 'Show', 'All');
     h = await hero(p);
-    ok(h.label === '2 selected · clear' && h.value === '$360' && h.cost === '$235' && h.inView === '5', `${name}: V2b All: ticks narrow the filter (${JSON.stringify(h)})`);
+    ok(h.label === '2 selected · Value now · clear' && h.value === '$360' && h.cost === '$235' && h.inView === '5', `${name}: V2b All: ticks narrow the filter (${JSON.stringify(h)})`);
     await p.evaluate(() => window.scrollTo(0, 0));
     await p.screenshot({ path: `${SHOTS}/vault-v2b-selected-${name}.png` });
     await p.locator('[aria-label="Collection totals"] button', { hasText: /^clear$/ }).click();
