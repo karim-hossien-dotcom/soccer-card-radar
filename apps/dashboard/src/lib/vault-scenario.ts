@@ -14,9 +14,9 @@ export type ScenarioCard = {
   cost: number | null;
 };
 
-/** "Price as" value: graded and sealed cards keep their own comp; a missing grade value falls back to value now. */
+/** "Price as" value: graded cards keep their own comp; a missing grade value falls back to value now. */
 export function scenarioValue(c: ScenarioCard, sc: Scenario): number | null {
-  if (sc === "now" || c.status === "graded" || c.status === "sealed") return c.valueNow;
+  if (sc === "now" || c.status === "graded") return c.valueNow;
   const v = sc === "10" ? c.psa10 : sc === "9" ? c.psa9 : c.psa8;
   return v ?? c.valueNow;
 }
@@ -37,14 +37,31 @@ export function vaultTotals(cards: ScenarioCard[], sc: Scenario) {
   return { cost, value, gain };
 }
 
-/** Totals for the checked cards, over all cards (not just the filtered list). Unknown ids (sold, removed) are ignored. */
-export function selectionTotals(cards: ScenarioCard[], selected: Iterable<string>, sc: Scenario) {
+/**
+ * Totals for the checked cards. Unknown ids (sold, removed) are ignored.
+ * Without `inView`: over all cards. With `inView` (V2b top bar, the current filter's list): no card ticked -> totals of
+ * every card in view (`selecting` false); one or more ticked -> totals of the ticked cards in view only, and `hidden`
+ * counts the ticked cards the filter hides (not added). Every tick hidden -> totals of the filter again (`selecting` false),
+ * `hidden` still set so the bar notes them (coordinator decision, V2b review).
+ */
+export function selectionTotals(cards: ScenarioCard[], selected: Iterable<string>, sc: Scenario, inView?: ScenarioCard[]) {
   const ids = new Set(selected);
   const picked = cards.filter((c) => ids.has(c.id));
-  return { count: picked.length, ...vaultTotals(picked, sc) };
+  if (!inView) return { selecting: picked.length > 0, count: picked.length, hidden: 0, ...vaultTotals(picked, sc) };
+  if (!picked.length) return { selecting: false, count: 0, hidden: 0, ...vaultTotals(inView, sc) };
+  const view = new Set(inView.map((c) => c.id));
+  const shown = picked.filter((c) => view.has(c.id));
+  if (!shown.length) return { selecting: false, count: 0, hidden: picked.length, ...vaultTotals(inView, sc) };
+  return { selecting: true, count: shown.length, hidden: picked.length - shown.length, ...vaultTotals(shown, sc) };
 }
 
-export const toggleSelection = (sel: readonly string[], id: string): string[] =>
+/** Top-bar value label: keeps the Price as context in selection mode ("2 selected · Value if PSA 10"). */
+export function totalsLabel(t: { selecting: boolean; count: number }, sc: Scenario): string {
+  const base = sc === "now" ? "Value now" : `Value if PSA ${sc}`;
+  return t.selecting ? `${t.count} selected · ${base}` : base;
+}
+
+export const toggleSelection =(sel: readonly string[], id: string): string[] =>
   sel.includes(id) ? sel.filter((x) => x !== id) : [...sel, id];
 
 /** Never throws: anything but an array of strings gives [] or a cleaned, de-duplicated list. */

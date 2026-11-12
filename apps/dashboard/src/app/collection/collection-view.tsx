@@ -9,13 +9,13 @@ import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
 import { estTileTag, estDrawerText } from "@/lib/value-est";
 import {
-  type Scenario, scenarioValue, cardGain, vaultTotals, selectionTotals, toggleSelection, readStoredSelection, writeStoredSelection,
+  type Scenario, scenarioValue, cardGain, selectionTotals, totalsLabel, toggleSelection, readStoredSelection, writeStoredSelection,
 } from "@/lib/vault-scenario";
+import { type ShowFilter, matchesShow, sportCount } from "@/lib/vault-filter";
 
-type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
 type SortKey = "value" | "gain" | "upside" | "cost" | "date" | "name";
 
-const STATUS_LABEL: Record<string, string> = { graded: "Graded", raw: "Raw", at_grader: "At PSA", sealed: "Sealed", sold: "Sold" };
+const STATUS_LABEL: Record<string, string> = { graded: "Graded", raw: "Raw", at_grader: "At PSA", sold: "Sold" };
 const usd = (n: number | null | undefined, d = 0) =>
   n === null || n === undefined ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d, minimumFractionDigits: d });
 const signed = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `${n >= 0 ? "+" : "−"}${usd(Math.abs(n))}`);
@@ -28,7 +28,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
   const [selected, setSelected] = useState<string[]>([]);
   useEffect(() => { setSelected(readStoredSelection(storage())); }, []);
   const changeSel = (next: string[]) => { setSelected(next); writeStoredSelection(storage(), next); };
-  const [stat, setStat] = useState<StatusFilter>("all");
+  const [stat, setStat] = useState<ShowFilter>("all");
   const [player, setPlayer] = useState("");
   const [sort, setSort] = useState<SortKey>("value");
   const [q, setQ] = useState("");
@@ -54,7 +54,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     const needle = q.trim().toLowerCase();
     const L = cards.filter(
       (c) =>
-        (stat === "sealed" ? c.status === "sealed" : c.status !== "sealed" && (stat === "all" || c.status === stat || (stat === "stale" && c.stale))) &&
+        matchesShow(c, stat) &&
         (!player || c.player === player) &&
         (!needle || `${c.item} ${c.cert ?? ""} ${c.player}`.toLowerCase().includes(needle)),
     );
@@ -73,8 +73,8 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     });
   }, [cards, scen, stat, player, sort, q]);
 
-  const totals = useMemo(() => vaultTotals(list, scen), [list, scen]);
-  const sel = useMemo(() => selectionTotals(cards, selected, scen), [cards, selected, scen]);
+  // V2b: the top bar totals the filter, or the ticked cards in the filter when any are ticked.
+  const totals = useMemo(() => selectionTotals(cards, selected, scen, list), [cards, selected, scen, list]);
   const selSet = useMemo(() => new Set(selected), [selected]);
 
   useEffect(() => {
@@ -104,27 +104,28 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
   );
 
   const staleCount = useMemo(() => cards.filter((c) => c.stale).length, [cards]);
-  const sealedCount = useMemo(() => cards.filter((c) => c.status === "sealed").length, [cards]);
+  const basketballCount = useMemo(() => sportCount(cards, "basketball"), [cards]);
 
   return (
     <div className={s.wrap} ref={wrapRef}>
       <section className={s.hero} aria-label="Collection totals">
         <div className={s.heroHead}>
           <h1>Vault</h1>
-          <p>{cards.length - sealedCount} cards{sealedCount ? ` + ${sealedCount} sealed` : ""}. Values from 90-day sales, else Card Ladder.</p>
+          <p>{cards.length} cards. Values from 90-day sales, else Card Ladder.</p>
         </div>
         <div className={s.heroKpis}>
-          <div className={s.big}><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b><CountUp value={totals.value} /></b></div>
+          <div className={s.big}>
+            <span aria-live="polite">
+              {totalsLabel(totals, scen)}
+              {(totals.selecting || totals.hidden > 0) && <>{" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button></>}
+            </span>
+            <b><CountUp value={totals.value} /></b>
+            {totals.hidden > 0 && <span className={s.selOut}>+{totals.hidden} selected outside this filter</span>}
+          </div>
           <div><span>Cost</span><b><CountUp value={totals.cost} /></b></div>
           <div><span>Gain or loss</span><b className={tone(totals.gain)}><CountUp value={totals.gain} signed /></b></div>
           <div><span>Cards in view</span><b>{list.length}</b></div>
         </div>
-        {sel.count > 0 && (
-          <p className={s.selSum} aria-label="Selected cards" aria-live="polite">
-            <b>{sel.count} selected</b> · Value <b>{usd(sel.value)}</b> · Cost <b>{usd(sel.cost)}</b> · Gain <b className={tone(sel.gain)}>{signed(sel.gain)}</b>
-            {" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button>
-          </p>
-        )}
       </section>
       <Tracker weeks={weeks} movers={movers} />
       <div className={s.due} role="region" aria-label="Comps">
@@ -133,7 +134,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
       </div>
       <div className={s.controls} ref={controlsRef}>
         <Seg label="Price as" value={scen} onChange={(v) => setScen(v as Scenario)} options={[["now", "Now"], ["10", "PSA 10"], ["9", "PSA 9"], ["8", "PSA 8"]]} />
-        <Seg label="Show" value={stat} onChange={(v) => setStat(v as StatusFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`], ...(sealedCount ? [["sealed", `Sealed (${sealedCount})`] as [string, string]] : [])]} />
+        <Seg label="Show" value={stat} onChange={(v) => setStat(v as ShowFilter)} options={[["all", "All"], ["graded", "Graded"], ["raw", "Raw"], ["at_grader", "At PSA"], ["stale", `Stale (${staleCount})`], ...(basketballCount ? [["basketball", `Basketball (${basketballCount})`] as [string, string]] : [])]} />
         <div className={s.row}>
           <select aria-label="Player" value={player} onChange={(e) => setPlayer(e.target.value)}>
             <option value="">All players</option>

@@ -37,13 +37,34 @@ test("plan: existing Vault rows matched by cost+date, older unmatched to review,
   const p = plan(lines, bids, new Set(), existing, "2026-10-29", now);
   assert.equal(p.matched.length, 2, "Zizo and Mbappe Optic already in the Vault");
   assert.deepEqual(p.review.map((l) => l.itemId), ["366732479138"], "Guler: paid, older than cutoff, not in Vault");
-  assert.deepEqual(p.cards.map((c) => c.line.itemId), ["137306790742"], "paid after cutoff; unpaid Mbappe waits");
+  assert.deepEqual(p.cards.map((c) => c.line.itemId), [], "unpaid Mbappe waits; the paid line after cutoff is sealed");
+  assert.deepEqual(p.skipped.map((l) => l.itemId), ["137306790742"], "sealed box skipped, not added (V2)");
   assert.deepEqual(p.bids, [
     { externalId: "v1|940031318039|0", status: "won", wonPrice: 12.5 },
     { externalId: "v1|117442448497|0", status: "lost", wonPrice: null },
   ], "cancelled order is not a win");
   assert.equal(plan(lines, bids, new Set(["137306790742-1", "366732479138-1"]), existing, "2026-10-29", now).cards.length + plan(lines, bids, new Set(["137306790742-1", "366732479138-1"]), existing, "2026-10-29", now).review.length, 0, "re-runs idempotent");
   assert.equal(plan(lines, [], new Set(), [{ amount: 10.74, occurredOn: "2026-10-01" }], "2026-10-29", now).matched.length, 0, "same cost, 9 days apart: not a match");
+});
+
+test("V2: wins job skips sealed titles (before and after the cutoff), cards still logged", () => {
+  // Synthetic order lines.
+  const line = (itemId: string, title: string, boughtAt: string) =>
+    ({ lineItemId: `${itemId}-1`, orderId: `o${itemId}`, itemId, title, price: 10, cost: 12, boughtAt, paid: true, cancelled: false });
+  const lines = [
+    line("900000000001", "SYNTHETIC 2025 Topps Chrome Soccer Hobby Box Factory Sealed", "2026-11-05T15:00:00Z"),
+    line("900000000002", "SYNTHETIC 2024 Panini Prizm Soccer Blaster Box", "2026-10-01T15:00:00Z"),
+    line("900000000003", "SYNTHETIC 2023 Topps Chrome Test Player #1 PSA 10", "2026-11-05T15:00:00Z"),
+    line("900000000004", "SYNTHETIC 2022 Panini Prizm Test Player #2", "2026-10-01T15:00:00Z"),
+  ];
+  const bids: BidRow[] = [{ externalId: "v1|900000000001|0", targetId: "t9", status: "approved", maxBid: 50, endsAt: "2026-11-05T14:00:00Z" }];
+  const p = plan(lines, bids, new Set(), [], "2026-10-16", new Date("2026-11-06T12:00:00Z"));
+  assert.deepEqual(p.skipped.map((l) => l.itemId), ["900000000001", "900000000002"]);
+  assert.deepEqual(p.cards.map((c) => c.line.itemId), ["900000000003"]);
+  assert.deepEqual(p.review.map((l) => l.itemId), ["900000000004"]);
+  assert.equal([...p.cards.map((c) => c.line), ...p.review].some((l) => cardFromTitle(l.title).status === "sealed"), false, "no sealed line can be inserted");
+  assert.deepEqual(p.bids, [{ externalId: "v1|900000000001|0", status: "won", wonPrice: 10 }], "a won sealed bid still closes on the Snipe board");
+  assert.equal(plan(lines, [], new Set(["900000000001-1"]), [], "2026-10-16").skipped.length, 1, "already logged lines are not re-reported");
 });
 
 test("player, sealed, dates", () => {

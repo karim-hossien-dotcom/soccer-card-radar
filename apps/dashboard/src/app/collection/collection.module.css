@@ -68,9 +68,7 @@
 .pick input:checked::after { opacity: 1; }
 .pick:hover input { border-color: var(--on-navy); }
 .tileOn { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
-.selSum { margin: 14px 0 0; font-size: var(--t-sm); color: var(--on-navy-2); line-height: 1.6; }
-.selSum b { font-weight: 700; }
-.selSum b:not(.pos):not(.neg) { color: var(--on-navy); }
+.heroKpis .selOut { margin-top: 4px; }
 .reset { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; color: var(--on-navy); }
 .reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @keyframes tile-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
@@ -152,6 +150,9 @@
   .heroKpis b { font-size: 20px; }
   .movers { grid-template-columns: 1fr; }
   .label { min-height: 40px; }
+  /* Phone tap target >= 44px tall for "clear": inline padding grows the hit area without moving the line (negative
+     side margins cancel the side padding); relative puts it above the value for hit testing. */
+  .reset { position: relative; padding: 15px 10px; margin: 0 -10px; }
 }
 @media (prefers-reduced-motion: reduce) {
   .tile { transform: none !important; }

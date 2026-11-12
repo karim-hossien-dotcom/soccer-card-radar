@@ -3,12 +3,14 @@ import { valueCard, configFromAssumptions, snipeMaxBid, snipeConfigFromAssumptio
 import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type SnapshotRow, type WeekTotal, type CardTrend } from "./snapshot";
 import { byRecency, vaultComp, maxBidInputs, isSaleComp, type VaultComp } from "@/lib/vault-comp";
 import { valueEst, toCompRow, isMissingColumn, COMP_COLS, COMP_COLS_LEGACY, type ValueEst } from "@/lib/value-est";
+import { toSport, type Sport } from "@/lib/vault-filter";
 
 export type CompRow = VaultComp;
 
 export type CollectionCard = {
   id: string;
   status: CardStatus;
+  sport: Sport; // V2: 'soccer' | 'basketball'
   item: string;
   player: string;
   gradeLabel: string; // "PSA 10", "BGS 9.5", "Raw"
@@ -46,6 +48,7 @@ export type PopRow = { asOf: string; total: number | null; gem10: number | null;
 type CardRow = {
   id: string; status: CardStatus; item: string; player: string | null; grader: string | null; grade: string | null;
   cert: string | null; qty: number; submissionId: string | null; dateAdded: string | null; imagePath: string | null; notes: string | null;
+  sport?: string | null; // V2; fixtures may omit it (reads as soccer)
   photoSourceFront?: string | null; // full photo of this copy for grading (seller's listing photo); imagePath is the card-only crop
 };
 export type RawRows = {
@@ -133,7 +136,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
   return rows.cards.map((card) => {
     const comps = compsBy.get(card.id) ?? [];
     const ledger = ledgerBy.get(card.id) ?? [];
-    const gradeLabel = card.grader && card.grade ? `${card.grader} ${card.grade}` : card.status === "at_grader" ? "At PSA" : card.status === "sealed" ? "Sealed" : "Raw";
+    const gradeLabel = card.grader && card.grade ? `${card.grader} ${card.grade}` : card.status === "at_grader" ? "At PSA" : "Raw";
     const curGrade = card.grader && card.grade ? `${card.grader} ${card.grade}` : "raw";
     const at = (grade: string) => vaultComp(comps.filter(isSaleComp), grade)?.price ?? null;
 
@@ -154,6 +157,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
     return {
       id: card.id,
       status: card.status,
+      sport: toSport(card.sport),
       item: card.item,
       player: card.player ?? "Unknown",
       gradeLabel,
@@ -172,7 +176,7 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
       comps: [...comps].sort(byRecency),
       compGrade: curGrade,
       compAsOf,
-      stale: card.status !== "sealed" && (!compAsOf || compAsOf < staleBefore),
+      stale: !compAsOf || compAsOf < staleBefore,
       pop,
       ledger,
     };
