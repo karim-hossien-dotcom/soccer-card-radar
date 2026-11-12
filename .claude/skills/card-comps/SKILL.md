@@ -13,7 +13,7 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
 - Never invent or "fill in" a price. Every number is a sale (date, price, title), Karim's cost, or an estimate made
   by a rule below with its inputs shown.
 - No usable sale and no trustworthy CL value (Karim, Nov 3 2026): the job applies an estimate itself, without asking:
-  CardComp source `estimate`, method naming the rule (parallel_ratio, base_move, grade_ratio, purchase), inputs in the
+  CardComp source `estimate`, method naming the rule (parallel_ratio, base_move, grade_ratio, proxy), inputs in the
   report. A real exact sale replaces it as soon as one exists. Method: the thin-market formula in
   docs/research/2026-11-02-thin-market-pricing.md (approved by Karim Nov 3 2026; formula `thin_blend`, full write-up in the card-mcp project doc
   research/2026-11-02-thin-market-pricing.md). Run it with the engine (shipped Nov 3 2026): write the signals to a JSON file and run
@@ -26,7 +26,12 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
 - Only graded sales in 90 days: never derive a raw value from graded prices (no PSA 9 / 2, PSA 10 / 4) or the reverse.
   Look up the raw value on PSA or Card Ladder and record source and date, else "no raw value found".
   (The snipe max-bid ceiling in packages/shared is a separate, approved bidding rule, not a valuation.)
-- Karim's own purchases (same date and price/seller as his ledger row) are not comps: flag them.
+- Karim's own purchases and sales (same date and price/seller as his ledger row, or his eBay account as seller/buyer) are
+  never comps and never an estimate input (Karim, Nov 12 2026: thin_blend has no purchase signal). Cost is shown separately.
+- Estimates: sales older than 24 months are dropped; a sale older than 2 weeks with no player index factor gets half
+  weight and the value is confidence 1.
+- Every proposed CardComp passes `pnpm -s --filter @soccer-card-radar/shared comp-guard <input.json>` before insert
+  (once shipped, ticket PC1); a non-zero exit means it is not written.
 - Approved owner values are ONLY CardComp rows with source owner_set or ratio_to_base: they stand; report, never "fix".
   Rows with source workbook_import (the old workbook's "Value used" column, imported 2026-10-16) are ordinary old
   prices, not Karim's choices: newer comps replace them.
@@ -76,7 +81,7 @@ for redo, then stay "open" in the report (first line Incomplete: N open). Only v
 - An "Auto Patch" / patch auto is a different card from an on-card "Autograph" of the same set (Dynasty DAV-KM1 is
   on-card; Sep 27 2026 $1,184 "Auto Patch Black 4/5" is not a comp for it). A Card Ladder value with no exact sale
   behind it is not a comp either; compare it with the proxy before trusting it.
-- No exact sale in any grade: always add a proxy signal before falling back to purchase-only. Proxy = the same player's
+- No exact sale in any grade: always add a proxy signal; with no exact sale and no proxy the card has no value ("no market"), never its purchase price. Proxy = the same player's
   same tier in the same grade (e.g. other 2024-26 Topps Gold /50 autos PSA 10 of that player), last 90 days; never
   other players unless the same player has none (Karim, Nov 10 2026: Bellingham gold auto PSA 10s).
 - Confirm insert and parallel names on the official checklist. PSA's cert label is the authority for a graded card's name.
