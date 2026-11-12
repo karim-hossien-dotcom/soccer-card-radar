@@ -26,7 +26,7 @@ const SALAH = 'a51916c1-5f83-510d-8fad-e34f161103d9';
     await p.reload({ waitUntil: 'networkidle' });
     ok((await p.locator('[role=dialog]').count()) === 0, `${name}: J2 reload after close keeps the drawer closed`);
     await p.goto(`${BASE}/collection?card=not-a-card`, { waitUntil: 'networkidle' });
-    ok((await p.locator('[role=dialog]').count()) === 0 && (await p.locator('section[aria-label="Cards"] > button').count()) > 10, `${name}: J2 unknown id shows the normal grid`);
+    ok((await p.locator('[role=dialog]').count()) === 0 && (await p.locator('section[aria-label="Cards"] > [data-tile] > button').count()) > 10, `${name}: J2 unknown id shows the normal grid`);
 
     // J3: panel at "/"
     r = await p.goto(`${BASE}/`, { waitUntil: 'networkidle' });

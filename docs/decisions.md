@@ -41,3 +41,4 @@ Supersede an entry with a new one; never delete.
 | 2026-11-03 | Shipped TB1 (thin_blend engine + CLI, 12-month limit on ratio pairs) and TB2 (CardComp low/high/confidence applied; Vault shows range + confidence for estimates); Snipe countdown hydration fix | main |
 | 2026-11-06 | Salah 2024-25 Chrome UCC Roman Numeral III/XI refunded (damaged): Vault row marked sold with a matching refund entry (net $0); not in PSA or Card Ladder collections | Card 298dd47b, CLAUDE.md |
 | 2026-11-12 | Prices job refreshes every card older than 6 days each week (40-card cap removed: it caused 5-week refresh cycles and the "stale" flags); delivered eBay buys missing from the Vault are added as raw cards; all snipe targets refreshed weekly with max-bid flags | prices scheduled task, CLAUDE.md |
+| 2026-11-11 | Shipped V1: tick-box on each Vault card, selection summary (N selected, value, cost, gain) at the current "Price as"; per-card grade chips dropped at Karim's request | main |

@@ -7,7 +7,7 @@ const SHOTS = process.env.SHOTS || 'docs/backlog/uat/TB2';
 const BASE = 'http://localhost:3100';
 const ok = (c, m) => { if (!c) { console.error('FAIL ' + m); process.exitCode = 1; } else console.log('ok   ' + m); };
 const noOverflow = (p) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
-const tile = (p, player) => p.locator('section[aria-label="Cards"] > button', { hasText: player });
+const tile = (p, player) => p.locator('section[aria-label="Cards"] > [data-tile] > button', { hasText: player });
 const val = (p, player) => tile(p, player).locator('[class*="val"]').first();
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -33,7 +33,7 @@ const val = (p, player) => tile(p, player).locator('[class*="val"]').first();
     await p.locator('section[aria-label="Cards"]').evaluate((e) => e.scrollIntoView());
     const gap = await p.evaluate(() => {
       const bar = document.querySelector('section[aria-label="Cards"]').previousElementSibling.getBoundingClientRect();
-      const first = document.querySelector('section[aria-label="Cards"] > button').getBoundingClientRect();
+      const first = document.querySelector('section[aria-label="Cards"] > [data-tile] > button').getBoundingClientRect();
       return { scrolled: window.scrollY > 0, gap: first.top - bar.bottom };
     });
     ok(gap.scrolled && gap.gap >= 0, `${name}: first tiles below sticky bar after scroll (gap ${gap.gap.toFixed(1)}px)`);

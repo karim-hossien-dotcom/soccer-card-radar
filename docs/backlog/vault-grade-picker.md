@@ -1,108 +1,107 @@
 # Backlog: Vault per-card grade picker
 
 Source: Karim's request, 2026-11-11: "if I have the At PSA filter but want to see some of the cards as PSA 10, I need a
-tiny selector".
-Success metric: with "Price as" on one grade, Karim can price chosen cards at another grade, and the totals and sort
-use those choices. No database write, no new page and no second global control.
-Status: V1 **approved** (requested by Karim 2026-11-11). Owner: engineer.
+tiny selector". Rework, Karim 2026-11-11 (rejected the per-card grade chip): "just create like a tiny box on the corner
+where we can select and check multiple as they add up".
+Success metric: Karim can filter (e.g. At PSA), tick cards, switch "Price as" to PSA 10 and read what those cards add
+up to. No database write, no new page and no second "Price as" control.
+Status: shipped 2026-11-11 (select-and-sum checkboxes; Karim "ship").
 
-## V1: per-card grade override on Vault tiles and the drawer
+**V1 rework change note (engineer, 2026-11-11, branch feat/V1-grade-picker):**
+- Removed the per-card grade chip (tile and drawer), the override logic, "no comp", the hero "overridden · reset" label
+  and the localStorage key `vault.gradeOverrides.v1`. The drawer is back to main's code.
+- `apps/dashboard/src/lib/vault-scenario.ts` now holds only `Scenario`, `scenarioValue` (main's code, moved here),
+  `cardGain`, `vaultTotals`, plus the new pure `selectionTotals(cards, selectedIds, scenario)`, `toggleSelection`,
+  `parseSelection`, `readStoredSelection`/`writeStoredSelection` (storage passed in, never throw; empty removes the key).
+  10 tests in `vault-scenario.test.ts`, written first; one compares `scenarioValue`/`vaultTotals` against main's code
+  copied into the test at Now/10/9/8.
+- Tile split kept (needed for the checkbox sibling): `div.tile[data-tile]` > `button.open` + `label.pick > input[type=checkbox]`.
+  The checkbox sits in the top-left corner of the navy label (label text padded 38px). Tap area 36x46px, box 16px.
+  Checked tiles get an accent border. UAT selectors `> [data-tile] > button` in tb2, c5 and j3 unchanged from V1.
+- Summary inside the existing hero (`section[aria-label="Collection totals"]`), shown only when ≥1 card is checked:
+  "N selected · Value $X · Cost $Y · Gain $Z · clear". Totals are over all checked cards, including ones hidden by the
+  current filter; ids no longer in the Vault are ignored. Vault totals and sort are unchanged.
+- Selection lives in React state keyed by card id, saved to sessionStorage `vault.selection.v1` (read after mount, all
+  access in try/catch). No "select all shown" (skipped).
+- Screenshots (synthetic only, checked by eye): `docs/backlog/uat/V1/vault-none-{1280,390}.png`,
+  `vault-selected-psa10-{1280,390}.png` (Echo, Alpha, Delta checked, Price as PSA 10). Old chip screenshots removed.
+- Results: dashboard tests 95/95, shared 78/78, grade-screen test_borders.py and test_api.py exit 0, `pnpm build` green.
+  UAT: V1 72 ok / 0 FAIL at 1280 and 390, TB2 34 ok / 0 FAIL (screenshots to a temp dir), C5 47 ok / 0 FAIL (copy of
+  the real collection, every Playwright screenshot stubbed, nothing written, copy deleted).
 
-**Why:** "Price as" applies one grade to every card. A mixed submission (some cards likely 10s, some 9s) can't be
-priced realistically without overriding single cards.
+**Review (reviewer, 2026-11-11, rework ef755e1, diff c8a47f3..ef755e1):** no Critical or Important findings, no fix commit.
+- AC1: `vault-scenario.test.ts` covers hand totals at Now/10/9/8, fallback, graded/sealed, no-cost/no-value, unknown and
+  duplicate ids, select-all = Vault totals, `parseSelection` and throwing storage; `scenarioValue`/`vaultTotals` checked
+  against main's code verbatim. AC2-7 covered by `v1.uat.js` (72 ok / 0 FAIL at 1280 and 390, rerun by reviewer).
+- Accessibility, checked separately: the checkbox is a sibling of the open button (`collection-view.tsx:189`), labelled
+  "Select <player>, <item>"; Tab goes from the open button to the checkbox, which shows a 2px accent focus ring; Space
+  toggles it and Enter does not open the drawer; at 390 the tap area is 36x46 and a click in its corner toggles it.
+- sessionStorage: only accessed through `storage()` / `read|writeStoredSelection`, all in try/catch; read after mount
+  (no hydration warning with valid or corrupt storage, or with storage throwing).
+- No selection: `vaultTotals` equals main's totals code, and the summary is not rendered. No chip/override code left
+  (grep for `gradeOverride`/override/chip in the Vault: none; the "no comp yet" drawer text is main's).
+- Card values: no valuation change; the UAT fixture is fully synthetic. No secrets in the diff or screenshots (all four
+  V1 PNGs checked by eye: SYNTHETIC cards only). No DB, API, `load.ts` or packages/shared change; no duplicate control.
+- Minor, left as is (design or harmless, not in AC):
+  1. The first tick adds the summary line to the hero, which pushes the grid down about 25px (layout shift under the
+     pointer). A reserved line would avoid it; that's a design choice for Karim/PM.
+  2. `aria-live` sits on the conditionally rendered `<p>` (`collection-view.tsx:123`), so screen readers may skip the
+     first appearance. Later updates are announced.
+  3. Ids of cards that leave the Vault stay in sessionStorage until "clear" (ignored in totals; tab-scoped).
+- Build/tests: `pnpm install --frozen-lockfile` ok; `pnpm build --force` 5/5; dashboard 95/95; shared 78/78;
+  grade-screen test_borders.py and test_api.py exit 0.
+
+**QA (2026-11-11):** UAT run locally on port 3100 with Chromium 1194. V1 72 ok / 0 FAIL (synthetic fixture, screenshots
+to a temp dir, identical in content to the committed ones). TB2 34 ok / 0 FAIL (synthetic fixture, screenshots to a temp
+dir). C5 47 ok / 0 FAIL on a temp copy of the collection fixture with every Playwright screenshot stubbed (no files
+written, copy deleted). Working tree clean after the runs. Ready for prod; merging stays with Karim's "ship".
+
+## V1 (rework): select cards and add them up
+
+**Why:** "Price as" applies one grade to every card in view. Karim wants to pick a few cards (e.g. some At PSA cards he
+expects to come back 10s) and see what just those cards add up to at a chosen grade.
 
 **Scope:**
-- New `apps/dashboard/src/lib/vault-scenario.ts` + `vault-scenario.test.ts` (pure, no React, no I/O):
-  - Move `Scenario` and `scenarioValue` out of `collection-view.tsx` into this file. Do not leave a copy behind (DRY).
-  - `effectiveScenario(global, overrides, card)`: returns the override if one is set and the card can be overridden,
-    otherwise the global value.
-  - `cardValue(card, scenario)`: returns `{ value: number | null, noComp: boolean }`. For an **override** to 10/9/8 when
-    that grade's value is null, return `value: null, noComp: true`. Do not fall back to `valueNow`. The global path
-    keeps today's fallback to `valueNow` unchanged (see PM flag 1).
-  - `vaultTotals(cards, global, overrides)`: returns `{ value, cost, gain, overridden, noComp }`. `noComp` cards add
-    nothing to value or gain. Their cost still counts in Cost, as it does today for cards with no value.
-  - `parseOverrides(raw: string | null)` / `serializeOverrides(map)`: corrupt JSON, unknown grades or non-string keys
-    give an empty or cleaned map. The parser never throws.
-- `apps/dashboard/src/app/collection/collection-view.tsx`:
-  - State `overrides: Record<cardId, Scenario>`. Load it from localStorage key `vault.gradeOverrides.v1` in a
-    `useEffect` after mount, not during render, to avoid a repeat of the TB2 Snipe hydration bug. Writes are wrapped
-    in try/catch. If localStorage is missing or throws (private mode, quota), overrides still work for the session.
-  - The sort keys (value, gain, upside), `totals`, the tile value/gain and the tile `est.` tag all use each card's
-    effective scenario.
-  - Tile: a compact native `<select>` styled as a chip. Options are "Follow (<global>)", "Now", "10", "9" and "8". The
-    chip shows the effective grade. An overridden chip is visually marked (gold, per the UI-1 tokens) so it stands
-    out from cards that follow the global setting.
-  - The chip shows only on `raw` and `at_grader` cards. `scenarioValue` already ignores the scenario for graded and
-    sealed cards, so a chip there would do nothing.
-  - **The tile is currently a `<button>`. A select inside a button is invalid HTML and taps would open the drawer.**
-    Restructure the tile so the open action and the chip are siblings, for example a wrapper element with the
-    existing button plus the chip. Keep the tilt, hover zoom and aria-label behaviour. A tap on the chip must never
-    open the drawer.
-  - Hero: when there are overrides, the value label reads e.g. "Value if PSA 9 · 3 overridden · reset". "reset"
-    is a text link that clears all overrides and the storage key. When cards have no comp at their chosen grade, add
-    "· N no comp". All of this goes in the existing heroKpis label. No new section.
-  - Tile with no comp: the value cell reads "no comp" and the gain cell reads "—".
-- Drawer (`Drawer` in the same file): the same chip next to the existing "If graded" table heading. It reads and
-  writes the same `overrides` state through props. It shows only when `showScen` is true. No second picker anywhere.
-- Out of scope: no DB, API, migration, `load.ts` or packages/shared change. Overrides don't change CompsPanel, the
-  Tracker or the A5 snapshots.
+- `apps/dashboard/src/lib/vault-scenario.ts` (pure): `scenarioValue`, `vaultTotals` and `selectionTotals`. A selected
+  card is valued exactly as its tile is at the current "Price as" (graded and sealed use value now; a raw or at-PSA card
+  with no value at that grade falls back to value now). Cost counts every selected card with a cost; gain only cards
+  with both value and cost (same as the Vault totals).
+- `collection-view.tsx`: a checkbox in the top corner of every tile (all statuses), sibling of the open button; the
+  selection summary line in the existing hero; "clear" empties the selection. Selection persists across filter, player,
+  search and sort changes, and in sessionStorage for the tab session.
+- Out of scope: no DB, API, migration, `load.ts` or packages/shared change; drawer, CompsPanel, Tracker unchanged.
 
 **Acceptance criteria:**
-1. Unit tests in `vault-scenario.test.ts`, all on synthetic cards:
-   - No override: the card follows the global grade (Now/10/9/8).
-   - Override 10 while global is 9: the card uses psa10.
-   - Override on a graded or sealed card is ignored and returns valueNow.
-   - Override 10 with psa10 null: `noComp: true`, and the card is excluded from value and gain but its cost counts.
-   - Global 10 with psa10 null and no override: falls back to valueNow, the same as today.
-   - `vaultTotals` counts `overridden` only for cards in the list passed in.
-   - `parseOverrides`: null, "garbage", `{"x":"11"}` and an array each return a safe map; a valid map round-trips.
-   - The tests fail if the helper is reverted.
-2. With no overrides set, Vault totals, sort order and tile values are identical to main at every global setting
-   (regression check against the fixture).
-3. Changing one tile's chip updates that tile, the hero value, gain or loss, and the sort position without opening
-   the drawer. Reloading the page keeps the override. "reset" clears all overrides, and they stay cleared after a
-   reload.
-4. The drawer chip and the tile chip stay in sync both ways.
-5. With localStorage throwing (stubbed in UAT), the page loads without errors and overrides work until reload.
-6. No hydration warning on /collection when overrides exist in storage.
-7. At 390px there is no horizontal scroll, the chip's tap target is at least 32px high, and the tile's value line
-   stays at 2 lines or fewer. At 1280px the chip does not cover the photo or the grade label.
-8. Valid HTML: no interactive element inside the tile button (axe or a DOM check in UAT).
-9. Dashboard tests green, `pnpm build` green.
+1. Unit tests (synthetic cards): selection totals at Now/10/9/8 by hand; tile fallback for missing grade values,
+   graded and sealed cards; no-cost / no-value cards; unknown and duplicate ids ignored; selecting every card equals
+   the Vault totals; `parseSelection` and the storage helpers never throw. `scenarioValue`/`vaultTotals` equal main.
+2. Every tile has one checkbox in its top corner; no interactive element is nested in the tile button; clicking or
+   pressing Space on the checkbox never opens the drawer; the tile button still opens it.
+3. At 390px the checkbox tap area is ≥32px, the box is visually small and does not cover the item text; no horizontal
+   scroll at 390 or 1280.
+4. With ≥1 card checked the hero shows "N selected · Value $X · Cost $Y · Gain $Z · clear"; nothing shows with none.
+   Switching "Price as" updates it using the tiles' values.
+5. Selection survives filter and sort changes (hidden cards still count) and a reload; "clear" empties it and the
+   storage key, and it stays empty after a reload.
+6. With sessionStorage throwing, the page loads without errors and selection works until reload. No hydration
+   warning with a stored (valid or corrupt) selection.
+7. Vault totals, sort order and tile values are identical to main at every "Price as" setting.
+8. Dashboard tests green, `pnpm build` green; V1, TB2 and C5 UATs green.
 
 **Test plan (qa):**
-- Run `pnpm --filter @soccer-card-radar/dashboard test` and `pnpm build`.
-- UAT on a **fully synthetic fixture** made by a script such as `test/uat/make-v1-fixture.js`. Never use
-  `test/fixtures/collection.json` (it holds real costs). The fixture has:
-  - 3 raw cards with full psa10/9/8 values
-  - 1 raw card with psa10 null
-  - 1 at_grader card
-  - 1 graded card
-  - 1 sealed card
-- `test/uat/v1.uat.js` with Playwright on local dev (port 3100) at 1280 and 390:
-  1. Set global to PSA 9.
-  2. Override card A to 10 and the psa10-null card to 10. Assert the hero sum by hand, the "no comp" text and
-     "1 no comp".
-  3. Reload. Assert the overrides persist.
-  4. Reset. Assert the totals equal the plain PSA 9 totals.
-  5. Run the localStorage-throws stub.
-  6. Run the hydration-warning listener.
-  7. Check that no interactive element is nested inside the tile button.
-- Screenshots go to `docs/backlog/uat/V1/`: tiles with overrides, the hero with the "overridden · reset · no comp"
-  line, and the drawer chip, each at 1280 and 390. Check every screenshot by eye: synthetic data only.
+- `pnpm --filter @soccer-card-radar/dashboard test`, `pnpm build`.
+- UAT on the synthetic fixture only: `node test/uat/make-v1-fixture.js $F`, `COLLECTION_FIXTURE=$F next dev --port 3100`,
+  run `test/uat/v1.uat.js` from the repo root (SHOTS defaults to `docs/backlog/uat/V1`). Hand totals for Echo + Alpha +
+  Delta: Now $165 / $160 / +$5; PSA 10 $1,225 / $160 / +$1,065 (Delta has no PSA 10 value and falls back to $25).
+- Re-run TB2 and C5 UATs (C5 with screenshots off: its fixture is a copy of the real collection).
 
-**Risk:** Low to Medium.
-- Restructuring the tile is the main regression risk. It can break tilt, hover zoom, the TB2 `--sticky-h`
-  scroll-margin and the c5/TB2 UAT selectors that target `button` tiles. Re-run the TB2 UAT.
-- Overrides live per browser. A phone and a laptop each keep their own overrides (accepted: viewer convenience).
-- Overrides for cards later sold or removed stay in storage. They are ignored and not counted. "reset" clears them.
+**Risk:** Low. The tile split from the first V1 pass stays (tilt, hover zoom and the TB2 sticky scroll-margin re-tested).
+Selection is per browser tab (sessionStorage), by design.
 
-**Size:** M (fits in 1 day).
+**Size:** S.
 
-## PM flags (for Karim)
-1. **Rule inconsistency.** Today the global "Price as" silently falls back to Value now when a card has no PSA 10/9/8
-   value. V1 shows "no comp" only for per-card overrides, as asked. Should the global setting also show "no comp"
-   instead of falling back? That would change the Vault's headline totals, so it is not in V1 unless you say so.
-2. Graded and sealed cards get no chip, because their value is their slab or box comp. Say so if you want "what if
-   this BGS 9 were a PSA 10".
-3. Nothing here is blocked externally, and nothing serves "sell later" only.
+## Superseded: V1 first pass (per-card grade chip), rejected by Karim 2026-11-11
+Built, reviewed and QA'd on this branch (commits 33a958b, 5cffe44, 96fd6eb): a per-card "Price as" chip on raw and
+at-PSA tiles and in the drawer, stored in localStorage, with "no comp" for overrides to a grade without a value. Karim
+preferred checkboxes that add up; the chip, override logic and its screenshots were removed in the rework. PM flag 1
+(global "Price as" falls back to value now instead of showing "no comp") still stands as an open question for Karim.

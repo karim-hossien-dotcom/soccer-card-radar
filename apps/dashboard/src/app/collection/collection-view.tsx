@@ -8,8 +8,10 @@ import s from "./collection.module.css";
 import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
 import { estTileTag, estDrawerText } from "@/lib/value-est";
+import {
+  type Scenario, scenarioValue, cardGain, vaultTotals, selectionTotals, toggleSelection, readStoredSelection, writeStoredSelection,
+} from "@/lib/vault-scenario";
 
-type Scenario = "now" | "10" | "9" | "8";
 type StatusFilter = "all" | "graded" | "raw" | "at_grader" | "stale" | "sealed";
 type SortKey = "value" | "gain" | "upside" | "cost" | "date" | "name";
 
@@ -18,19 +20,14 @@ const usd = (n: number | null | undefined, d = 0) =>
   n === null || n === undefined ? "—" : n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: d, minimumFractionDigits: d });
 const signed = (n: number | null | undefined) => (n === null || n === undefined ? "—" : `${n >= 0 ? "+" : "−"}${usd(Math.abs(n))}`);
 const tone = (n: number | null | undefined) => (n === null || n === undefined ? "" : n >= 0 ? s.pos : s.neg);
-
-function scenarioValue(c: CollectionCard, sc: Scenario): number | null {
-  if (sc === "now" || c.status === "graded" || c.status === "sealed") return c.valueNow;
-  const v = sc === "10" ? c.psa10 : sc === "9" ? c.psa9 : c.psa8;
-  return v ?? c.valueNow;
-}
-const gain = (c: CollectionCard, sc: Scenario) => {
-  const v = scenarioValue(c, sc);
-  return v === null || c.cost === null ? null : v - c.cost;
-};
+const storage = () => { try { return window.sessionStorage; } catch { return null; } };
 
 export default function CollectionView({ cards, weeks, trends, openId }: CollectionData & { openId?: string }) {
   const [scen, setScen] = useState<Scenario>("now");
+  // V1: checked cards (by id) add up in the totals. Kept for the tab session; loaded after mount (no hydration mismatch).
+  const [selected, setSelected] = useState<string[]>([]);
+  useEffect(() => { setSelected(readStoredSelection(storage())); }, []);
+  const changeSel = (next: string[]) => { setSelected(next); writeStoredSelection(storage(), next); };
   const [stat, setStat] = useState<StatusFilter>("all");
   const [player, setPlayer] = useState("");
   const [sort, setSort] = useState<SortKey>("value");
@@ -63,7 +60,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     );
     const key: Record<SortKey, (c: CollectionCard) => number | string> = {
       value: (c) => scenarioValue(c, scen) ?? -1,
-      gain: (c) => gain(c, scen) ?? -1e9,
+      gain: (c) => cardGain(c, scen) ?? -1e9,
       upside: (c) => (scenarioValue(c, scen) ?? 0) - (c.valueNow ?? 0),
       cost: (c) => c.cost ?? -1,
       date: (c) => c.dateAdded ?? "",
@@ -76,15 +73,9 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     });
   }, [cards, scen, stat, player, sort, q]);
 
-  const totals = useMemo(() => {
-    let cost = 0, value = 0, withCost = 0;
-    for (const c of list) {
-      const v = scenarioValue(c, scen);
-      if (v !== null) value += v;
-      if (c.cost !== null) { cost += c.cost; if (v !== null) withCost += v - c.cost; }
-    }
-    return { cost, value, gain: withCost };
-  }, [list, scen]);
+  const totals = useMemo(() => vaultTotals(list, scen), [list, scen]);
+  const sel = useMemo(() => selectionTotals(cards, selected, scen), [cards, selected, scen]);
+  const selSet = useMemo(() => new Set(selected), [selected]);
 
   useEffect(() => {
     const close = () => setZoom(null);
@@ -128,6 +119,12 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
           <div><span>Gain or loss</span><b className={tone(totals.gain)}><CountUp value={totals.gain} signed /></b></div>
           <div><span>Cards in view</span><b>{list.length}</b></div>
         </div>
+        {sel.count > 0 && (
+          <p className={s.selSum} aria-label="Selected cards" aria-live="polite">
+            <b>{sel.count} selected</b> · Value <b>{usd(sel.value)}</b> · Cost <b>{usd(sel.cost)}</b> · Gain <b className={tone(sel.gain)}>{signed(sel.gain)}</b>
+            {" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button>
+          </p>
+        )}
       </section>
       <Tracker weeks={weeks} movers={movers} />
       <div className={s.due} role="region" aria-label="Comps">
@@ -157,10 +154,13 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
       <section className={s.grid} aria-label="Cards">
         {list.map((c) => {
           const v = scenarioValue(c, scen);
-          const g = gain(c, scen);
+          const g = cardGain(c, scen);
           const est = scen !== "now" && c.estimated && c.status !== "graded";
+          const on = selSet.has(c.id);
+          // V1: the tile is a wrapper; the open button and the select checkbox are siblings (no control inside a button).
           return (
-            <button key={c.id} className={s.tile} onClick={() => { setZoom(null); setOpen(c); }} aria-label={`${c.player}, ${c.item}`} onMouseMove={tilt} onMouseLeave={untilt}>
+            <div key={c.id} className={`${s.tile} ${on ? s.tileOn : ""}`} data-tile onMouseMove={tilt} onMouseLeave={untilt}>
+            <button type="button" className={s.open} onClick={() => { setZoom(null); setOpen(c); }} aria-label={`${c.player}, ${c.item}`}>
               <div className={s.label}>
                 <span className={s.labelSet}>{c.item}</span>
                 <span className={s.labelGrade} data-status={c.status}><small>{c.status === "graded" ? c.gradeLabel.split(" ")[0] : STATUS_LABEL[c.status]}</small>{c.status === "graded" ? c.gradeLabel.split(" ").slice(1).join(" ") : "—"}</span>
@@ -186,6 +186,10 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
                 {c.status === "raw" && c.decision && <div className={s.sub}>{c.decision}</div>}
               </div>
             </button>
+            <label className={s.pick} title="Select to add up">
+              <input type="checkbox" checked={on} onChange={() => changeSel(toggleSelection(selected, c.id))} aria-label={`Select ${c.player}, ${c.item}`} />
+            </label>
+            </div>
           );
         })}
         {list.length === 0 && <div className={s.empty}>No cards match these filters. Clear the search or pick All.</div>}

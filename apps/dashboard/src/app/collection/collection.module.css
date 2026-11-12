@@ -47,8 +47,8 @@
 /* Grid of slabs */
 .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 24px 20px; perspective: 1200px; scroll-margin-top: calc(var(--sticky-h, 120px) + 12px); }
 .tile {
-  all: unset; box-sizing: border-box; min-width: 0; cursor: pointer; position: relative;
-  display: grid; grid-template-rows: auto auto 1fr; align-content: start;
+  all: unset; box-sizing: border-box; min-width: 0; position: relative;
+  display: grid; grid-template-rows: 1fr; align-content: start;
   background: var(--surface); border: 1px solid var(--rule); border-radius: 12px; overflow: hidden;
   transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transform-style: preserve-3d;
   transition: transform .45s var(--ease), box-shadow .45s var(--ease), border-color .2s;
@@ -57,7 +57,22 @@
 .tile:hover { box-shadow: 0 22px 40px -18px rgba(15, 22, 34, 0.35); border-color: #b3bdcc; transition: transform .12s linear, box-shadow .45s var(--ease); }
 .tile::after { content: ""; position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .3s; background: radial-gradient(circle at var(--mx, 50%) var(--my, 30%), rgba(255, 255, 255, 0.55), transparent 45%); mix-blend-mode: soft-light; }
 .tile:hover::after { opacity: 1; }
-.tile:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.tile:has(> .open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* V1: the open button fills the tile; the select checkbox sits in its top-left corner as a sibling (no control in the button). */
+.open { all: unset; box-sizing: border-box; min-width: 0; cursor: pointer; display: grid; grid-template-rows: auto auto 1fr; align-content: start; }
+.open .label { padding-left: 38px; }
+.pick { position: absolute; top: 0; left: 0; z-index: 2; width: 36px; height: 46px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.pick input { appearance: none; -webkit-appearance: none; margin: 0; width: 16px; height: 16px; border: 1.5px solid var(--on-navy-2); border-radius: 4px; background: transparent; cursor: pointer; display: grid; place-content: center; }
+.pick input::after { content: ""; width: 9px; height: 5px; border: solid #fff; border-width: 0 0 2px 2px; transform: translate(0, -1px) rotate(-45deg); opacity: 0; }
+.pick input:checked { background: var(--accent); border-color: var(--accent); }
+.pick input:checked::after { opacity: 1; }
+.pick:hover input { border-color: var(--on-navy); }
+.tileOn { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.selSum { margin: 14px 0 0; font-size: var(--t-sm); color: var(--on-navy-2); line-height: 1.6; }
+.selSum b { font-weight: 700; }
+.selSum b:not(.pos):not(.neg) { color: var(--on-navy); }
+.reset { all: unset; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; color: var(--on-navy); }
+.reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @keyframes tile-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 
 .label { display: flex; justify-content: space-between; align-items: center; gap: 8px; background: var(--navy); color: var(--on-navy); padding: 8px 10px; min-height: 46px; }

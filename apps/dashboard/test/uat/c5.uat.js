@@ -10,7 +10,7 @@ const row = (p, card) => p.locator('tr[aria-expanded]', { hasText: card });
 const maxCell = async (p, card) => (await row(p, card).locator('td.num').allInnerTexts()).join(' | ');
 const drawer = async (p, label) => {
   await p.goto('http://localhost:3100/collection', { waitUntil: 'networkidle' });
-  const tile = p.locator(`section[aria-label="Cards"] > button[aria-label*="${label}"]`);
+  const tile = p.locator(`section[aria-label="Cards"] > [data-tile] > button[aria-label*="${label}"]`);
   ok((await tile.count()) === 1, `tile "${label}" is unique`);
   await tile.click();
   return p.locator('[role=dialog]');
