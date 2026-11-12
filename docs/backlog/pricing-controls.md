@@ -170,3 +170,9 @@ market sources only (estimates keep rule names, owner_set any); one-year card + 
 - Build/test: `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; shared 125/125; dashboard 103/103;
   grade-screen test_borders + test_api ok (1 known skip).
 - Fix commit: f287509. Verdict: nothing Critical/Important open -> ready for prod.
+
+## PC1c Authentic slabs (Karim, Nov 12 2026: value the CGC Authentic Mainoo Ruby /19 from the same card's sales and similar print runs)
+Status: approved
+- Vault: a card whose grade is Authentic/AUTH/Altered (any grader) is valued on the `raw` comp key (vault grade key "raw"), labelled "CGC Authentic" in the drawer.
+- comp-guard: for such a card (card.grade AUTH/Authentic), a kept sale whose title shows the same grader + Authentic passes `grade_mismatch`; any numeric grade still rejects.
+- Tests for both; fixture data only.
