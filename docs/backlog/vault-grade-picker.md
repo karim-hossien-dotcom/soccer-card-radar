@@ -4,7 +4,7 @@ Source: Karim's request, 2026-11-11: "if I have the At PSA filter but want to se
 tiny selector".
 Success metric: with "Price as" on one grade, Karim can price chosen cards at another grade, and the totals and sort
 use those choices. No database write, no new page and no second global control.
-Status: V1 **ready for QA** (requested by Karim 2026-11-11). Owner: qa.
+Status: V1 **ready for prod** (requested by Karim 2026-11-11). Owner: Karim ("ship").
 
 **V1 change note (engineer, 2026-11-11, branch feat/V1-grade-picker):**
 - New `apps/dashboard/src/lib/vault-scenario.ts` (+ 10 tests): `Scenario`/`scenarioValue` moved here (no copy left),
@@ -57,6 +57,16 @@ Status: V1 **ready for QA** (requested by Karim 2026-11-11). Owner: qa.
   test_api.py exit 0 (1 pre-existing skip); `pnpm build --force` 5/5. UAT: V1 86 ok / 0 FAIL, TB2 34 ok / 0 FAIL,
   C5 47 ok / 0 FAIL (C5 fixture is a copy of the real collection: run with every Playwright screenshot stubbed out,
   nothing written, copy deleted afterwards).
+
+**V1 QA (qa, 2026-11-11, after review commit 5cffe44):**
+- Tests and UATs as in the review note (same session, same commit content): all green.
+- Screenshots in `docs/backlog/uat/V1/` checked by eye, synthetic data only ("SYNTHETIC ... TEST" items, Test Alpha..
+  Golf): `tiles-overrides-1280/390.png` (Alpha and Delta chips marked as overridden, Delta "no comp" / "—", others
+  "Follow (PSA 9)", graded Foxtrot without chip, Alpha sorted first), `hero-1280/390.png` ("Value if PSA 9 · 2
+  overridden · reset · 1 no comp", $1,000 / $360 / +$650, matches the hand sum), `drawer-chip-1280/390.png` (chip
+  in the "If graded" heading set to PSA 8). No horizontal scroll at 390; chip clear of photo and grade label.
+- Main screenshot: `docs/backlog/uat/V1/tiles-overrides-1280.png`.
+- Ready for prod: waiting for Karim's "ship". Not merged.
 
 ## V1: per-card grade override on Vault tiles and the drawer
 
