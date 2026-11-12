@@ -29,24 +29,23 @@ const applied = (r: ThinBlendResult) => {
   return r;
 };
 
-const psa9 = [sale(150, 30), sale(120, 90), sale(180, 150)];
+// PC2: every sale older than 2 weeks carries an indexFactor here (1 = index flat), so no signal is halved.
+const isale = (price: number, days: number) => sale(price, days, 1);
+const psa9 = [isale(150, 30), isale(120, 90), isale(180, 150)];
 const caseA: ThinBlendInput = {
   now: NOW,
   target: { gradeState: "graded", grade: "PSA 8" },
   signals: [
-    { kind: "exact", gradeState: "graded", sales: [sale(40, 1460)] },
+    { kind: "exact", gradeState: "graded", sales: [isale(40, 700)] },
     { kind: "grade_ratio", gradeState: "graded", sales: psa9, ratios: [0.4, 0.55, 0.65, 0.85, 1.1] },
   ],
-  higherGradeSales: psa9,
+  higherGradeSales: [isale(95, 20)],
 };
 
 const caseB: ThinBlendInput = {
   now: NOW,
   target: { gradeState: "raw", grade: null },
-  signals: [
-    { kind: "purchase", gradeState: "raw", sales: [sale(100, 200)] },
-    { kind: "proxy", gradeState: "raw", sales: [sale(70, 60), sale(80, 100)] },
-  ],
+  signals: [{ kind: "proxy", gradeState: "raw", sales: [isale(70, 60), isale(80, 100)] }],
 };
 
 test("AC1 case A': exact + grade_ratio, higher-grade cap, 365-day confidence cap", () => {
@@ -54,59 +53,54 @@ test("AC1 case A': exact + grade_ratio, higher-grade cap, 365-day confidence cap
   const [s1, s2] = r.signals;
   assert.equal(s1.kind, "exact");
   near(s1.m, 3.6889, LOG, "m1");
-  near(s1.var, 0.5694, LOG, "var1");
+  near(s1.var, 0.3056, LOG, "var1");
   assert.equal(s2.kind, "grade_ratio");
   near(s2.r, 0.65, 1e-9, "ratio");
   near(s2.sigmaM, 0.3977, LOG, "sigma_m");
   near(s2.m, 4.556, LOG, "m2");
   near(s2.var, 0.1884, LOG, "var2");
-  near(Math.log(r.value!), 4.3405, LOG, "ln V");
-  near(r.value, 76.74, USD, "V");
-  near(r.sd, 0.3762, LOG, "sd");
-  near(r.low, 47.38, USD, "low");
-  near(r.high, 120.0, USD, "high (capped)");
+  near(Math.log(r.value!), 4.2253, LOG, "ln V");
+  near(r.value, 68.39, USD, "V");
+  near(r.sd, 0.3414, LOG, "sd");
+  near(r.low, 44.16, USD, "low");
+  near(r.high, 95.0, USD, "high (capped)");
   assert.ok(r.capsApplied.includes("higher_grade"));
   assert.equal(r.confidenceUncapped, 3);
   assert.equal(r.confidence, 2);
   assert.equal(r.conflict, false);
-  near(s1.weightShare, 0.249, LOG, "exact weightShare");
+  near(s1.weightShare, 0.3814, LOG, "exact weightShare");
   near(s1.weightShare + s2.weightShare, 1, 1e-9, "weight shares sum");
-  assert.equal(r.indexAssumed, true);
+  assert.equal(r.indexAssumed, false);
+  assert.deepEqual(r.flags, []);
   assert.equal(r.method, "thin_blend");
 });
 
-test("AC1 case A' uncapped range is $47.38-$124.29", () => {
+test("AC1 case A' uncapped range is $44.16-$105.93", () => {
   const r = applied(thinBlend({ ...caseA, higherGradeSales: [] }));
-  near(r.low, 47.38, USD, "low");
-  near(r.high, 124.29, USD, "high");
+  near(r.low, 44.16, USD, "low");
+  near(r.high, 105.93, USD, "high");
   assert.deepEqual(r.capsApplied, []);
 });
 
-test("AC2 case B': purchase + proxy, purchase/proxy-only confidence cap", () => {
+test("AC2 case B': proxy only, proxy-only confidence cap", () => {
   const r = applied(thinBlend(caseB));
-  const purchase = r.signals.find((s) => s.kind === "purchase")!;
   const proxy = r.signals.find((s) => s.kind === "proxy")!;
-  near(purchase.var, 0.1719, LOG, "purchase var");
-  near(1 / purchase.var, 5.816, 0.01, "purchase P");
-  near(purchase.m, 4.6052, LOG, "purchase m");
   near(proxy.m, 4.3101, LOG, "proxy m");
   near(proxy.var, 0.2949, LOG, "proxy var");
-  near(1 / proxy.var, 3.391, 0.01, "proxy P");
-  near(Math.log(r.value!), 4.4965, LOG, "ln V");
-  near(r.value, 89.7, USD, "V");
-  near(r.sd, 0.3296, LOG, "sd");
-  near(r.low, 58.8, USD, "low");
-  near(r.high, 136.85, USD, "high");
-  assert.equal(r.confidenceUncapped, 3);
+  near(r.value, 74.45, USD, "V");
+  near(r.sd, 0.543, LOG, "sd");
+  near(r.low, 37.12, USD, "low");
+  near(r.high, 149.32, USD, "high");
+  assert.equal(r.confidenceUncapped, 2);
   assert.equal(r.confidence, 2);
   assert.deepEqual(r.capsApplied, []);
 });
 
-test("AC3 case B' with lowestBin 85 caps value and high, low unchanged", () => {
-  const r = applied(thinBlend({ ...caseB, lowestBin: 85 }));
-  near(r.value, 85, 0.001, "V");
-  near(r.high, 85, 0.001, "high");
-  near(r.low, 58.8, USD, "low");
+test("AC3 case B' with lowestBin 60 caps value and high, low unchanged", () => {
+  const r = applied(thinBlend({ ...caseB, lowestBin: 60 }));
+  near(r.value, 60, 0.001, "V");
+  near(r.high, 60, 0.001, "high");
+  near(r.low, 37.12, USD, "low");
   assert.ok(r.capsApplied.includes("bin"));
 });
 
@@ -117,12 +111,12 @@ test("AC4 conflict flag when signals disagree beyond 2 sd", () => {
       target: { gradeState: "raw", grade: null },
       signals: [
         { kind: "exact", gradeState: "raw", sales: [sale(40, 0)] },
-        { kind: "purchase", gradeState: "raw", sales: [sale(200, 0)] },
+        { kind: "parallel_ratio", gradeState: "raw", sales: [sale(200, 0)], ratios: [1, 1, 1] },
       ],
     }),
   );
   near(r.signals[0].var, 0.0625, LOG, "exact var");
-  near(r.signals[1].var, 0.1025, LOG, "purchase var");
+  near(r.signals[1].var, 0.0625, LOG, "ratio var");
   assert.equal(r.conflict, true);
 });
 
@@ -156,7 +150,7 @@ test("AC5 scope (a): a single exact sale within 90 days goes through thin_blend"
     thinBlend({
       now: NOW,
       target: { gradeState: "graded", grade: "PSA 9" },
-      signals: [{ kind: "exact", gradeState: "graded", sales: [sale(60, 45)] }],
+      signals: [{ kind: "exact", gradeState: "graded", sales: [isale(60, 45)] }],
     }),
   );
   near(r.value, 60, 0.001, "V");
@@ -176,28 +170,28 @@ test("AC5 gate ignores exact sales in the wrong grade state", () => {
   assert.equal(r.applies, true);
 });
 
-test("AC6 raw purchase for a graded target is excluded with 'grade state' and does not move V", () => {
+test("AC6 raw exact sales for a graded target are excluded with 'grade state' and do not move V", () => {
   const withRaw = applied(
-    thinBlend({ ...caseA, signals: [...caseA.signals, { kind: "purchase", gradeState: "raw", sales: [sale(300, 30)] }] }),
+    thinBlend({ ...caseA, signals: [...caseA.signals, { kind: "exact", gradeState: "raw", sales: [isale(300, 30)] }] }),
   );
   const base = applied(thinBlend(caseA));
   assert.equal(withRaw.value, base.value);
-  assert.ok(withRaw.excluded.some((e) => e.kind === "purchase" && e.reason === "grade state"));
+  assert.ok(withRaw.excluded.some((e) => e.kind === "exact" && e.reason === "grade state"));
   assert.equal(withRaw.signals.length, 2);
 });
 
 test("AC7 scarcer-parallel cap below V caps value and high", () => {
-  const r = applied(thinBlend({ ...caseA, higherGradeSales: [], scarcerParallelSales: [sale(70, 20), sale(95, 60)] }));
-  near(r.value, 70, 0.001, "V");
-  near(r.high, 70, 0.001, "high");
+  const r = applied(thinBlend({ ...caseA, higherGradeSales: [], scarcerParallelSales: [sale(60, 20), sale(95, 60)] }));
+  near(r.value, 60, 0.001, "V");
+  near(r.high, 60, 0.001, "high");
   assert.ok(r.low! <= r.value!);
   assert.ok(r.capsApplied.includes("scarcer_parallel"));
 });
 
 test("a raw target is never capped by graded (higher-grade) sales", () => {
   const r = applied(thinBlend({ ...caseB, higherGradeSales: [sale(60, 10)] }));
-  near(r.value, 89.7, USD, "V");
-  near(r.high, 136.85, USD, "high");
+  near(r.value, 74.45, USD, "V");
+  near(r.high, 149.32, USD, "high");
   assert.deepEqual(r.capsApplied, []);
   assert.ok(r.excluded.some((e) => e.kind === "cap" && /grade state/.test(e.reason)));
 });
@@ -208,10 +202,10 @@ test("caps ignore higher-grade and parallel sales older than 180 days", () => {
 });
 
 test("cap below low pulls low down to V", () => {
-  const r = applied(thinBlend({ ...caseB, lowestBin: 40 }));
-  assert.equal(r.value, 40);
-  assert.equal(r.high, 40);
-  assert.equal(r.low, 40);
+  const r = applied(thinBlend({ ...caseB, lowestBin: 30 }));
+  assert.equal(r.value, 30);
+  assert.equal(r.high, 30);
+  assert.equal(r.low, 30);
 });
 
 test("AC8 confidence thresholds", () => {
@@ -233,7 +227,7 @@ test("AC9 no usable signals -> value null with reasons, never throws", () => {
       signals: [
         { kind: "exact", gradeState: "raw", sales: [{ price: 0, date: ago(5) }, { price: -3, date: ago(5) }] },
         { kind: "grade_ratio", gradeState: "raw", sales: [sale(50, 10)], ratios: [0.5, 0.6] },
-        { kind: "purchase", gradeState: "raw", sales: [sale(80, 800)] },
+        { kind: "proxy", gradeState: "raw", sales: [isale(80, 800)] },
       ],
     }),
   );
@@ -243,7 +237,7 @@ test("AC9 no usable signals -> value null with reasons, never throws", () => {
   assert.equal(r.confidence, null);
   assert.ok(r.excluded.some((e) => e.kind === "exact" && /price/.test(e.reason)));
   assert.ok(r.excluded.some((e) => e.kind === "grade_ratio" && /ratios/.test(e.reason)));
-  assert.ok(r.excluded.some((e) => e.kind === "purchase" && /730/.test(e.reason)));
+  assert.ok(r.excluded.some((e) => e.kind === "proxy" && e.reason === "age"));
   assert.ok(r.excluded.some((e) => /no usable signals/.test(e.reason)));
 });
 
@@ -306,7 +300,7 @@ test("indexFactor scales each sale; indexAssumed false when every used sale has 
 test("thinBlendFromJson parses ISO dates and now", () => {
   const json = JSON.parse(JSON.stringify({ ...caseB, now: NOW.toISOString() }));
   const r = applied(thinBlendFromJson(json));
-  near(r.value, 89.7, USD, "V");
+  near(r.value, 74.45, USD, "V");
 });
 
 // Follow-up: 12-month limit on ratio pairs (dated ratios), undated note, non-positive ratios listed.
@@ -364,4 +358,64 @@ test("thinBlendFromJson accepts dated ratios as ISO strings", () => {
   const r = applied(thinBlendFromJson(json));
   near(r.signals[0].r, 0.6, 1e-9, "ratio");
   near(r.value, 60, 0.001, "V");
+});
+
+// PC2 (Karim, Nov 12 2026): purchases are not a value signal; 24-month age limit; no_index.
+test("PC2: a purchase signal is an error, not a value input", () => {
+  const r = applied(
+    thinBlend({
+      now: NOW,
+      target: { gradeState: "raw", grade: null },
+      signals: [
+        { kind: "purchase", gradeState: "raw", sales: [isale(100, 30)] } as unknown as ThinSignal,
+        ...caseB.signals,
+      ],
+    }),
+  );
+  assert.equal(r.value, null);
+  assert.equal(r.signals.length, 0);
+  assert.ok(r.excluded.some((e) => e.kind === "input" && e.reason === "error: purchase is not a value signal"));
+});
+
+test("PC2: sales older than 24 months are dropped with reason age; younger ones stay", () => {
+  const r = applied(
+    thinBlend({
+      now: NOW,
+      target: { gradeState: "raw", grade: null },
+      signals: [{ kind: "exact", gradeState: "raw", sales: [isale(40, 700), isale(400, 731)] }],
+    }),
+  );
+  assert.equal(r.signals[0].n, 1);
+  near(r.value, 40, 0.001, "V");
+  assert.deepEqual(r.excluded, [{ kind: "exact", reason: "age" }]);
+});
+
+test("PC2: a sale older than 2 weeks with no indexFactor halves its signal's weight and caps confidence at 1", () => {
+  const withIndex = applied(thinBlend({ ...caseA, higherGradeSales: [] }));
+  const exactNoIndex: ThinSignal = { kind: "exact", gradeState: "graded", sales: [sale(40, 700)] };
+  const r = applied(thinBlend({ ...caseA, higherGradeSales: [], signals: [exactNoIndex, caseA.signals[1]] }));
+  const [s1, s2] = r.signals;
+  assert.equal(s1.indexHalved, true);
+  assert.equal(s2.indexHalved, false);
+  near(s1.var, 2 * withIndex.signals[0].var, 1e-9, "exact var doubled");
+  near(s2.var, withIndex.signals[1].var, 1e-9, "ratio var unchanged");
+  // weight share of the exact signal: P1/2 / (P1/2 + P2)
+  const P1 = 1 / withIndex.signals[0].var;
+  const P2 = 1 / withIndex.signals[1].var;
+  near(s1.weightShare, P1 / 2 / (P1 / 2 + P2), 1e-9, "halved weight share");
+  assert.deepEqual(r.flags, ["no_index"]);
+  assert.equal(r.confidence, 1);
+});
+
+test("PC2: sales within 2 weeks need no indexFactor", () => {
+  const r = applied(
+    thinBlend({
+      now: NOW,
+      target: { gradeState: "graded", grade: "PSA 9" },
+      signals: [{ kind: "exact", gradeState: "graded", sales: [sale(60, 14)] }],
+    }),
+  );
+  assert.deepEqual(r.flags, []);
+  assert.equal(r.signals[0].indexHalved, false);
+  assert.equal(r.indexAssumed, true);
 });

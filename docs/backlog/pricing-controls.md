@@ -3,6 +3,13 @@
 Status: approved. Order: PC1 + PC2 (packages/shared) and V3a (comp-evidence.md) in parallel, then PC3, then V3b.
 
 ## PC1 comp-guard: the rules become code (F2)
+Status: ready for review (branch feat/PC1-PC2). Change note: `packages/shared/src/comp-guard.ts` + `bin/comp-guard.ts`
+(script `comp-guard`, exit 0 ok / 1 errors / 2 usage); all 12 codes plus `reject_reason_missing`, `reject_reason_on_kept`
+and `input`; warnings `no_url`, `own_check_empty`, `no_market_12m`. Migration `20261112c_comp_grade_check.sql` written,
+NOT applied. Engineer choices for review: `no_evidence`/`n_mismatch` exempt estimate, owner_set, ratio_to_base;
+own-sale date match is ±1 day (time zones) against ledger purchase and sale rows; a graded comp's kept sale must show
+its grade in the title; two-digit "24/25" counts as a serial (ambiguous -> reject), "2024/25" does not; card item/set/
+parallel words are allowed in titles; "Red Bull/Star/Devils" are not colour words. Tests: `src/comp-guard.test.ts`.
 - New `packages/shared/src/comp-guard.ts` + CLI `pnpm -s --filter @soccer-card-radar/shared comp-guard <input.json>`.
   Input: `{ now, card: {item, year, set, number, parallel, printRun, isAuto, grader, grade, status}, proposed: {grade, price, low, high, sampleSize, source, method, confidence}, sales: [{date, price, title, source, url, seller?, kept, rejectReason?}], ledger: [{date, amount, kind}], ownSellerIds: [string] }`.
   Output `{ ok: boolean, errors: [{code, sale?, message}], warnings: [] }`, exit code 1 when not ok.
@@ -24,6 +31,12 @@ Status: approved. Order: PC1 + PC2 (packages/shared) and V3a (comp-evidence.md) 
 - Never prints or commits real data; fixtures are made up.
 
 ## PC2 thin_blend fixes (F4, Karim decision Nov 12: his purchases do not go into values)
+Status: ready for review (branch feat/PC1-PC2). Change note: `purchase` kind removed; a purchase signal makes the whole
+result empty with excluded "error: purchase is not a value signal" and the CLI exits 2 with that error. Sales older than
+730 days are excluded with reason "age" (PURCHASE_MAX_DAYS replaced by MAX_SALE_DAYS). A sale older than 14 days with no
+indexFactor doubles its signal's variance (halves weight), sets `signals[i].indexHalved`, adds `flags: ["no_index"]` and
+sets confidence 1. Output shape kept; `flags` and `indexHalved` are additive. Test fixtures re-dated / given
+indexFactor 1, expected numbers recomputed independently.
 - Remove the `purchase` signal kind from thin_blend (input with it -> error "purchase is not a value signal"; cost is shown separately in the Vault).
 - Drop any sale older than 24 months (listed in `excluded` with reason age).
 - No indexFactor on a sale older than 2 weeks -> that signal's weight is halved and confidence capped at 1 (output flag `no_index`).

@@ -4,15 +4,19 @@
  * precision (inverse-variance) weighting. Pure functions, no I/O; `now` is a
  * parameter. Approved by Karim 2026-11-03 (card-comps skill). σ0, H and σ_m
  * are uncalibrated benchmarks.
+ * PC2 (Karim, Nov 12 2026): Karim's purchases are not a value signal (a `purchase` signal is an error); sales older
+ * than 24 months are dropped; a sale older than 2 weeks with no indexFactor halves its signal's weight and caps
+ * confidence at 1 (flag `no_index`).
  */
 
 export type GradeState = "raw" | "graded";
-export type SignalKind = "exact" | "grade_ratio" | "parallel_ratio" | "base_move" | "purchase" | "proxy";
+export type SignalKind = "exact" | "grade_ratio" | "parallel_ratio" | "base_move" | "proxy";
+export type Flag = "no_index";
 
 export interface DatedSale {
   price: number;
   date: string | Date;
-  indexFactor?: number; // I_now / I_at_sale; defaults to 1 (flagged as indexAssumed)
+  indexFactor?: number; // I_now / I_at_sale; defaults to 1 (flagged as indexAssumed; older than 2 weeks -> no_index)
 }
 
 /** A pair ratio dated by the newer sale of the pair. Pairs older than RECENT_EXACT_DAYS are excluded. */
@@ -45,8 +49,9 @@ export interface SignalResult {
   r: number; // ratio applied
   sigmaM: number; // method noise
   m: number; // log level
-  var: number;
+  var: number; // doubled (weight halved) when indexHalved
   weightShare: number;
+  indexHalved: boolean; // a sale older than INDEX_DAYS had no indexFactor
 }
 
 export interface Excluded {
@@ -69,6 +74,7 @@ export type ThinBlendResult =
       capsApplied: Cap[];
       conflict: boolean;
       indexAssumed: boolean;
+      flags: Flag[];
       signals: SignalResult[];
       excluded: Excluded[];
       method: "thin_blend";
@@ -79,13 +85,15 @@ export const HALF_LIFE_DAYS = 180;
 export const Z80 = 1.2816;
 export const GATE_DAYS = 90;
 export const GATE_SALES = 3;
-export const PURCHASE_MAX_DAYS = 730;
+export const MAX_SALE_DAYS = 730; // 24 months: older sales are dropped (reason "age")
+export const INDEX_DAYS = 14; // older sales need an indexFactor, else half weight and confidence 1
 export const CAP_WINDOW_DAYS = 180;
 export const RECENT_EXACT_DAYS = 365;
 export const MIN_RATIOS = 3;
-const SIGMA_M_FIXED: Partial<Record<SignalKind, number>> = { exact: 0, purchase: 0.2, proxy: 0.5 };
+const SIGMA_M_FIXED: Partial<Record<SignalKind, number>> = { exact: 0, proxy: 0.5 };
 const RATIO_KINDS: SignalKind[] = ["grade_ratio", "parallel_ratio", "base_move"];
-const KINDS: SignalKind[] = ["exact", ...RATIO_KINDS, "purchase", "proxy"];
+const KINDS: SignalKind[] = ["exact", ...RATIO_KINDS, "proxy"];
+export const PURCHASE_ERROR = "purchase is not a value signal";
 const DAY_MS = 86_400_000;
 
 export function confidenceFromSd(sd: number): number {
@@ -142,6 +150,7 @@ function emptyResult(excluded: Excluded[]): ThinBlendResult {
     capsApplied: [],
     conflict: false,
     indexAssumed: false,
+    flags: [],
     signals: [],
     excluded,
     method: "thin_blend",
@@ -207,6 +216,8 @@ function compute(input: ThinBlendInput): ThinBlendResult {
   const usable: Usable[] = [];
   for (const raw of rawSignals) {
     const sig = raw as Partial<ThinSignal> | null;
+    // Karim's own purchases never enter a value (card-comps; cost is shown separately in the Vault).
+    if (sig && typeof sig === "object" && (sig as { kind?: unknown }).kind === "purchase") throw new Error(PURCHASE_ERROR);
     if (!sig || typeof sig !== "object" || !KINDS.includes(sig.kind as SignalKind)) {
       excluded.push({ kind: "input", reason: "unknown signal kind" });
       continue;
@@ -235,8 +246,8 @@ function compute(input: ThinBlendInput): ThinBlendResult {
         excluded.push({ kind, reason: "bad or future date" });
         continue;
       }
-      if (kind === "purchase" && age > PURCHASE_MAX_DAYS) {
-        excluded.push({ kind, reason: `purchase older than ${PURCHASE_MAX_DAYS} days` });
+      if (age > MAX_SALE_DAYS) {
+        excluded.push({ kind, reason: "age" });
         continue;
       }
       const indexGiven = s.indexFactor !== undefined && s.indexFactor !== null;
@@ -283,7 +294,9 @@ function compute(input: ThinBlendInput): ThinBlendResult {
       sp += p;
       spl += p * Math.log(s.price * s.index * r);
     }
-    return { kind: u.kind, n: u.sales.length, r, sigmaM, m: spl / sp, var: 1 / sp + sigmaM * sigmaM };
+    const indexHalved = u.sales.some((s) => !s.indexGiven && s.age > INDEX_DAYS);
+    const v = 1 / sp + sigmaM * sigmaM;
+    return { kind: u.kind, n: u.sales.length, r, sigmaM, m: spl / sp, var: indexHalved ? 2 * v : v, indexHalved };
   });
 
   // 5. Combine.
@@ -299,8 +312,13 @@ function compute(input: ThinBlendInput): ThinBlendResult {
   const confidenceUncapped = confidenceFromSd(sd);
   let confidence = confidenceUncapped;
   const exactWithinYear = used.some((u) => u.kind === "exact" && u.sales.some((s) => s.age <= RECENT_EXACT_DAYS));
-  const onlyWeak = used.every((u) => u.kind === "purchase" || u.kind === "proxy");
+  const onlyWeak = used.every((u) => u.kind === "proxy");
   if (!exactWithinYear || onlyWeak) confidence = Math.min(confidence, 2);
+  const flags: Flag[] = [];
+  if (sigs.some((s) => s.indexHalved)) {
+    flags.push("no_index");
+    confidence = 1;
+  }
 
   // 7. Hard caps after combining.
   const capsApplied: Cap[] = [];
@@ -353,6 +371,7 @@ function compute(input: ThinBlendInput): ThinBlendResult {
     capsApplied,
     conflict,
     indexAssumed: used.some((u) => u.sales.some((s) => !s.indexGiven)),
+    flags,
     signals: sigs.map((s, i) => ({ ...s, weightShare: P[i] / sumP })),
     excluded,
     method: "thin_blend",

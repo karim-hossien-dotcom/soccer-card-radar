@@ -1,0 +1,283 @@
+import { test } from "node:test";
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
+import { compGuard, serialsIn, GRADE_LABEL_RE, type CompGuardInput, type GuardSale } from "./comp-guard.ts";
+
+// All cards, prices, titles and sellers below are made up (the repo is public).
+const NOW = "2026-11-12T12:00:00Z";
+const DAY = 86_400_000;
+const ago = (d: number) => new Date(Date.parse(NOW) - d * DAY).toISOString();
+const day = (d: number) => ago(d).slice(0, 10);
+
+const sale = (price: number, days: number, title: string, extra: Partial<GuardSale> = {}): GuardSale => ({
+  date: ago(days),
+  price,
+  title,
+  source: "ebay_sold",
+  url: "https://example.invalid/sale",
+  kept: true,
+  ...extra,
+});
+
+/** A clean base raw card with 3 kept sales, median 20. */
+const base = (): CompGuardInput => ({
+  now: NOW,
+  card: { item: "2019 Fictional Chrome Test Player #7", year: "2019", set: "Fictional Chrome", number: "7", parallel: null, printRun: null, isAuto: false, grader: null, grade: null, status: "raw" },
+  proposed: { grade: "raw", price: 20, low: 18, high: 22, sampleSize: 3, source: "ebay_sold", method: "median", confidence: 3 },
+  sales: [
+    sale(18, 10, "2019 Fictional Chrome Test Player #7"),
+    sale(20, 30, "2019 Fictional Chrome Test Player #7 RC"),
+    sale(22, 60, "Test Player 2019 Fictional Chrome #7 Rookie"),
+  ],
+  ledger: [{ date: day(200), amount: 15, kind: "purchase" }],
+  ownSellerIds: ["my-own-account"],
+});
+
+/** Same card, graded PSA 10 comp. */
+const graded = (): CompGuardInput => {
+  const g = base();
+  g.card = { ...g.card, grader: "PSA", grade: "10", status: "graded" };
+  g.proposed = { ...g.proposed, grade: "PSA 10", price: 100 };
+  g.sales = [
+    sale(90, 10, "2019 Fictional Chrome Test Player #7 PSA 10"),
+    sale(100, 20, "2019 Fictional Chrome Test Player #7 PSA 10 GEM MINT"),
+    sale(110, 40, "Test Player #7 PSA GEM MT 10 Fictional Chrome"),
+  ];
+  return g;
+};
+
+const codes = (inp: CompGuardInput) => compGuard(inp).errors.map((e) => e.code);
+const onlyCode = (inp: CompGuardInput, code: string, saleIdx?: number) => {
+  const r = compGuard(inp);
+  assert.equal(r.ok, false, `expected ${code}`);
+  assert.deepEqual([...new Set(r.errors.map((e) => e.code))], [code], JSON.stringify(r.errors));
+  if (saleIdx !== undefined) assert.ok(r.errors.every((e) => e.sale === saleIdx), JSON.stringify(r.errors));
+};
+
+test("clean raw and graded proposals pass", () => {
+  const r = compGuard(base());
+  assert.equal(r.ok, true, JSON.stringify(r.errors));
+  assert.deepEqual(r.errors, []);
+  const g = compGuard(graded());
+  assert.equal(g.ok, true, JSON.stringify(g.errors));
+});
+
+test("grade_label: CGC AUTH, Authentic, Altered and free text are rejected; raw / PSA 10 / BGS 9.5 pass", () => {
+  for (const bad of ["CGC AUTH", "Authentic", "PSA Altered", "PSA10", "psa 10", "VGC 9", "Raw", ""]) {
+    const inp = base();
+    inp.proposed.grade = bad;
+    assert.ok(codes(inp).includes("grade_label"), bad);
+  }
+  for (const ok of ["raw", "PSA 10", "BGS 9.5", "SGC 9", "CGC 8.5"]) assert.ok(GRADE_LABEL_RE.test(ok), ok);
+});
+
+test("source_forbidden: workbook_import", () => {
+  const inp = base();
+  inp.proposed.source = "workbook_import";
+  onlyCode(inp, "source_forbidden");
+});
+
+test("no_evidence: market source with zero kept sales; estimate / owner_set / ratio_to_base are exempt", () => {
+  const inp = base();
+  inp.proposed.sampleSize = 0;
+  inp.sales = inp.sales.map((s) => ({ ...s, kept: false, rejectReason: "parallel" }));
+  onlyCode(inp, "no_evidence");
+  for (const source of ["estimate", "owner_set", "ratio_to_base"]) {
+    const ok = base();
+    ok.proposed = { ...ok.proposed, source, method: source === "estimate" ? "proxy" : "owner", sampleSize: 1, confidence: 1 };
+    ok.sales = [];
+    assert.deepEqual(codes(ok), [], source);
+  }
+});
+
+test("n_mismatch: sampleSize differs from kept sales", () => {
+  const inp = base();
+  inp.proposed.sampleSize = 5;
+  onlyCode(inp, "n_mismatch");
+});
+
+test("not_median: price is not the median of kept prices (±0.01)", () => {
+  const inp = base();
+  inp.proposed.price = 20.02;
+  onlyCode(inp, "not_median");
+  const near = base();
+  near.proposed.price = 20.01;
+  assert.deepEqual(codes(near), []);
+  const even = base();
+  even.sales.pop();
+  even.proposed = { ...even.proposed, sampleSize: 2, price: 19 }; // median(18, 20)
+  assert.deepEqual(codes(even), []);
+});
+
+test("sale_age: kept sale over 90 days for a market comp; over 24 months for an estimate", () => {
+  const inp = base();
+  inp.sales[2] = sale(22, 91, "2019 Fictional Chrome Test Player #7");
+  onlyCode(inp, "sale_age", 2);
+
+  const est = base();
+  est.proposed = { ...est.proposed, source: "estimate", method: "thin_blend", price: 21, confidence: 1 };
+  est.sales = [sale(20, 400, "2019 Fictional Chrome Test Player #7"), sale(22, 731, "2019 Fictional Chrome Test Player #7")];
+  onlyCode(est, "sale_age", 1);
+  assert.ok(compGuard(est).warnings.some((w) => w.code === "no_market_12m"));
+});
+
+test("parallel_word: colour word or serial on a base card", () => {
+  const inp = base();
+  inp.sales[1] = sale(20, 30, "2019 Fictional Chrome Test Player #7 Purple Refractor");
+  onlyCode(inp, "parallel_word", 1);
+  const serial = base();
+  serial.sales[1] = sale(20, 30, "2019 Fictional Chrome Test Player #7 12/99");
+  onlyCode(serial, "parallel_word", 1);
+});
+
+test("parallel_word: parallel card keeps its own parallel and print run only", () => {
+  const card = () => {
+    const inp = base();
+    inp.card = { ...inp.card, parallel: "Gold Refractor", printRun: 50 };
+    inp.sales = [
+      sale(18, 10, "2019 Fictional Chrome Test Player #7 Gold Refractor /50"),
+      sale(20, 30, "2019 Fictional Chrome Test Player #7 Gold Refractor 07/50"),
+      sale(22, 60, "2019 Fictional Chrome Test Player #7 Gold Ref #/50"),
+    ];
+    return inp;
+  };
+  assert.deepEqual(codes(card()), []);
+  const rose = card();
+  rose.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 Rose Gold Refractor /50");
+  onlyCode(rose, "parallel_word", 0);
+  const run = card();
+  run.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 Gold Refractor /25");
+  onlyCode(run, "parallel_word", 0);
+});
+
+test("serialsIn ignores four-digit season years, treats 24/25 as a serial (ambiguous)", () => {
+  assert.deepEqual(serialsIn("2024/25 Fictional Set Player"), []);
+  assert.deepEqual(serialsIn("Fictional Set 24/25 Player"), [25]);
+  assert.deepEqual(serialsIn("Player 09/10 Gold"), [10]);
+  assert.deepEqual(serialsIn("Player #/99"), [99]);
+});
+
+test("auto_mismatch: non-auto card with auto/patch title; auto card without auto word", () => {
+  const inp = base();
+  inp.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 Auto");
+  onlyCode(inp, "auto_mismatch", 0);
+  const relic = base();
+  relic.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 Patch");
+  onlyCode(relic, "auto_mismatch", 0);
+
+  const auto = base();
+  auto.card = { ...auto.card, isAuto: true };
+  auto.sales = auto.sales.map((s) => ({ ...s, title: `${s.title} Autograph` }));
+  assert.deepEqual(codes(auto), []);
+  auto.sales[2] = sale(22, 60, "2019 Fictional Chrome Test Player #7");
+  onlyCode(auto, "auto_mismatch", 2);
+});
+
+test("grade_mismatch: raw comp with a graded sale; PSA 10 comp with PSA 9, BGS, Authentic or no grade", () => {
+  const raw = base();
+  raw.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 PSA 9");
+  onlyCode(raw, "grade_mismatch", 0);
+
+  for (const title of [
+    "2019 Fictional Chrome Test Player #7 PSA 9",
+    "2019 Fictional Chrome Test Player #7 BGS 10",
+    "2019 Fictional Chrome Test Player #7 PSA Authentic",
+    "2019 Fictional Chrome Test Player #7",
+  ]) {
+    const g = graded();
+    g.sales[0] = sale(90, 10, title);
+    onlyCode(g, "grade_mismatch", 0);
+  }
+});
+
+test("grade_mismatch: a player name containing a grader's letters is not a grader", () => {
+  const raw = base();
+  raw.card.item = "2019 Fictional Chrome Isakov #7";
+  raw.sales[0] = sale(18, 10, "2019 Fictional Chrome Isakov #7");
+  assert.deepEqual(codes(raw), []);
+});
+
+test("lot: lot, bundle, x2, set of", () => {
+  for (const extra of ["Lot", "Bundle", "x2", "Set of 3"]) {
+    const inp = base();
+    inp.sales[0] = sale(18, 10, `2019 Fictional Chrome Test Player #7 ${extra}`);
+    onlyCode(inp, "lot", 0);
+  }
+});
+
+test("own_sale: own seller id, or same date and price (±1%) as a ledger purchase", () => {
+  const seller = base();
+  seller.sales[0] = { ...seller.sales[0], seller: "My-Own-Account" };
+  onlyCode(seller, "own_sale", 0);
+
+  const led = base();
+  led.ledger = [{ date: day(30), amount: 20.15, kind: "purchase" }];
+  onlyCode(led, "own_sale", 1);
+
+  const off = base();
+  off.ledger = [{ date: day(30), amount: 21, kind: "purchase" }]; // 5% off
+  assert.deepEqual(codes(off), []);
+});
+
+test("thin: one sale with no low/high and confidence above 2", () => {
+  const inp = base();
+  inp.sales = [sale(20, 10, "2019 Fictional Chrome Test Player #7")];
+  inp.proposed = { ...inp.proposed, sampleSize: 1, low: null, high: null, confidence: 3 };
+  onlyCode(inp, "thin");
+  inp.proposed.confidence = 2;
+  assert.deepEqual(codes(inp), []);
+});
+
+test("rejected sales need a rejectReason; kept sales must not have one", () => {
+  const inp = base();
+  inp.sales.push(sale(500, 5, "2019 Fictional Chrome Test Player #7 Gold /10", { kept: false }));
+  onlyCode(inp, "reject_reason_missing", 3);
+  const ok = base();
+  ok.sales.push(sale(500, 5, "2019 Fictional Chrome Test Player #7 Gold /10", { kept: false, rejectReason: "parallel" }));
+  assert.deepEqual(codes(ok), []); // rejected sales are not re-checked
+  const kept = base();
+  kept.sales[0] = { ...kept.sales[0], rejectReason: "parallel" };
+  onlyCode(kept, "reject_reason_on_kept", 0);
+});
+
+test("garbage input returns errors, never throws", () => {
+  for (const bad of [null, undefined, {}, { now: NOW }, { now: "x", card: {}, proposed: {}, sales: [] }]) {
+    const r = compGuard(bad as unknown as CompGuardInput);
+    assert.equal(r.ok, false);
+    assert.ok(r.errors.some((e) => e.code === "input"));
+  }
+});
+
+// CLI
+const BIN = join(dirname(fileURLToPath(import.meta.url)), "..", "bin", "comp-guard.ts");
+const run = (args: string[]) => spawnSync(process.execPath, [BIN, ...args], { encoding: "utf8" });
+const writeJson = (o: unknown) => {
+  const file = join(mkdtempSync(join(tmpdir(), "comp-guard-")), "in.json");
+  writeFileSync(file, JSON.stringify(o));
+  return file;
+};
+
+test("CLI exits 0 when ok, 1 with errors, 2 on usage or bad JSON", () => {
+  const ok = run([writeJson(base())]);
+  assert.equal(ok.status, 0, ok.stderr);
+  assert.equal(JSON.parse(ok.stdout).ok, true);
+
+  const bad = base();
+  bad.proposed.grade = "CGC AUTH";
+  const r = run([writeJson(bad)]);
+  assert.equal(r.status, 1, r.stderr);
+  const out = JSON.parse(r.stdout);
+  assert.equal(out.ok, false);
+  assert.equal(out.errors[0].code, "grade_label");
+
+  assert.equal(run([]).status, 2);
+  const file = join(mkdtempSync(join(tmpdir(), "comp-guard-")), "bad.json");
+  writeFileSync(file, "{nope");
+  const parse = run([file]);
+  assert.equal(parse.status, 2);
+  assert.ok(JSON.parse(parse.stdout).error);
+});
