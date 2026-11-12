@@ -279,6 +279,34 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["CardComp"]["Insert"]>;
         Relationships: [];
       };
+      CompSale: {
+        Row: {
+          id: number;
+          compId: number;
+          date: string;
+          price: number;
+          title: string;
+          source: "ebay" | "cardladder" | "psa_apr";
+          url: string | null;
+          kept: boolean;
+          rejectReason: "card" | "parallel" | "auto" | "grade" | "lot" | "own" | "unclear" | "age" | null;
+          createdAt: string | null;
+        };
+        Insert: {
+          id?: number;
+          compId: number;
+          date: string;
+          price: number;
+          title: string;
+          source: "ebay" | "cardladder" | "psa_apr";
+          url?: string | null;
+          kept: boolean;
+          rejectReason?: "card" | "parallel" | "auto" | "grade" | "lot" | "own" | "unclear" | "age" | null;
+          createdAt?: string | null;
+        };
+        Update: Partial<Database["public"]["Tables"]["CompSale"]["Insert"]>;
+        Relationships: [];
+      };
       CardPop: {
         Row: {
           cardId: string;

@@ -115,6 +115,15 @@
 .tbl td, .tbl th { padding: 8px 6px 8px 0; border-bottom: 1px solid #e8edf3; text-align: left; vertical-align: baseline; }
 .tbl th { font-weight: 600; color: var(--ink-3); border-bottom: 1px solid var(--rule); }
 .tbl td:nth-child(2) { font-weight: 650; }
+/* V3a: sale evidence under the comp each grade's value uses. Long titles wrap; the drawer never widens. */
+.records .evRow td { padding-top: 0; font-weight: 400; }
+.records tr:has(+ .evRow) td { border-bottom: 0; padding-bottom: 2px; }
+.ev { display: grid; gap: 4px; font-size: var(--t-xs); min-width: 0; overflow-wrap: anywhere; }
+.evLine { color: var(--ink-2); }
+.ev summary { cursor: pointer; color: var(--accent); font-weight: 600; width: max-content; }
+.evList { list-style: none; padding: 4px 0 0; margin: 0; display: grid; gap: 4px; }
+.evList li { overflow-wrap: anywhere; }
+.evList a { color: var(--accent); }
 .muted { color: var(--ink-3); font-size: var(--t-xs); }
 .dec { background: var(--accent-soft); color: var(--accent-2); border-radius: 8px; padding: 8px 12px; font-weight: 700; }
 .note { font-size: var(--t-sm); color: var(--ink-2); }

@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import type { CollectionCard, CollectionData } from "./load";
 import Tracker from "./tracker";
 import CompsPanel from "./comps-panel";
 import s from "./collection.module.css";
 import { snipeHref, prefillFromComps } from "@/lib/grading";
-import { compLabel } from "@/lib/vault-comp";
+import { compLabel, vaultComp } from "@/lib/vault-comp";
+import { compEvidence, evidenceLine, rejectedLine, safeUrl, SOURCE_LABEL, type CompSaleRow } from "@/lib/comp-evidence";
 import { estTileTag, estDrawerText } from "@/lib/value-est";
 import {
   type Scenario, scenarioValue, cardGain, selectionTotals, totalsLabel, toggleSelection, readStoredSelection, writeStoredSelection,
@@ -270,6 +271,7 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
     ref.current?.focus();
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
+  const sales = useCompSales(c.id);
   const showScen = c.status === "raw" || c.status === "at_grader";
   return (
     <div className={s.backdrop} onClick={onClose}>
@@ -313,8 +315,13 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
           <a href={snipeHref(prefillFromComps(c.item, c.player, c.cert, c.gradeLabel.split(" ")[0], c.comps))}>Snipe another copy →</a>
         </p>
         <h3>Price records</h3>
-        <table className={s.tbl}><tbody>
-          {c.comps.map((p, i) => <tr key={i}><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{compLabel(p)}</td><td className={s.muted}>{p.asOf}</td></tr>)}
+        <table className={`${s.tbl} ${s.records}`}><tbody>
+          {c.comps.map((p, i) => (
+            <Fragment key={i}>
+              <tr><td>{p.grade}</td><td>{usd(p.price, 2)}</td><td className={s.muted}>{compLabel(p)}</td><td className={s.muted}>{p.asOf}</td></tr>
+              {vaultComp(c.comps, p.grade) === p && <tr className={s.evRow}><td colSpan={4}><Evidence comp={p} sales={sales} /></td></tr>}
+            </Fragment>
+          ))}
         </tbody></table>
         {c.ledger.length > 0 && (<>
           <h3>Ledger</h3>
@@ -324,6 +331,55 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
         </>)}
         {c.notes && <p className={s.note}>{c.notes}</p>}
       </div>
+    </div>
+  );
+}
+
+type SalesState = CompSaleRow[] | "loading" | "error";
+
+/** V3a: the card's CompSale rows, fetched when the drawer opens. */
+function useCompSales(cardId: string): SalesState {
+  const [state, setState] = useState<SalesState>("loading");
+  useEffect(() => {
+    let live = true;
+    setState("loading");
+    fetch(`/api/comps?cardId=${encodeURIComponent(cardId)}`)
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+      .then((rows: CompSaleRow[]) => live && setState(Array.isArray(rows) ? rows : "error"))
+      .catch(() => live && setState("error"));
+    return () => { live = false; };
+  }, [cardId]);
+  return state;
+}
+
+/** V3a: evidence under the comp the value uses (vaultComp): n / range / sources, kept list, rejected counts, or amber. */
+function Evidence({ comp, sales }: { comp: CollectionCard["comps"][number]; sales: SalesState }) {
+  if (sales === "loading") return <span className={s.muted}>loading sales…</span>;
+  if (sales === "error") return <span className={s.muted}>sales not loaded</span>;
+  const e = compEvidence(comp, sales);
+  const rej = rejectedLine(e.rejected);
+  if (e.kind === "none") {
+    return <div className={s.ev}><span className={s.warn} data-evidence="none">{e.text}</span>{rej && <span className={s.muted}>{rej}</span>}</div>;
+  }
+  return (
+    <div className={s.ev} data-evidence="sales">
+      <span className={s.evLine}>{evidenceLine(e)}</span>
+      <details>
+        <summary>{e.n} {e.n === 1 ? "sale" : "sales"}</summary>
+        <ul className={s.evList}>
+          {e.kept.map((k, i) => {
+            const href = safeUrl(k.url);
+            return (
+              <li key={i}>
+                <span className={s.muted}>{k.date}</span> <b>{usd(k.price, 2)}</b>{" "}
+                {href ? <a href={href} target="_blank" rel="noopener noreferrer">{k.title}</a> : <span>{k.title}</span>}{" "}
+                <span className={s.muted}>{SOURCE_LABEL[k.source] ?? k.source}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </details>
+      {rej && <span className={s.muted}>{rej}</span>}
     </div>
   );
 }

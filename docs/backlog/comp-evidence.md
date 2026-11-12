@@ -18,6 +18,18 @@ turn from amber to evidenced as they are refreshed.
 ## V3a CompSale table + evidence under each grade's value in the card drawer
 Size: M (one day). Branch: feat/V3a.
 
+Status: ready for review (engineer, Nov 12 2026). Change note: migration `20261112b_comp_sale.sql` (file only, NOT
+applied; run twice on a scratch local Postgres 16: no error; kept+reason, bad code, bad source, price 0 and duplicate
+all rejected; CardComp delete cascades; RLS on, anon/authenticated revoked incl. the id sequence). CompSale types;
+`id` in COMP_COLS/COMP_COLS_LEGACY; `lib/comp-evidence.ts` + tests; `GET /api/comps?cardId=` (requireAdmin, fixture
+`compSales`, missing table 42P01/PGRST205 -> []); drawer "Price records" evidence line under the `vaultComp` row per
+grade. Open questions used their defaults: estimate with no kept sale -> amber "no exact sale — estimate"; owner values
+amber "no evidence — old value". Extra: rejected counts also show under an amber flag (only-rejected comps); sources
+are listed most kept sales first; only http(s) URLs become links. UAT `v3.uat.js` 62/62 at 1280 + 390 (screenshots in
+docs/backlog/uat/V3/, synthetic); v1, v2, tb2 UAT re-run green; dashboard 111 + shared 78 tests, `pnpm build` green.
+Not covered by an automated test: AC 6 against a real pre-migration database (covered by the isMissingTable unit test
+and the fixture path only).
+
 Why: today the drawer's "Price records" shows grade, price, method, date and nothing about which sales made the number.
 The Messi Select #4 / #204 rows (decisions 2026-11-12) were built on Silver/Purple parallels and CGC Authentic; nobody
 could see that from the Vault.
