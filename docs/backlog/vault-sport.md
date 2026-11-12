@@ -38,3 +38,13 @@ dropping its sealed card. Screenshots: docs/backlog/uat/V2/ (synthetic).
 - V1 regression `test/uat/v1.uat.js` with the edited V1 fixture: 70/70 ok.
 - Screenshots docs/backlog/uat/V2/ checked: synthetic fixture data only.
 
+
+## V2b Top totals follow the filter or the selection (Karim, Nov 12 2026: "i need it to work both ways filter or selected")
+Status: approved (owner request). Ships together with V2.
+- No card ticked: the top bar (Value / Cost / Gain or loss) totals every card in the current filter, as today.
+- One or more ticked: the top bar totals only the ticked cards that are in the current filter, at the current "Price as".
+  Label "N selected" replaces "Value now" / "Value if PSA x". Filter narrows, ticks narrow further.
+- Ticked cards hidden by the current filter are not counted; the bar notes it ("+2 selected outside this filter").
+  Ticks are kept, so switching back to that filter counts them again.
+- "clear" sits in the top bar; the separate selection line under it is removed (no duplicate totals).
+- Tests: unit tests for the totals rule (none ticked, ticked in view, ticked hidden); UAT covers filter -> tick -> switch filter -> clear at 1280 and 390. Fixture data only.
