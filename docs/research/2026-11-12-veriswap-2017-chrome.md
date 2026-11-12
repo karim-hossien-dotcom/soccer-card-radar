@@ -37,3 +37,15 @@ Queries (Card Ladder sales history, sorted by date): `2017 Topps Chrome <Player>
 -lot -BGS -SGC -CGC`.
 
 Open before any value is written: eBay sold and PSA APR for each card; photo check on thin rows (n <= 2); verifier pass.
+
+## Cross-check and verifier (Nov 12 2026, three cards only)
+Sources added: eBay sold search and PSA spec sales history (CR7 Refractor spec 3058644, Mbappe Refractor spec 2677347).
+eBay sold shows the list price on best-offer sales; Card Ladder and PSA show the accepted price.
+
+| Card | Grade | Verifier | Value after verifier | Note |
+|---|---|---|---|---|
+| CR7 #93 With Ball Refractor | PSA 10 | FAIL as claimed (Nov 1 $2,520 Fanatics row counted 4 times) | n=9, median $1,550 | Two price levels: Aug 24 - Oct 20 $1,376-1,580; Nov 1-3 $2,100, $2,500, $2,520. Titles without "With Ball" are under PSA spec 3058644 |
+| CR7 #93 With Ball Refractor | PSA 9 | FAIL on the list as given (two titles without "With Ball") | n=4, median $335 | Both rows (Nov 3 $610.80, Aug 18 $299.99) are on PSA spec 3058644 as PSA 9, which the verifier was not shown |
+| Mbappe #41 Refractor | PSA 10 | PASS WITH NOTES | n=10, median $2,733 | Falling: newest sale $2,139. Two Alt rows (Sep 4, Sep 10) are Card Ladder only; without them n=8, median $2,858 |
+
+Not tested: Karim's own sales (cards not in the Vault). Still open: the other 16 rows of the table above.
