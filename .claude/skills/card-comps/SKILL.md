@@ -33,6 +33,30 @@ description: Karim's rules for pricing a card - 90-day comps of the exact card, 
 - Vault value of a card = newest CardComp for its current grade ("raw" when raw or at PSA); same-date ties: owner_set /
   ratio_to_base win, workbook_import loses (one helper: apps/dashboard/src/lib/vault-comp.ts).
 
+## Sale check: every sale, before it can enter any value (Karim, Nov 12 2026)
+Card Ladder and PSA results mix in parallels, autos, other grades and Karim's own sales; their CL Value and PSA Estimate
+are built on that mix. Never take their number. Take their sale LIST and keep a sale only if ALL of these pass:
+1. Same card: year, set, insert, card number (Select #4 Terrace is not #103 Mezzanine). Identity = PSA cert label.
+2. Same parallel. Base card: reject any colour/parallel word (Silver, Prizm, Mojo, Purple, Tie-Dye, Zebra, Gold, Rose
+   Gold, Shimmer, White, Red Wave, Multi-Color, Refractor colour, Lava, Wave...) and any serial (/xx, xx/xx). Parallel card:
+   keep only that exact parallel and print run (Rose Gold /299 is not Gold /50). Names come from the set checklist.
+3. Same auto status as the card. Non-auto card: reject auto/autograph/signed/signature/AU/patch/relic. Auto card: keep
+   only autos of the same kind (on-card vs patch).
+4. Same grader and grade (raw = ungraded; "CGC Authentic"/"AUTH"/"Altered" is never a grade). No lots.
+5. Not Karim's own sale or buy: seller or buyer = his eBay account, or same date+price as his ledger.
+6. Ambiguous title: check the photo; still unclear -> reject.
+7. Age: only sales in the last 90 days make a value. If the newest kept sale is older than 12 months, the value is an
+   estimate (thin_blend with index factors, or proxy), confidence 1, and the report says "no market in 12 months".
+Write every kept and rejected sale (date, price, title, source, reason) into the job report. A value without its list
+of kept sales is not written.
+
+## Verifier gate (Karim, Nov 12 2026): nothing is written until it passes
+Before any CardComp insert, a separate verifier agent (price-auditor role, fresh context) re-reads the kept-sales list
+for every proposed value and re-applies the sale check above. It rejects a value when: any kept sale fails a check;
+n=1 with no low/high and confidence above 2; the grade label is not raw/PSA/BGS/SGC/CGC + number; the source is
+workbook_import; the value moved more than 50% from the last comp without the reason shown. Rejected values go back
+for redo, then stay "open" in the report (first line Incomplete: N open). Only verified rows are inserted.
+
 ## Parallels
 - Inversion: a numbered parallel valued below its own base -> hand to researcher-2.
 - Base-move rule (Karim): if a parallel's own sales are older than its base's latest sales and the base has moved >20%:
