@@ -4,7 +4,25 @@ Source: Karim's request, 2026-11-11: "if I have the At PSA filter but want to se
 tiny selector".
 Success metric: with "Price as" on one grade, Karim can price chosen cards at another grade, and the totals and sort
 use those choices. No database write, no new page and no second global control.
-Status: V1 **approved** (requested by Karim 2026-11-11). Owner: engineer.
+Status: V1 **ready for review** (requested by Karim 2026-11-11). Owner: reviewer.
+
+**V1 change note (engineer, 2026-11-11, branch feat/V1-grade-picker):**
+- New `apps/dashboard/src/lib/vault-scenario.ts` (+ 10 tests): `Scenario`/`scenarioValue` moved here (no copy left),
+  `canOverride`, `effectiveScenario`, `cardValue`, `cardGain`, `vaultTotals`, `parseOverrides`/`serializeOverrides`,
+  and `readStoredOverrides`/`writeStoredOverrides` (storage passed in, never throw; empty map removes the key).
+  Signature differs from the ticket: `cardValue(card, global, overrides)` (it needs the overrides to tell an override
+  from the global value). AC2 regression test compares against main's totals code copied into the test.
+- Coordinator decisions applied: global "Price as" unchanged (falls back to value now); "no comp" only for overrides;
+  no chip on graded or sealed cards.
+- Tile split: `div.tile[data-tile]` (tilt, hover zoom, sheen) wraps `button.open` (aria-label unchanged) plus the chip
+  row as a sibling. Focus ring via `.tile:has(> .open:focus-visible)`. Chip options "Follow (PSA n)", Now, PSA 10/9/8;
+  overridden chip uses `--gold`. Hero label: "· N overridden · reset · N no comp". Drawer chip in the "If graded" heading.
+- UAT selectors `section[aria-label="Cards"] > button` changed to `> [data-tile] > button` in tb2, c5 and j3.
+- New `test/uat/make-v1-fixture.js` (synthetic; psa10-null card is a "(Qty 2)" lot, which the value engine never
+  grades) and `test/uat/v1.uat.js`; screenshots in `docs/backlog/uat/V1/` (synthetic only, checked by eye).
+- Results: dashboard tests 95/95, `pnpm build` green, V1 UAT all ok at 1280 and 390, TB2 UAT all ok, C5 UAT all ok
+  (run with screenshots disabled because its fixture is a copy of the real collection), J3's J2 checks ok
+  (its /dips smoke fails locally only for lack of Supabase env, unrelated).
 
 ## V1: per-card grade override on Vault tiles and the drawer
 
