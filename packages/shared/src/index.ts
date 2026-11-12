@@ -13,3 +13,4 @@ export * from "./comp-paste";
 export * from "./psa";
 export * from "./snipe-score";
 export * from "./thin-blend";
+export * from "./comp-guard";
