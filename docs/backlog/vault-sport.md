@@ -40,7 +40,7 @@ dropping its sealed card. Screenshots: docs/backlog/uat/V2/ (synthetic).
 
 
 ## V2b Top totals follow the filter or the selection (Karim, Nov 12 2026: "i need it to work both ways filter or selected")
-Status: ready for review (branch feat/V2). Ships together with V2.
+Status: ready for prod (branch feat/V2; awaiting Karim's "ship"). Ships together with V2.
 
 Change note (engineer, Nov 12 2026): `selectionTotals` (vault-scenario.ts) takes an optional `inView` list: no known tick ->
 totals of the filter (`selecting` false); ticks -> ticked cards in view only, `hidden` = ticked cards the filter hides. Without
@@ -57,3 +57,30 @@ count) 72/72. UAT readers wait for CountUp to settle. Screenshots: docs/backlog/
   Ticks are kept, so switching back to that filter counts them again.
 - "clear" sits in the top bar; the separate selection line under it is removed (no duplicate totals).
 - Tests: unit tests for the totals rule (none ticked, ticked in view, ticked hidden); UAT covers filter -> tick -> switch filter -> clear at 1280 and 390. Fixture data only.
+
+## Review (reviewer, Nov 12 2026; diff 050739d..4b2616f, fixes c9f46cd)
+- Acceptance criteria: met after the fixes below.
+  - None ticked -> filter totals (vault-scenario.ts:52); ticked -> ticked cards in view at the current Price as (:55-56);
+    hidden ticks not counted, noted (collection-view.tsx:124); ticks kept across filters (v2.uat.js Raw -> Basketball step).
+  - "clear" in the top bar, separate `selSum` line and CSS removed (collection-view.tsx:120); v2.uat.js checks no "Selected cards" line.
+  - Unit tests for the three cases (vault-scenario.test.ts:88-119) fail without the change; UAT filter -> tick -> switch -> clear at 1280 and 390.
+- Card values / card-comps: no valuation change; totals reuse `scenarioValue`/`vaultTotals`. No secrets; fixtures and screenshots synthetic
+  (test/fixtures/collection.json untouched). No duplicate UI (selection line merged into the existing top bar). No bids, scans or env changes.
+- Important (fixed, c9f46cd; coordinator decisions):
+  1. Every tick hidden showed "0 selected" and $0. Now the bar falls back to the filter totals with "+N selected outside this
+     filter" and clear still shown (vault-scenario.ts:54, collection-view.tsx:120).
+  2. Selection label dropped the Price as context. Now "N selected · Value now" / "N selected · Value if PSA x" (`totalsLabel`, vault-scenario.ts:59).
+  3. "clear" was ~19px tall on phone. At <= 600px it gets inline padding (49px hit area, no layout shift); 1280 unchanged (collection.module.css:155).
+  4. docs/backlog/uat/V1 screenshots still showed the removed selection line; regenerated from the synthetic V1 fixture.
+  Tests: vault-scenario.test.ts "hidden ... only noted" (all-hidden fallback, every Price as) and "selection label keeps the Price as
+  context" fail without the fix; v1.uat.js checks label, all-hidden fallback (Graded: $210 / $150 / +$60) and tap target; v2.uat.js
+  checks labels and all-hidden fallback (At PSA at PSA 10: $900 / $130 / +$770).
+- Minor (left): `aria-live` sits on the label span that also holds the clear button (screen readers re-announce "clear"); "Cards in
+  view" keeps counting the filter, not the selection (ticket silent). Neither blocks.
+
+## QA (Nov 12 2026, worktree of origin/feat/V2 + c9f46cd)
+- `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5 tasks green.
+- Dashboard tests 103/103; shared 78/78; grade-screen test_borders 8 ok, test_api 17 ok + 1 pre-existing skip.
+- Playwright (Chromium 1194, AUTH_PASSWORD empty, port 3100): `v1.uat.js` (make-v1-fixture.js) 80/80, `v2.uat.js` (make-v2-fixture.js)
+  48/48, each at 1280 and 390.
+- Screenshots docs/backlog/uat/V1 and V2 regenerated and checked: synthetic fixture data only, no selection line.
