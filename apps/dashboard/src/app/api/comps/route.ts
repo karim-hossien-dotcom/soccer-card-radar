@@ -1,11 +1,27 @@
 import { NextResponse } from "next/server";
 import { normalizeGrade } from "@soccer-card-radar/shared";
 import { requireAdmin } from "@/lib/admin";
-import { saveComps, type NewComp } from "@/app/collection/load";
+import { saveComps, fetchCompSales, type NewComp } from "@/app/collection/load";
 
 export const dynamic = "force-dynamic";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * V3a: the CompSale rows behind one card's comps (kept and rejected), read lazily when the Vault drawer opens.
+ * Before 20261112b_comp_sale.sql is applied the table is missing: [] (every comp then shows the amber flag).
+ */
+export async function GET(req: Request) {
+  const denied = requireAdmin(req);
+  if (denied) return denied;
+  const cardId = new URL(req.url).searchParams.get("cardId") ?? "";
+  if (!UUID.test(cardId)) return NextResponse.json({ error: "cardId must be a uuid" }, { status: 400 });
+  try {
+    return NextResponse.json(await fetchCompSales(cardId));
+  } catch (e) {
+    return NextResponse.json({ error: (e as Error).message }, { status: 500 });
+  }
+}
 
 /** A4: save manual Card Ladder comps. Body: { rows: NewComp[] } (parsed and previewed client-side, re-validated here). */
 export async function POST(req: Request) {

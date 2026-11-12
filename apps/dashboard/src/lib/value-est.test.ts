@@ -24,7 +24,9 @@ test("estimate comp without range (hand-applied, or columns not migrated yet) ->
 
 test("toCompRow: missing columns read as null; numeric strings become numbers", () => {
   const legacy = toCompRow({ cardId: "x", grade: "raw", price: "12.50", method: "median", source: "ebay_sold", asOf: "2026-11-01" });
-  assert.deepEqual(legacy, { grade: "raw", price: 12.5, method: "median", source: "ebay_sold", asOf: "2026-11-01", low: null, high: null, confidence: null });
+  assert.deepEqual(legacy, { id: null, grade: "raw", price: 12.5, method: "median", source: "ebay_sold", asOf: "2026-11-01", low: null, high: null, confidence: null });
+  // V3a: id is read (bigint may arrive as a string) so the drawer can find the comp's sales.
+  assert.equal(toCompRow({ id: "42", grade: "raw", price: 1, method: "median", source: "ebay_sold", asOf: "2026-11-01" }).id, 42);
   const full = toCompRow({ cardId: "x", ...base, price: "76.74", method: "thin_blend", source: "estimate", low: "47.38", high: "120.00", confidence: 2 });
   assert.equal(full.low, 47.38);
   assert.equal(full.high, 120);
@@ -60,4 +62,6 @@ test("tolerant read: missing-column errors are recognised, others are not", () =
   assert.ok(!isMissingColumn(null));
   assert.match(COMP_COLS, /low, high, confidence/);
   assert.doesNotMatch(COMP_COLS_LEGACY, /low|high|confidence/);
+  assert.match(COMP_COLS, /^id, /);
+  assert.match(COMP_COLS_LEGACY, /^id, /);
 });

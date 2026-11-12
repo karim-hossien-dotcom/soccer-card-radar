@@ -4,8 +4,8 @@ import type { VaultComp } from "./vault-comp";
 export type ValueEst = { low: number | null; high: number | null; confidence: number | null; method: string };
 
 /** CardComp select. COMP_COLS_LEGACY is the fallback while 20261103b_card_comp_range.sql is not applied. */
-export const COMP_COLS = '"cardId", grade, price, method, source, "asOf", low, high, confidence';
-export const COMP_COLS_LEGACY = '"cardId", grade, price, method, source, "asOf"';
+export const COMP_COLS = 'id, "cardId", grade, price, method, source, "asOf", low, high, confidence';
+export const COMP_COLS_LEGACY = 'id, "cardId", grade, price, method, source, "asOf"';
 
 /** Postgres undefined_column (42703), as PostgREST reports it. */
 export const isMissingColumn = (err: { code?: string; message?: string } | null | undefined) =>
@@ -13,11 +13,11 @@ export const isMissingColumn = (err: { code?: string; message?: string } | null 
 
 const numOrNull = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
 
-type RawComp = { grade: string; price: unknown; method: string; source: string; asOf: string; low?: unknown; high?: unknown; confidence?: unknown };
+type RawComp = { id?: unknown; grade: string; price: unknown; method: string; source: string; asOf: string; low?: unknown; high?: unknown; confidence?: unknown };
 
 /** DB or fixture row -> CompRow. Missing range/confidence fields read as null. */
 export const toCompRow = (c: RawComp): VaultComp => ({
-  grade: c.grade, price: Number(c.price), method: c.method, source: c.source, asOf: c.asOf,
+  id: numOrNull(c.id), grade: c.grade, price: Number(c.price), method: c.method, source: c.source, asOf: c.asOf,
   low: numOrNull(c.low), high: numOrNull(c.high), confidence: numOrNull(c.confidence),
 });
 

@@ -18,6 +18,51 @@ turn from amber to evidenced as they are refreshed.
 ## V3a CompSale table + evidence under each grade's value in the card drawer
 Size: M (one day). Branch: feat/V3a.
 
+Status: ready for prod (reviewer + QA, Nov 12 2026; migration NOT applied, Karim's yes needed). Engineer change note: migration `20261112b_comp_sale.sql` (file only, NOT
+applied; run twice on a scratch local Postgres 16: no error; kept+reason, bad code, bad source, price 0 and duplicate
+all rejected; CardComp delete cascades; RLS on, anon/authenticated revoked incl. the id sequence). CompSale types;
+`id` in COMP_COLS/COMP_COLS_LEGACY; `lib/comp-evidence.ts` + tests; `GET /api/comps?cardId=` (requireAdmin, fixture
+`compSales`, missing table 42P01/PGRST205 -> []); drawer "Price records" evidence line under the `vaultComp` row per
+grade. Open questions used their defaults: estimate with no kept sale -> amber "no exact sale — estimate"; owner values
+amber "no evidence — old value". Extra: rejected counts also show under an amber flag (only-rejected comps); sources
+are listed most kept sales first; only http(s) URLs become links. UAT `v3.uat.js` 62/62 at 1280 + 390 (screenshots in
+docs/backlog/uat/V3/, synthetic); v1, v2, tb2 UAT re-run green; dashboard 111 + shared 78 tests, `pnpm build` green.
+Not covered by an automated test: AC 6 against a real pre-migration database (covered by the isMissingTable unit test
+and the fixture path only).
+
+Review (reviewer, Nov 12 2026; diff 41d2c69..20b5f2a, fixes in the review(V3a) commit on top):
+- Important, fixed: reject codes did not match comp-guard (origin/feat/PC1-PC2 packages/shared/src/comp-guard.ts emits
+  `parallel_word`, `auto_mismatch`, `grade_mismatch`, `lot`, `own_sale`, `sale_age`), so V3b could not store its output
+  as is. Renamed in the migration CHECK and comment (20261112b_comp_sale.sql:3-7, :28), `RejectReason`/`REASON_LABEL`
+  (lib/comp-evidence.ts:6-30), database.types.ts, unit tests and the fixture. Labels Karim sees are unchanged. `card`
+  (check 1) and `unclear` (check 6) have no comp-guard code and stay as set by the checker. Tie order of the rejected
+  counts is now by label, not code (comp-evidence.ts:57).
+- Important, fixed: the amber flag used `s.warn` = `--loss` #c2412d (red-orange, same as losses/errors). New token
+  `--amber: #b45309` (globals.css:25; 5.0:1 on the white drawer) and `.amber` (collection.module.css:147) on the flag
+  (collection-view.tsx:362). The app has one palette (no dark theme); UAT now asserts rgb(180, 83, 9) in a light and a
+  `colorScheme: 'dark'` browser. V3 screenshots regenerated.
+- Important, fixed: v3.uat.js POSTed an "Update comps" row into the fixture and told the next run to regenerate it. It
+  now needs `COLLECTION_FIXTURE` (same path as the server), restores the file byte for byte in a `finally`, and asserts
+  the restore. The last page also used `newPage({ viewport })` (ignored option): now a 1280 context.
+- Minor, fixed: `export type NewComp ={` spacing (load.ts:213).
+- Minor, left: the migration's `if not exists` constraint guards mean a DB that already ran an older copy keeps the
+  old reason CHECK; nothing is applied yet, so the coordinator must apply this version.
+- Minor, left: no unit test ties REASON_LABEL to comp-guard's codes (comp-guard is not on main yet); add one in V3b or
+  when PC1 merges.
+- Checked, no finding: AC 1-9 (below); evidence hangs off `vaultComp` (same object, collection-view.tsx:322); rejected
+  rows never in n or the kept list (kept requires `kept && !rejectReason`); display only (no value/total/max-bid code
+  touched beyond reading `id`); no new page or control; no secrets, real URLs, usernames or costs in diff, fixture or
+  screenshots (synthetic, example.com); no bids, scans or env changes; no fuzzy matching.
+
+QA (Nov 12 2026, worktree at the review commit): `pnpm install --frozen-lockfile` ok; `pnpm build` 5/5; dashboard tests
+111/111; shared 78/78; grade-screen test_borders + test_api green (1 pre-existing skip). Migration on a scratch local
+Postgres 16 (not the live project): ran twice without error; kept+reason, rejected without reason, old code 'parallel',
+duplicate sale, bad source and price 0 all rejected; new codes accepted; CardComp delete cascaded 4 -> 0; RLS on;
+anon/authenticated have no table or sequence privilege. UAT (Chromium 1194, AUTH_PASSWORD empty, port 3100, synthetic
+fixtures, 1280 + 390): v3 65/65 (incl. dark-scheme amber and fixture restored), v1 80/80, v2 48/48; all three fixture
+files byte-identical after the run. AC 6 against a real pre-migration database is still only covered by the
+isMissingTable unit test and the fixture path. Not merged; migration not applied.
+
 Why: today the drawer's "Price records" shows grade, price, method, date and nothing about which sales made the number.
 The Messi Select #4 / #204 rows (decisions 2026-11-12) were built on Silver/Purple parallels and CGC Authentic; nobody
 could see that from the Vault.
@@ -30,8 +75,8 @@ Scope:
     check in ('ebay', 'cardladder', 'psa_apr'); `"url"` text null; `"kept"` boolean not null; `"rejectReason"` text null;
     `"createdAt"` timestamptz default now().
   - check: `kept = ("rejectReason" is null)` (kept rows have no reason; rejected rows must have one).
-  - check: `"rejectReason"` in the sale-check codes: 'card', 'parallel', 'auto', 'grade', 'lot', 'own', 'unclear', 'age'
-    (checks 1-7; 'lot' split out of check 4). Fixed codes, not free text: nothing personal (eBay username, ledger cost)
+  - check: `"rejectReason"` in the sale-check codes: 'card', 'parallel_word', 'auto_mismatch', 'grade_mismatch', 'lot',
+    'own_sale', 'unclear', 'sale_age' (checks 1-7; 'lot' split out of check 4; review: renamed to comp-guard's codes). Fixed codes, not free text: nothing personal (eBay username, ledger cost)
     can land in a reason, and the drawer can label them.
   - unique (`"compId"`, `"source"`, `"date"`, `"price"`, `"title"`) so a job re-run cannot double a sale.
   - index on (`"compId"`); RLS enabled; `revoke all ... from anon, authenticated` (as JobRun).

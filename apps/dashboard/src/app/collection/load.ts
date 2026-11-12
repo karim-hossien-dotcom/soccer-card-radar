@@ -4,6 +4,7 @@ import { weekOf, toSnapshotRows, changedRows, weeklyTotals, cardTrends, type Sna
 import { byRecency, vaultComp, maxBidInputs, isSaleComp, type VaultComp } from "@/lib/vault-comp";
 import { valueEst, toCompRow, isMissingColumn, COMP_COLS, COMP_COLS_LEGACY, type ValueEst } from "@/lib/value-est";
 import { toSport, type Sport } from "@/lib/vault-filter";
+import { isMissingTable, type CompSaleRow } from "@/lib/comp-evidence";
 
 export type CompRow = VaultComp;
 
@@ -58,6 +59,7 @@ export type RawRows = {
   assumptions: { key: string; value: number }[];
   snapshots: SnapshotRow[];
   pops?: ({ cardId: string } & PopRow)[];
+  compSales?: CompSaleRow[]; // V3a fixture only; the live app reads CompSale per card (fetchCompSales)
 };
 
 export type CollectionData = { cards: CollectionCard[]; weeks: WeekTotal[]; trends: Record<string, CardTrend>; thisWeek: string };
@@ -181,6 +183,31 @@ export function buildCollection(rows: RawRows, now: Date = new Date()): Collecti
       ledger,
     };
   });
+}
+
+const SALE_COLS = '"compId", date, price, title, source, url, kept, "rejectReason"';
+
+/**
+ * V3a: CompSale rows for one card's comps (lazy, per drawer open: not in loadCollection, which would grow with the
+ * table). Table missing (before 20261112b_comp_sale.sql) -> [].
+ */
+export async function fetchCompSales(cardId: string): Promise<CompSaleRow[]> {
+  if (fixtureMode()) {
+    const { readFile } = await import("node:fs/promises");
+    const rows = JSON.parse(await readFile(process.env.COLLECTION_FIXTURE!, "utf8")) as RawRows & { comps: { cardId: string; id?: number }[] };
+    const ids = new Set(rows.comps.filter((c) => c.cardId === cardId && c.id != null).map((c) => Number(c.id)));
+    return (rows.compSales ?? []).filter((s) => ids.has(Number(s.compId)));
+  }
+  const comps = await supabase.from("CardComp").select("id").eq("cardId", cardId);
+  if (comps.error) throw new Error(comps.error.message);
+  const ids = (comps.data ?? []).map((c) => c.id);
+  if (ids.length === 0) return [];
+  const r = await supabase.from("CompSale").select(SALE_COLS).in("compId", ids);
+  if (r.error) {
+    if (isMissingTable(r.error)) return [];
+    throw new Error(r.error.message);
+  }
+  return ((r.data ?? []) as unknown as CompSaleRow[]).map((s) => ({ ...s, compId: Number(s.compId), price: Number(s.price) }));
 }
 
 export type NewComp = { cardId: string; grade: string; price: number; sampleSize: number; asOf: string };

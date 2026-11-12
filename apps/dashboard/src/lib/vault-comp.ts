@@ -1,4 +1,5 @@
 export type VaultComp = {
+  id?: number | null; // V3a: CardComp.id, links the comp to its CompSale rows (absent in older fixtures)
   grade: string; price: number; method: string; source: string; asOf: string;
   // TB2: estimate range + confidence (null/absent on sale comps, hand-applied estimates and before the migration).
   low?: number | null; high?: number | null; confidence?: number | null;
