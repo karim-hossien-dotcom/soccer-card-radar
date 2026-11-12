@@ -12,7 +12,7 @@
 -- An open item the run did not mention stays open (it only closes with a closedHow).
 create table if not exists "OpenItem" (
   "id"         uuid primary key default gen_random_uuid(),
-  "job"        text not null check ("job" in ('prices', 'players', 'photos')),
+  "job"        text not null check ("job" in ('prices', 'players', 'photos', 'price-audit')),
   -- "Card".id, no FK so a Card delete never fails on (or erases) item history; null = not about one card
   "cardId"     uuid,
   "title"      text not null check (length(btrim("title")) > 0),

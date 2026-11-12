@@ -46,6 +46,7 @@ up prices "'$C1'" 'No graded comps' 'back' "now()"
 
 bi() { q -c "insert into \"OpenItem\" (job, title $1) values ('${2:-prices}', 't' $3)" >/dev/null 2>&1; }
 bi "" foo "" && bad "job 'foo' rejected" || ok "job 'foo' rejected"
+bi "" price-audit "" && ok "job 'price-audit' accepted (matches JobRun_job_check)" || bad "job 'price-audit' accepted"
 q -c "insert into \"OpenItem\" (job, title) values ('prices', '  ')" >/dev/null 2>&1 && bad "blank title rejected" || ok "blank title rejected"
 bi ', "closedAt"' prices ", now()" && bad "closedAt without closedHow rejected" || ok "closedAt without closedHow rejected"
 bi ', "closedHow"' prices ", 'x'" && bad "closedHow without closedAt rejected" || ok "closedHow without closedAt rejected"

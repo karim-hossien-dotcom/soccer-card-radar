@@ -49,6 +49,13 @@ test("ties broken by job then title; unreadable rows skipped, never throws", () 
   assert.deepEqual(openItems([], NOW), []);
 });
 
+test("price-audit items (JobRun job, migration 20261112f) show with their own label", () => {
+  const out = openItems([row({ id: "pa", job: "price-audit", title: "Audit flag", reason: "made-up" })], NOW);
+  assert.deepEqual(out.map((i) => [i.id, i.jobLabel, i.age]), [["pa", "Price audit", "2 days"]]);
+  const plan = planUpsert([], "price-audit", { open: [{ cardId: null, title: "Audit flag", reason: "" }], resolved: [] }, NOW);
+  assert.deepEqual(plan.insert.map((i) => i.job), ["price-audit"]);
+});
+
 test("upsert: new -> insert, still open -> lastSeen, resolved -> closedAt + closedHow", () => {
   const existing = [
     row({ id: "still", cardId: "c1", title: "No graded comps", reason: "old reason" }),

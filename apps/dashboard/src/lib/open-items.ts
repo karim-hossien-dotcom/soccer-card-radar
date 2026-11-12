@@ -11,7 +11,8 @@ export type OpenItemView = {
   firstSeen: string; ageDays: number; age: string;
 };
 
-const LABEL: Record<string, string> = { prices: "Prices", players: "Players", photos: "Photos" };
+// Same jobs as the JobRun_job_check (price-audit: independent Sunday price audit, migration 20261112f).
+const LABEL: Record<string, string> = { prices: "Prices", players: "Players", photos: "Photos", "price-audit": "Price audit" };
 const DAY = 86_400_000;
 const str = (v: unknown) => (typeof v === "string" && v.trim() ? v : null);
 
