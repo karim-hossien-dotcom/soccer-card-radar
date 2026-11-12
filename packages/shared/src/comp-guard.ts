@@ -255,8 +255,14 @@ const AUTHENTIC_RE = /(^|[^a-z])(authentic|auth|altered)([^a-z]|$)/i;
 /** PC1c: Authentic only (not Altered). */
 const AUTH_ONLY_RE = /(^|[^a-z])(authentic|auth)([^a-z]|$)/i;
 const ALTERED_RE = /(^|[^a-z])altered([^a-z]|$)/i;
-/** PC1c: a number written after Authentic ("CGC Authentic 10", "Auth Auto 10") is a grade on the slab. */
-const AUTH_NUMBER_RE = /(^|[^a-z])(authentic|auth)\s*(?:(?:auto(?:graph)?|dna)\s*)?\d{1,2}(?:\.\d)?(?![\d./])/i;
+/**
+ * PC1c: a number written after Authentic ("CGC Authentic 10", "Auth Auto 10", review(PC1c): "Authentic Gem Mint 10",
+ * "Auth Grade 9") is a grade on the slab.
+ */
+const AUTH_NUMBER_RE =
+  /(^|[^a-z])(authentic|auth)(?:[\s/:-]*(?:auto(?:graph)?|dna|gem|mint|mt|nm|pristine|grade|graded|signature))*[\s/:-]*\d{1,2}(?:\.\d)?(?![\d./])/i;
+/** review(PC1c): graders whose Authentic slab is kept; other graders (VGC ...) are valued as raw (CLAUDE.md). */
+const AUTH_GRADERS = ["PSA", "BGS", "SGC", "CGC"];
 
 /**
  * PC1c: the grader of an Authentic slab (card.grade "AUTH" / "Authentic", grader from card.grader or a leading
@@ -266,7 +272,17 @@ export function authenticGrader(card: Pick<GuardCard, "grader" | "grade">): stri
   const m = /^\s*(?:([A-Za-z]+)\s+)?(auth|authentic)\s*$/i.exec(String(card.grade ?? ""));
   if (!m) return null;
   const g = String(card.grader ?? m[1] ?? "").trim().toUpperCase().replace("BECKETT", "BGS");
-  return g || null;
+  return AUTH_GRADERS.includes(g) ? g : null;
+}
+
+/**
+ * review(PC1c): a title showing only `grader`'s Authentic slab (no number grade, no other grader, not Altered, no
+ * qualifier). Used for an Authentic card's raw comp and its signal sales.
+ */
+function sameGraderAuthentic(title: string, grader: string | null): boolean {
+  if (!grader || !AUTH_ONLY_RE.test(title) || ALTERED_RE.test(title) || AUTH_NUMBER_RE.test(title) || QUALIFIER_RE.test(title)) return false;
+  const shown = gradesIn(title);
+  return shown.length > 0 && shown.every((g) => g.grader === grader && g.grade === null);
 }
 /** review(PC1): PSA qualifier grades ("PSA 9 OC", "PSA 8 (ST)") are not the straight grade. Upper case only. */
 const QUALIFIER_RE = /(^|[^A-Za-z0-9])(PSA|SGC|BGS|CGC)\s*\d{1,2}(?:\.\d)?\s*\(?(OC|ST|PD|OF|MK|MC)\)?(?![A-Za-z])/;
@@ -632,7 +648,9 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
           // grade label: a slab shown as Authentic / Altered or with a qualifier is not a gradeable label.
           const shown = gradesIn(title);
           const qualifier = QUALIFIER_RE.exec(title);
-          if ((AUTHENTIC_RE.test(title) && shown.length > 0) || qualifier) {
+          // review(PC1c): an Authentic card's raw signal keeps the same grader's Authentic slab sales.
+          const authOk = (sig.grade === undefined || sig.grade === null || sig.grade === "raw") && sameGraderAuthentic(title, authGrader);
+          if (!authOk && ((AUTHENTIC_RE.test(title) && shown.length > 0) || qualifier)) {
             errors.push({ code: "grade_label", ...at, message: `title shows ${qualifier ? `qualifier ${qualifier[3]}` : "Authentic/Altered"}` });
           }
           lotCheck(cleanTitle(title), at);

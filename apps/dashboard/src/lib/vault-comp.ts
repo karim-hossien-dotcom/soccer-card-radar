@@ -37,13 +37,19 @@ export const vaultComp = <T extends VaultComp>(comps: T[], grade: string): T | u
 /** PC1c: slab grades with no number (Authentic / AUTH / Altered, any grader). */
 const NO_NUMBER_GRADE_RE = /^(auth|authentic|altered)$/i;
 export const isNoNumberGrade = (grade: string | null | undefined) => !!grade && NO_NUMBER_GRADE_RE.test(grade.trim());
+/** Graders whose number grades have their own comp key; any other grader's slab is valued as raw. */
+const VALUED_GRADERS = ["PSA", "BGS", "SGC", "CGC"];
 
 /**
  * Comp key a Vault card is valued on: "<grader> <grade>" for a number grade; "raw" for a raw card, a card at the
- * grader, and (PC1c) an Authentic / Altered slab, which is valued from the same card's raw sales.
+ * grader, (PC1c) an Authentic / Altered slab, which is valued from the same card's raw sales, and (review(PC1c)) a
+ * slab from a grader other than PSA / BGS / SGC / CGC.
  */
-export const vaultGradeKey = (grader: string | null | undefined, grade: string | null | undefined) =>
-  grader && grade && !isNoNumberGrade(grade) ? `${grader} ${grade}` : "raw";
+export const vaultGradeKey = (grader: string | null | undefined, grade: string | null | undefined) => {
+  // review(PC1c): graders other than PSA, BGS, SGC and CGC (e.g. VGC) are valued as raw cards (CLAUDE.md).
+  const g = (grader ?? "").trim().toUpperCase().replace("BECKETT", "BGS");
+  return grade && grade.trim() && VALUED_GRADERS.includes(g) && !isNoNumberGrade(grade) ? `${g} ${grade.trim()}` : "raw";
+};
 
 /** Drawer / list grade label: "PSA 10", "CGC Authentic" (AUTH or Authentic), "CGC Altered"; "At PSA" or "Raw" otherwise. */
 export const vaultGradeLabel = (grader: string | null | undefined, grade: string | null | undefined, status: string) => {

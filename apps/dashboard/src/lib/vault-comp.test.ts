@@ -97,3 +97,15 @@ test("PC1c: drawer grade label reads 'CGC Authentic' for AUTH or Authentic, 'Alt
   assert.equal(vaultGradeLabel(null, null, "at_grader"), "At PSA");
   assert.equal(vaultGradeLabel(null, null, "raw"), "Raw");
 });
+
+test("review(PC1c): graders other than PSA/BGS/SGC/CGC (e.g. VGC) are valued on the raw key; label unchanged", () => {
+  for (const [grader, grade] of [["VGC", "9"], ["VGC", "10"], ["TAG", "9.5"], ["HGA", "AUTH"], ["vgc", "Authentic"]]) {
+    assert.equal(vaultGradeKey(grader, grade), "raw", `${grader} ${grade}`);
+  }
+  assert.equal(vaultGradeKey("Beckett", "9.5"), "BGS 9.5");
+  assert.equal(vaultGradeKey("psa", "10"), "PSA 10");
+  assert.equal(vaultGradeLabel("VGC", "9", "graded"), "VGC 9");
+  // Made-up VGC 9 slab: value now = newest raw comp, never a "VGC 9" or PSA comp of the same card.
+  const comps = [c("raw", 25, "median", "ebay_sold", "2026-11-01"), c("VGC 9", 60, "median", "ebay_sold", "2026-11-11"), c("PSA 9", 80, "median", "ebay_sold", "2026-11-11")];
+  assert.equal(vaultComp(comps, vaultGradeKey("VGC", "9"))?.price, 25);
+});

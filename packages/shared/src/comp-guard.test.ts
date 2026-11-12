@@ -661,3 +661,69 @@ test("PC1c: a raw card (not Authentic) still rejects an Authentic slab sale", ()
   altered.sales[0] = sale(18, 10, "2019 Fictional Chrome Test Player #7 CGC Authentic");
   onlyCode(altered, "grade_mismatch", 0);
 });
+
+test("review(PC1c) an Authentic card rejects number grades written with grade words after Authentic", () => {
+  for (const title of [
+    "2019 Fictional Chrome Test Player #7 CGC Authentic Gem Mint 10",
+    "2019 Fictional Chrome Test Player #7 CGC Authentic Mint 9",
+    "2019 Fictional Chrome Test Player #7 CGC Authentic Grade 9",
+    "2019 Fictional Chrome Test Player #7 CGC Auth/DNA Grade 10",
+  ]) {
+    const a = authSlab();
+    a.sales[0] = sale(18, 10, title);
+    onlyCode(a, "grade_mismatch", 0);
+  }
+});
+
+test("review(PC1c) coordinator: an Altered card keeps raw sales only", () => {
+  const altered = authSlab("Altered");
+  assert.equal(compGuard(altered).ok, true, JSON.stringify(compGuard(altered).errors));
+  for (const title of ["2019 Fictional Chrome Test Player #7 CGC Altered", "2019 Fictional Chrome Test Player #7 CGC Authentic Altered", "2019 Fictional Chrome Test Player #7 CGC 9"]) {
+    const a = authSlab("Altered");
+    a.sales[0] = sale(18, 10, title);
+    onlyCode(a, "grade_mismatch", 0);
+  }
+});
+
+test("review(PC1c) coordinator: a VGC / other-grader card is valued as raw (raw sales only, incl. its own grader's Authentic)", () => {
+  assert.equal(authenticGrader({ grader: "VGC", grade: "AUTH" }), null);
+  assert.equal(authenticGrader({ grader: null, grade: "VGC Authentic" }), null);
+  for (const [grader, grade] of [["VGC", "9"], ["VGC", "AUTH"], ["TAG", "Authentic"]] as const) {
+    const ok = authSlab(grade, grader);
+    assert.equal(compGuard(ok).ok, true, `${grader} ${grade}: ${JSON.stringify(compGuard(ok).errors)}`);
+    for (const title of [
+      `2019 Fictional Chrome Test Player #7 ${grader} ${grade}`,
+      `2019 Fictional Chrome Test Player #7 ${grader} Authentic`,
+      "2019 Fictional Chrome Test Player #7 CGC Authentic",
+    ]) {
+      const a = authSlab(grade, grader);
+      a.sales[0] = sale(18, 10, title);
+      onlyCode(a, "grade_mismatch", 0);
+    }
+  }
+});
+
+test("review(PC1c) coordinator: an Authentic card's raw signal keeps same-grader Authentic sales only", () => {
+  const authEst = (title: string, grade: string | null = null, card: Partial<CompGuardInput["card"]> = {}) => {
+    const e = estimate();
+    e.card = { ...e.card, grader: "CGC", grade: "AUTH", status: "graded", ...card };
+    e.signals = [{ kind: "proxy", grade, sales: [sale(30, 40, title)] }];
+    return e;
+  };
+  for (const title of ["2019 Fictional Chrome Test Player #9 CGC Authentic", "2019 Fictional Chrome Test Player #9 CGC AUTH"]) {
+    const r = compGuard(authEst(title));
+    assert.equal(r.ok, true, `${title}: ${JSON.stringify(r.errors)}`);
+    assert.equal(compGuard(authEst(title, "raw")).ok, true, title);
+  }
+  for (const title of [
+    "2019 Fictional Chrome Test Player #9 PSA Authentic",
+    "2019 Fictional Chrome Test Player #9 CGC Authentic 10",
+    "2019 Fictional Chrome Test Player #9 CGC Authentic Gem Mint 10",
+    "2019 Fictional Chrome Test Player #9 CGC Altered",
+    "2019 Fictional Chrome Test Player #9 CGC Authentic Altered",
+  ]) onlyCode(authEst(title), "grade_label", 0);
+  // A graded signal, an Altered card or a VGC card does not take Authentic sales.
+  onlyCode(authEst("2019 Fictional Chrome Test Player #9 CGC Authentic", "PSA 10"), "grade_label", 0);
+  onlyCode(authEst("2019 Fictional Chrome Test Player #9 CGC Authentic", null, { grade: "Altered" }), "grade_label", 0);
+  onlyCode(authEst("2019 Fictional Chrome Test Player #9 VGC Authentic", null, { grader: "VGC" }), "grade_label", 0);
+});
