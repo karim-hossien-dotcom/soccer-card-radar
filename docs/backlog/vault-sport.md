@@ -40,7 +40,16 @@ dropping its sealed card. Screenshots: docs/backlog/uat/V2/ (synthetic).
 
 
 ## V2b Top totals follow the filter or the selection (Karim, Nov 12 2026: "i need it to work both ways filter or selected")
-Status: approved (owner request). Ships together with V2.
+Status: ready for review (branch feat/V2). Ships together with V2.
+
+Change note (engineer, Nov 12 2026): `selectionTotals` (vault-scenario.ts) takes an optional `inView` list: no known tick ->
+totals of the filter (`selecting` false); ticks -> ticked cards in view only, `hidden` = ticked cards the filter hides. Without
+`inView` it behaves as before. collection-view.tsx: one totals source for the top bar; label "N selected · clear" replaces
+"Value now"/"Value if PSA x" while selecting; "+N selected outside this filter" under the value; the separate selection line
+(`selSum`) and its CSS are removed. All ticks hidden -> "0 selected", $0 (ticks narrow the filter). Tests: dashboard 102/102
+(3 new V2b tests), shared 78/78, `pnpm build` green; `test/uat/v2.uat.js` extended (Basketball -> tick -> Raw -> PSA 10 ->
+Basketball -> All -> clear) 46/46 at 1280 and 390; `test/uat/v1.uat.js` updated to the V2b rule (hidden ticks no longer
+count) 72/72. UAT readers wait for CountUp to settle. Screenshots: docs/backlog/uat/V2/vault-v2b-*.png (synthetic).
 - No card ticked: the top bar (Value / Cost / Gain or loss) totals every card in the current filter, as today.
 - One or more ticked: the top bar totals only the ticked cards that are in the current filter, at the current "Price as".
   Label "N selected" replaces "Value now" / "Value if PSA x". Filter narrows, ticks narrow further.

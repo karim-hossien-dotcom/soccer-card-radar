@@ -3,6 +3,9 @@
 // SYNTHETIC fixture only (repo is public).
 // Hand totals at Now: All = 40 + 210 + 100 + 60 + 300 = $710, cost 20 + 150 + 130 + 35 + 200 = $535.
 //                     Basketball = 60 + 300 = $360, cost $235.
+// V2b (Karim 2026-11-12): top bar follows the filter, or the ticked cards in the filter.
+//   Basketball, tick Hoops One + Two: 2 selected $360 / $235 / +$125. Raw: Hoops One only $60 / $35 / +$25, "+1 outside";
+//   Raw at PSA 10: Hoops One $500 / $35 / +$465. Clear: back to "Value now" $710 / $535.
 const fs = require('fs');
 const { chromium } = require('playwright');
 const SHOTS = process.env.SHOTS || 'docs/backlog/uat/V2';
@@ -13,10 +16,24 @@ const tiles = (p) => p.locator('section[aria-label="Cards"] > [data-tile]');
 const players = async (p) => (await tiles(p).allInnerTexts()).map(norm);
 const showButtons = async (p) => (await p.locator('[role=group][aria-label="Show"] button').allInnerTexts()).map(norm);
 const setSeg = (p, group, t) => p.locator(`[role=group][aria-label="${group}"] button`, { hasText: new RegExp(`^${t}`) }).click();
+// CountUp sets its number in an effect after render: read until two reads 100 ms apart agree.
 const hero = async (p) => {
-  const k = p.locator('[aria-label="Collection totals"] [class*="heroKpis"] > div');
-  return { value: norm(await k.nth(0).locator('b').innerText()), cost: norm(await k.nth(1).locator('b').innerText()), inView: norm(await k.nth(3).locator('b').innerText()) };
+  let prev = JSON.stringify(await heroOnce(p));
+  for (let i = 0; i < 20; i++) { await p.waitForTimeout(100); const cur = JSON.stringify(await heroOnce(p)); if (cur === prev) return JSON.parse(cur); prev = cur; }
+  return JSON.parse(prev);
 };
+const heroOnce = async (p) => {
+  const k = p.locator('[aria-label="Collection totals"] [class*="heroKpis"] > div');
+  const out = k.nth(0).locator('[class*="selOut"]');
+  return {
+    label: norm(await k.nth(0).locator('span').first().innerText()),
+    value: norm(await k.nth(0).locator('b').innerText()), cost: norm(await k.nth(1).locator('b').innerText()),
+    gain: norm(await k.nth(2).locator('b').innerText()), inView: norm(await k.nth(3).locator('b').innerText()),
+    outside: (await out.count()) ? norm(await out.innerText()) : '',
+  };
+};
+const tick = (p, player) => p.locator('section[aria-label="Cards"] > [data-tile]', { hasText: player }).locator('input[type=checkbox]').check();
+const noOverflow = (p) => p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -55,6 +72,40 @@ const hero = async (p) => {
     ok((await tiles(p).count()) === 2, `${name}: Graded keeps both sports`);
     await setSeg(p, 'Show', 'At PSA');
     ok((await tiles(p).count()) === 1, `${name}: At PSA`);
+
+    // V2b: filter -> tick -> switch filter -> clear.
+    await setSeg(p, 'Show', 'Basketball');
+    h = await hero(p);
+    ok(h.label === 'Value now' && h.value === '$360', `${name}: V2b none ticked -> filter totals (${JSON.stringify(h)})`);
+    await tick(p, 'Test Hoops One');
+    h = await hero(p);
+    ok(h.label === '1 selected · clear' && h.value === '$60' && h.cost === '$35' && h.gain === '+$25' && !h.outside, `${name}: V2b 1 ticked in view (${JSON.stringify(h)})`);
+    await tick(p, 'Test Hoops Two');
+    h = await hero(p);
+    ok(h.label === '2 selected · clear' && h.value === '$360' && h.cost === '$235' && h.gain === '+$125' && h.inView === '2', `${name}: V2b 2 ticked (${JSON.stringify(h)})`);
+    ok((await p.locator('[aria-label="Selected cards"]').count()) === 0, `${name}: V2b no separate selection line`);
+    await setSeg(p, 'Show', 'Raw');
+    h = await hero(p);
+    ok(h.label === '1 selected · clear' && h.value === '$60' && h.cost === '$35' && h.outside === '+1 selected outside this filter', `${name}: V2b Raw counts only the ticked card in view, notes the hidden one (${JSON.stringify(h)})`);
+    await setSeg(p, 'Price as', 'PSA 10');
+    h = await hero(p);
+    ok(h.label === '1 selected · clear' && h.value === '$500' && h.gain === '+$465', `${name}: V2b selection at PSA 10 (${JSON.stringify(h)})`);
+    ok(await noOverflow(p), `${name}: V2b no horizontal scroll with the outside note`);
+    await p.evaluate(() => window.scrollTo(0, 0));
+    await p.screenshot({ path: `${SHOTS}/vault-v2b-outside-${name}.png` });
+    await setSeg(p, 'Price as', 'Now');
+    await setSeg(p, 'Show', 'Basketball');
+    h = await hero(p);
+    ok(h.value === '$360' && !h.outside, `${name}: V2b switching back counts both ticks again (${JSON.stringify(h)})`);
+    await setSeg(p, 'Show', 'All');
+    h = await hero(p);
+    ok(h.label === '2 selected · clear' && h.value === '$360' && h.cost === '$235' && h.inView === '5', `${name}: V2b All: ticks narrow the filter (${JSON.stringify(h)})`);
+    await p.evaluate(() => window.scrollTo(0, 0));
+    await p.screenshot({ path: `${SHOTS}/vault-v2b-selected-${name}.png` });
+    await p.locator('[aria-label="Collection totals"] button', { hasText: /^clear$/ }).click();
+    h = await hero(p);
+    ok(h.label === 'Value now' && h.value === '$710' && h.cost === '$535' && !h.outside, `${name}: V2b clear -> filter totals (${JSON.stringify(h)})`);
+    ok((await p.locator('section[aria-label="Cards"] input[type=checkbox]:checked').count()) === 0, `${name}: V2b clear unticks every card`);
     ok(!errs.length, `${name}: no page errors ${errs.join('; ')}`);
     await ctx.close();
   }

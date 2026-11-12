@@ -1,4 +1,6 @@
 // V1 UAT (rework per Karim 2026-11-11): tiny select checkbox on every Vault tile; checked cards add up in the totals area.
+// V2b (Karim 2026-11-12): the top bar itself shows the selection ("N selected"), only ticked cards in the current filter
+// count, hidden ticks are noted ("+N selected outside this filter"); the separate selection line is gone.
 // Needs: node test/uat/make-v1-fixture.js $F; COLLECTION_FIXTURE=$F next dev --port 3100; then node test/uat/v1.uat.js
 // SYNTHETIC fixture only: never run this against test/fixtures/collection.json (screenshots include tiles and totals).
 // Hand totals for Echo (at PSA 100 / 900 / 130 cost), Alpha (raw 40 / 300 / 20), Delta (raw lot 25 / psa10 null / 10):
@@ -15,9 +17,30 @@ const norm = (t) => t.replace(/\s+/g, ' ').trim();
 const tile = (p, player) => p.locator('section[aria-label="Cards"] > [data-tile]', { hasText: player });
 const box = (p, player) => tile(p, player).locator('input[type=checkbox]');
 const val = (p, player) => tile(p, player).locator('[class*="val"]').first();
-const sum = (p) => p.locator('[aria-label="Collection totals"] [aria-label="Selected cards"]');
-const sumText = async (p) => ((await sum(p).count()) ? norm(await sum(p).innerText()) : '');
+// Top bar in selection mode as one line: "N selected · Value $x · Cost $y · Gain +$z[ · +M selected outside this filter]";
+// '' when the bar shows the filter totals (no tick).
+const clearBtn = (p) => p.locator('[aria-label="Collection totals"] button', { hasText: /^clear$/ });
+// CountUp sets its number in an effect after render: read until two reads 100 ms apart agree.
+const sumText = async (p) => {
+  let prev = JSON.stringify(await sumTextOnce(p));
+  for (let i = 0; i < 20; i++) { await p.waitForTimeout(100); const cur = JSON.stringify(await sumTextOnce(p)); if (cur === prev) return JSON.parse(cur); prev = cur; }
+  return JSON.parse(prev);
+};
+const sumTextOnce = async (p) => {
+  const k = p.locator('[aria-label="Collection totals"] [class*="heroKpis"] > div');
+  const label = norm(await k.nth(0).locator('span').first().innerText());
+  if (!/selected/.test(label)) return '';
+  const out = k.nth(0).locator('[class*="selOut"]');
+  const note = (await out.count()) ? ` · ${norm(await out.innerText())}` : '';
+  const b = async (i) => norm(await k.nth(i).locator('b').innerText());
+  return `${label.replace(/ · clear$/, '')} · Value ${await b(0)} · Cost ${await b(1)} · Gain ${await b(2)}${note}`;
+};
 const hero = async (p) => {
+  let prev = JSON.stringify(await heroOnce(p));
+  for (let i = 0; i < 20; i++) { await p.waitForTimeout(100); const cur = JSON.stringify(await heroOnce(p)); if (cur === prev) return JSON.parse(cur); prev = cur; }
+  return JSON.parse(prev);
+};
+const heroOnce = async (p) => {
   const k = p.locator('[aria-label="Collection totals"] [class*="heroKpis"] > div');
   return { value: norm(await k.nth(0).locator('b').innerText()), cost: norm(await k.nth(1).locator('b').innerText()), gain: norm(await k.nth(2).locator('b').innerText()) };
 };
@@ -29,8 +52,11 @@ const hydrationWatch = (p) => {
   p.on('pageerror', (e) => { if (re.test(String(e))) hyd.push(String(e).slice(0, 160)); });
   return hyd;
 };
-const SEL10 = '3 selected · Value $1,225 · Cost $160 · Gain +$1,065 · clear';
-const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5 · clear';
+const SEL10 = '3 selected · Value $1,225 · Cost $160 · Gain +$1,065';
+const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5';
+// In Raw (Echo hidden): Alpha + Delta. Now 40 + 25 / cost 30; PSA 10 300 + 25 (Delta falls back) / cost 30.
+const RAWNOW = '2 selected · Value $65 · Cost $30 · Gain +$35 · +1 selected outside this filter';
+const RAW10 = '2 selected · Value $325 · Cost $30 · Gain +$295 · +1 selected outside this filter';
 
 (async () => {
   fs.mkdirSync(SHOTS, { recursive: true });
@@ -83,19 +109,18 @@ const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5 · clear';
     await setSeg(p, 'Show', 'Raw');
     await box(p, 'Test Alpha').check();
     await box(p, 'Test Delta').check();
-    ok((await sumText(p)) === SELNOW, `${name}: 3 selected at Now by hand: "${await sumText(p)}"`);
+    ok((await sumText(p)) === RAWNOW, `${name}: Raw: 2 ticked in view at Now, Echo noted outside: "${await sumText(p)}"`);
     // Price as PSA 10.
     await setSeg(p, 'Price as', 'PSA 10');
-    ok((await sumText(p)) === SEL10, `${name}: 3 selected at PSA 10 by hand: "${await sumText(p)}"`);
+    ok((await sumText(p)) === RAW10, `${name}: Raw: 2 ticked in view at PSA 10 by hand: "${await sumText(p)}"`);
     ok(norm(await val(p, 'Test Delta').innerText()) === '$25', `${name}: Delta tile falls back to $25 at PSA 10 (summary uses the same)`);
     // Sort and filter changes keep it.
     await p.selectOption('select[aria-label="Sort"]', 'name');
     await setSeg(p, 'Show', 'Graded');
-    ok((await sumText(p)) === SEL10, `${name}: selection kept across sort and filter (cards hidden still count)`);
+    ok((await sumText(p)) === '0 selected · Value $0 · Cost $0 · Gain +$0 · +3 selected outside this filter', `${name}: Graded: ticks hidden are not counted, only noted: "${await sumText(p)}"`);
     await setSeg(p, 'Show', 'All');
     ok(await box(p, 'Test Echo').isChecked() && await box(p, 'Test Alpha').isChecked() && !(await box(p, 'Test Bravo').isChecked()), `${name}: checkboxes reflect the selection in All`);
-    const h = await hero(p);
-    ok(h.value === '$2,135' && h.cost === '$360', `${name}: Vault totals unchanged by selection (${JSON.stringify(h)})`);
+    ok((await sumText(p)) === SEL10, `${name}: All counts all 3 ticks again (ticks kept across sort and filter): "${await sumText(p)}"`);
     // Untick and tick again.
     await box(p, 'Test Alpha').uncheck();
     ok((await sumText(p)).startsWith('2 selected · Value $925'), `${name}: untick Alpha -> 2 selected $925`);
@@ -117,8 +142,10 @@ const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5 · clear';
     ok((await p.locator('[role=dialog]').count()) === 1, `${name}: tile button opens the drawer`);
     await p.click('[role=dialog] button[aria-label=Close]');
     // clear
-    await sum(p).locator('button', { hasText: 'clear' }).click();
+    await clearBtn(p).click();
     ok((await sumText(p)) === '' && !(await box(p, 'Test Echo').isChecked()), `${name}: clear removes the summary and unticks`);
+    const h = await hero(p);
+    ok(h.value === '$465' && h.cost === '$360' && h.gain === '+$105', `${name}: cleared -> top bar back to All totals at Now (${JSON.stringify(h)})`);
     ok(await p.evaluate((k) => sessionStorage.getItem(k), KEY) === null, `${name}: clear removes the storage key`);
     await p.reload({ waitUntil: 'networkidle' });
     ok((await sumText(p)) === '', `${name}: still cleared after reload`);
@@ -127,13 +154,13 @@ const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5 · clear';
 
     // Stored selection (valid and corrupt) loads without a hydration warning.
     for (const stored of ['["00000000-0000-4000-8000-000000000101","gone-id"]', 'garbage']) {
-      const c2 = await b.newContext({ viewport });
+      const c2 = await b.newContext({ viewport, reducedMotion: 'reduce' });
       await c2.addInitScript(([k, v]) => { if (!window.name) { sessionStorage.setItem(k, v); window.name = 'seeded'; } }, [KEY, stored]);
       const p2 = await c2.newPage();
       const h2 = hydrationWatch(p2);
       const e2 = []; p2.on('pageerror', (e) => e2.push(String(e)));
       await p2.goto(`${BASE}/collection`, { waitUntil: 'networkidle' });
-      const want = stored === 'garbage' ? '' : '1 selected · Value $40 · Cost $20 · Gain +$20 · clear';
+      const want = stored === 'garbage' ? '' : '1 selected · Value $40 · Cost $20 · Gain +$20';
       ok((await sumText(p2)) === want, `${name}: stored ${stored.slice(0, 12)}… -> "${want}"`);
       ok(!h2.length && !e2.length, `${name}: no hydration warning or error (stored ${stored.slice(0, 12)}…) ${h2.concat(e2).join('; ')}`);
       await c2.close();
@@ -148,7 +175,7 @@ const SELNOW = '3 selected · Value $165 · Cost $160 · Gain +$5 · clear';
     await box(p3, 'Test Alpha').check();
     await setSeg(p3, 'Price as', 'PSA 10');
     ok((await sumText(p3)).startsWith('1 selected · Value $300'), `${name}: storage throws: selection works`);
-    await sum(p3).locator('button', { hasText: 'clear' }).click();
+    await clearBtn(p3).click();
     ok((await sumText(p3)) === '', `${name}: storage throws: clear works`);
     await box(p3, 'Test Alpha').check();
     await p3.reload({ waitUntil: 'networkidle' });

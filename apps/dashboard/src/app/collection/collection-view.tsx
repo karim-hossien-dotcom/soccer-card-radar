@@ -9,7 +9,7 @@ import { snipeHref, prefillFromComps } from "@/lib/grading";
 import { compLabel } from "@/lib/vault-comp";
 import { estTileTag, estDrawerText } from "@/lib/value-est";
 import {
-  type Scenario, scenarioValue, cardGain, vaultTotals, selectionTotals, toggleSelection, readStoredSelection, writeStoredSelection,
+  type Scenario, scenarioValue, cardGain, selectionTotals, toggleSelection, readStoredSelection, writeStoredSelection,
 } from "@/lib/vault-scenario";
 import { type ShowFilter, matchesShow, sportCount } from "@/lib/vault-filter";
 
@@ -73,8 +73,8 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
     });
   }, [cards, scen, stat, player, sort, q]);
 
-  const totals = useMemo(() => vaultTotals(list, scen), [list, scen]);
-  const sel = useMemo(() => selectionTotals(cards, selected, scen), [cards, selected, scen]);
+  // V2b: the top bar totals the filter, or the ticked cards in the filter when any are ticked.
+  const totals = useMemo(() => selectionTotals(cards, selected, scen, list), [cards, selected, scen, list]);
   const selSet = useMemo(() => new Set(selected), [selected]);
 
   useEffect(() => {
@@ -114,17 +114,17 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
           <p>{cards.length} cards. Values from 90-day sales, else Card Ladder.</p>
         </div>
         <div className={s.heroKpis}>
-          <div className={s.big}><span>{scen === "now" ? "Value now" : `Value if PSA ${scen}`}</span><b><CountUp value={totals.value} /></b></div>
+          <div className={s.big}>
+            <span aria-live="polite">
+              {totals.selecting ? <>{totals.count} selected{" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button></> : scen === "now" ? "Value now" : `Value if PSA ${scen}`}
+            </span>
+            <b><CountUp value={totals.value} /></b>
+            {totals.hidden > 0 && <span className={s.selOut}>+{totals.hidden} selected outside this filter</span>}
+          </div>
           <div><span>Cost</span><b><CountUp value={totals.cost} /></b></div>
           <div><span>Gain or loss</span><b className={tone(totals.gain)}><CountUp value={totals.gain} signed /></b></div>
           <div><span>Cards in view</span><b>{list.length}</b></div>
         </div>
-        {sel.count > 0 && (
-          <p className={s.selSum} aria-label="Selected cards" aria-live="polite">
-            <b>{sel.count} selected</b> · Value <b>{usd(sel.value)}</b> · Cost <b>{usd(sel.cost)}</b> · Gain <b className={tone(sel.gain)}>{signed(sel.gain)}</b>
-            {" · "}<button type="button" className={s.reset} onClick={() => changeSel([])}>clear</button>
-          </p>
-        )}
       </section>
       <Tracker weeks={weeks} movers={movers} />
       <div className={s.due} role="region" aria-label="Comps">

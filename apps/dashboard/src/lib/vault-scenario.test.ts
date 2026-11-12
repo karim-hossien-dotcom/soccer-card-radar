@@ -50,7 +50,7 @@ test("Price as falls back to value now when the grade has no value; graded uses 
 
 test("selectionTotals: 3 cards at PSA 10 add up by hand", () => {
   const t = selectionTotals(ALL, ["a", "b", "at"], "10");
-  assert.deepEqual(t, { count: 3, value: 300 + 500 + 900, cost: 20 + 35 + 130, gain: 280 + 465 + 770 });
+  assert.deepEqual(t, { selecting: true, count: 3, hidden: 0, value: 300 + 500 + 900, cost: 20 + 35 + 130, gain: 280 + 465 + 770 });
 });
 
 test("selectionTotals follows Price as for the same selection (Now/10/9/8)", () => {
@@ -66,22 +66,52 @@ test("selectionTotals follows Price as for the same selection (Now/10/9/8)", () 
 
 test("selectionTotals uses the tile fallback: no grade value -> value now; graded -> value now", () => {
   const t = selectionTotals(ALL, ["no10", "g"], "10");
-  assert.deepEqual(t, { count: 2, value: 25 + 210, cost: 10 + 150, gain: 15 + 60 });
+  assert.deepEqual(t, { selecting: true, count: 2, hidden: 0, value: 25 + 210, cost: 10 + 150, gain: 15 + 60 });
 });
 
 test("selectionTotals: no cost adds value only; no value adds cost only (as the Vault totals do)", () => {
-  assert.deepEqual(selectionTotals(ALL, ["nc", "nv"], "9"), { count: 2, value: 40, cost: 12, gain: 0 });
+  assert.deepEqual(selectionTotals(ALL, ["nc", "nv"], "9"), { selecting: true, count: 2, hidden: 0, value: 40, cost: 12, gain: 0 });
 });
 
 test("selectionTotals ignores unknown ids and duplicates, and is independent of the filter list", () => {
-  assert.deepEqual(selectionTotals(ALL, ["a", "a", "gone"], "now"), { count: 1, value: 40, cost: 20, gain: 20 });
-  assert.deepEqual(selectionTotals(ALL, [], "10"), { count: 0, value: 0, cost: 0, gain: 0 });
+  assert.deepEqual(selectionTotals(ALL, ["a", "a", "gone"], "now"), { selecting: true, count: 1, hidden: 0, value: 40, cost: 20, gain: 20 });
+  assert.deepEqual(selectionTotals(ALL, [], "10"), { selecting: false, count: 0, hidden: 0, value: 0, cost: 0, gain: 0 });
   // Selection of all cards equals the Vault totals.
   for (const sc of SCENARIOS) {
-    const { count, ...rest } = selectionTotals(ALL, ALL.map((c) => c.id), sc);
+    const { count, selecting: _s, hidden: _h, ...rest } = selectionTotals(ALL, ALL.map((c) => c.id), sc);
     assert.equal(count, ALL.length);
     assert.deepEqual(rest, vaultTotals(ALL, sc));
   }
+});
+
+// V2b (Karim 2026-11-12, "work both ways filter or selected"): top bar = filter totals, or the ticked cards in the filter.
+test("V2b: none ticked -> top bar totals every card in the filter", () => {
+  const view = [A, B, AT];
+  for (const sc of SCENARIOS) {
+    const { selecting, count, hidden, ...rest } = selectionTotals(ALL, [], sc, view);
+    assert.equal(selecting, false);
+    assert.equal(count, 0);
+    assert.equal(hidden, 0);
+    assert.deepEqual(rest, vaultTotals(view, sc), sc);
+  }
+  // Ticks that no longer exist (sold, removed) count as none ticked.
+  assert.deepEqual(selectionTotals(ALL, ["gone"], "now", view), { selecting: false, count: 0, hidden: 0, ...vaultTotals(view, "now") });
+});
+
+test("V2b: ticked cards in the filter -> only those, at the current Price as", () => {
+  const view = [A, B, AT];
+  assert.deepEqual(selectionTotals(ALL, ["a", "at"], "10", view), { selecting: true, count: 2, hidden: 0, value: 300 + 900, cost: 20 + 130, gain: 280 + 770 });
+  assert.deepEqual(selectionTotals(ALL, ["a", "at"], "now", view), { selecting: true, count: 2, hidden: 0, value: 140, cost: 150, gain: -10 });
+});
+
+test("V2b: ticked cards hidden by the filter are not counted, only noted", () => {
+  const view = [A, B, AT];
+  // a in view; g and no10 hidden by the filter.
+  assert.deepEqual(selectionTotals(ALL, ["a", "g", "no10"], "10", view), { selecting: true, count: 1, hidden: 2, value: 300, cost: 20, gain: 280 });
+  // Every tick hidden: still in selection mode (ticks narrow the filter), nothing counted.
+  assert.deepEqual(selectionTotals(ALL, ["g", "no10"], "now", view), { selecting: true, count: 0, hidden: 2, value: 0, cost: 0, gain: 0 });
+  // Switching back to a filter that shows them counts them again (ticks are kept by the caller).
+  assert.deepEqual(selectionTotals(ALL, ["a", "g", "no10"], "10", ALL), { selecting: true, count: 3, hidden: 0, value: 300 + 210 + 25, cost: 20 + 150 + 10, gain: 280 + 60 + 15 });
 });
 
 test("toggleSelection adds and removes without mutating the input", () => {

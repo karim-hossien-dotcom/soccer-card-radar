@@ -37,11 +37,20 @@ export function vaultTotals(cards: ScenarioCard[], sc: Scenario) {
   return { cost, value, gain };
 }
 
-/** Totals for the checked cards, over all cards (not just the filtered list). Unknown ids (sold, removed) are ignored. */
-export function selectionTotals(cards: ScenarioCard[], selected: Iterable<string>, sc: Scenario) {
+/**
+ * Totals for the checked cards. Unknown ids (sold, removed) are ignored.
+ * Without `inView`: over all cards. With `inView` (V2b top bar, the current filter's list): no card ticked -> totals of
+ * every card in view (`selecting` false); one or more ticked -> totals of the ticked cards in view only, and `hidden`
+ * counts the ticked cards the filter hides (not added).
+ */
+export function selectionTotals(cards: ScenarioCard[], selected: Iterable<string>, sc: Scenario, inView?: ScenarioCard[]) {
   const ids = new Set(selected);
   const picked = cards.filter((c) => ids.has(c.id));
-  return { count: picked.length, ...vaultTotals(picked, sc) };
+  if (!inView) return { selecting: picked.length > 0, count: picked.length, hidden: 0, ...vaultTotals(picked, sc) };
+  if (!picked.length) return { selecting: false, count: 0, hidden: 0, ...vaultTotals(inView, sc) };
+  const view = new Set(inView.map((c) => c.id));
+  const shown = picked.filter((c) => view.has(c.id));
+  return { selecting: true, count: shown.length, hidden: picked.length - shown.length, ...vaultTotals(shown, sc) };
 }
 
 export const toggleSelection = (sel: readonly string[], id: string): string[] =>
