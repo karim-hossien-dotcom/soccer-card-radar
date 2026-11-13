@@ -13,3 +13,26 @@ Form from FotMob player pages and news read Nov 12 2026. Prices: Card Ladder sal
 | Rio Ngumoha | 18, Liverpool | PL 8 apps, 1 start, 203', 0 G 0 A; UCL 225', 2 A | not re-priced (Oct 31: Orange /25 $140-$318) | Still a bench role |
 | Assan Ouedraogo | 20, RB Leipzig | Shoulder surgery mid-September; back January at the earliest | 2024-25 Chrome Bundesliga RC auto Red /5 raw: Oct 26 $435; Gold /50: Oct 11 $86.33 | Cheap, injured |
 | Estevao | 19, Chelsea | 27 league minutes as of Oct 8 | not priced | Not playing |
+
+## More players (same day, same caveats)
+| Player | Age, club | Form (FotMob unless noted, to Nov 12) | Rookie auto sales | Read |
+|---|---|---|---|---|
+| Senny Mayulu | 20, PSG | Ligue 1 4 apps, 2 starts, 219', 2 G 2 A, rating 7.64; UCL goal Nov 3; G or A in last 3 | Nov 11-12: base and /199 autos $15-$64; Black Lazer auto $48-$90; Sapphire Orange auto $465. 2,806 auto sales on record | Form rising, cards cheap, supply very large |
+| Franco Mastantuono | 19, Fiorentina (loan) | Serie A 11 starts, 879', 4 G 0 A, rating 7.40; 1 goal in last 5 | Nov 11-12: 2025-26 Chrome UCC and Museum autos $32-$75. 1,142 auto sales on record | Starter, modest output, cheap, large supply |
+| Said El Mala | 20, Koln | Bundesliga 8 apps, 7 starts, 3 G; cup 2 G 1 A Oct 27; league goal Nov 8 | 2025-26 Chrome Bundesliga auto /50: Nov 10 $669.93; Oct 30 $641.30, $835.96. /5: Nov 4 $3,254.82 | Already priced |
+| Paris Brunner | 20, Monaco | Ligue 1 8 apps, 7 starts, 4 G; no goal in last 4 league games | not priced | Cooled since September |
+| Konstantinos Karetsas | 18, Dortmund | Bundesliga 7 apps, 0 G 2 A (bundesliga.com) | not priced | Role player so far |
+| Kerim Alajbegovic | 19, Juventus | Serie A 9 apps, 1 G 1 A, rating 6.06 (Fantacalcio) | not priced | Not producing |
+| Junior Kroupi | 20, Bournemouth | PL 3 apps, 0 starts, 47' | not priced | Bench |
+| Endrick | 20, Real Madrid | LaLiga 3 apps, 78', 0 G; UCL goal Oct 14 | not priced | Bench |
+
+## Prestianni and Varela, card detail
+Prestianni 2024-25 Topps Finest UCC auto Gold /50, raw, 90-day sales: Nov 10 $67.32; Nov 8 $194.96 (same seller as
+Nov 10); Nov 4 $418, $304.02; Oct 29 $175; Sep 27 $78.23; Sep 19 $100; Sep 12 $90; Aug 28 $92.02. 90-day median $100;
+median of the five November/late-October sales $194.96. Before August: $12-$75.
+Prestianni 2024-25 Chrome UCC Black Lazer auto: base raw Sep-Oct $39-$50, Oct 11 $85, Nov 1 $255; PSA 10 Nov 9 $199;
+PSA 9 Oct 1 $42, Sep 12 $69; Magenta /75 Oct 12 $54, Oct 18 $118, Oct 2 $155, Nov 4 $275; /25 Sep 21 $400.
+Veriswap (8 listings): Black Lazer auto Neon Green PSA 10 $400; Sapphire Yellow /75 PSA 10 $350; Finest Arrivals auto
+raw $80 (sales: CGC 9 Nov 6 $68; raw Sep 13 $44.64); Finest "jersey number and color match" $250. None under sales.
+Varela: no Veriswap listing. Card Ladder shows only the 2025-26 Panini Futebol sticker #206 (Gil Vicente), $4.46-$5.62,
+Oct 23 - Nov 10. No numbered card or autograph found.
