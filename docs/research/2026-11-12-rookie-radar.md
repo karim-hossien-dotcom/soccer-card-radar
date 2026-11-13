@@ -56,3 +56,31 @@ Brunner: 2023-24 Merlin UCC Marks of Excellence on-card auto Gold /50 Nov 4 $563
 $559.80; BVB Vernissage auto Black /10 PSA 9 Oct 22-23 $448; raw /10 Oct 22 $392.62, Nov 1 $280.08; Chrome Sapphire
 auto Orange /25 SGC 9.5 Oct 25 $430; Chrome Sapphire auto Gold /50 Oct 30 $224.72. Veriswap: 2023 Inception UCC Gold
 1/1 PSA 9 $475 (no comp possible); Chrome auto Toppsfractor /52 $1,250; Museum Archival auto Amethyst /99 $60.
+
+## PSA 10 only (Nov 13 2026)
+Veriswap PSA 10 listings for the prospects, priced against PSA 10 sales on Card Ladder (titles only, PROVISIONAL;
+90-day window Aug 15 - Nov 13). No PSA 10 listings for El Mala, Ouedraogo or Varela.
+
+| Card | Ask | PSA 10 sales | Ratio |
+|---|---|---|---|
+| Mayulu/Zaire-Emery 2024-25 Finest dual auto Black /10 | 600 | Aug 17 $500 | 1.20 |
+| Mayulu 2024-25 Chrome UCC auto Magenta Lava /75 | 255 | Oct 31 $200 | 1.28 |
+| Prestianni 2024-25 Chrome Black Lazer auto Neon Green | 400 | none; base Black Lazer auto Nov 9 $199; Orange /25 Oct 29 $675 | - |
+| Mora 2024-25 Chrome UCC auto Aqua Lava /199 | 400 | Nov 12 $325 | 1.23 |
+| Mora 2024-25 Chrome UCC auto Blue /150 | 500 | none in 90 days (May 30 $327, Apr 26 $350); Green /99 Nov 7-8 $455, $461 | over |
+| Mora 2024-25 Chrome UCC #137 base | 190 | none; Refractor Aug 16 $72 | over |
+| Mora 2024-25 Sapphire auto Black /10 | 3,000 | none; PSA 9 Oct 22 $915 (Goldin) | - |
+| Mayulu 2024-25 Chrome Black Lazer auto Magenta | 450 | none; base Black Lazer auto PSA 10 Jun $142.50, $236.40 | over |
+| Mayulu 2024-25 Merlin Atomic | 130 | none in 90 days (May 3 $52.10) | over |
+| Mayulu 2024-25 Chrome UCC auto Green Lava /99 | 249 | none in 90 days (Jul 12 $81.60) | over |
+| Mayulu/Zaire-Emery Finest dual auto Gold /50 | 550 | none in 90 days (May 13 $400, Mar 18 $219.99) | over |
+| Mayulu/Zaire-Emery Finest dual auto Red | 1,400 | none; /5 Apr 9 $300 | over |
+| Mastantuono 2025-26 Topps Now UCL Gold Foil /50 | 1,000 | Sep 12 $225 | 4.4 |
+| Mastantuono 2025 Prizm CWC Red /199 | 300 | none; Gold Glitter /10 Oct 12 $292 | over |
+| Mastantuono 2024 Lineage Argentina Black Tango /10 | 5,000 | none; PSA 9 Aug 22 $1,200 | - |
+| Mastantuono 2024 Lineage Argentina Orange Tango | 1,200 | none; Green Tango /75 Oct 19 $290 | - |
+| Prestianni 2024-25 Sapphire Yellow /75 | 350 | none; Sapphire Black /10 Sep 12 $470, Aug 30 $625 | over |
+| Brunner 2023-24 Chrome auto Toppsfractor /52 | 1,250 | none (raw $30-$70) | over |
+No PSA 10 sales found: Mastantuono 2023 Obsidian Electric Etch (White Pulsar $2,000, Red Crystal /30 $1,500 and $1,320,
+Orange $900); Mora Select Zebra ($600), Bronze Checker /75 ($275), Youthquake Gold ($399), XI ($5,000); Mayulu Now
+Orange Foil ($300).
