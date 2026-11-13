@@ -36,3 +36,23 @@ Veriswap (8 listings): Black Lazer auto Neon Green PSA 10 $400; Sapphire Yellow 
 raw $80 (sales: CGC 9 Nov 6 $68; raw Sep 13 $44.64); Finest "jersey number and color match" $250. None under sales.
 Varela: no Veriswap listing. Card Ladder shows only the 2025-26 Panini Futebol sticker #206 (Gil Vicente), $4.46-$5.62,
 Oct 23 - Nov 10. No numbered card or autograph found.
+
+## Rare rookie cards: Mayulu, Mastantuono, El Mala, Brunner (Card Ladder sales + Veriswap asks, Nov 12 2026)
+Titles only, single sales, PROVISIONAL. Rookie years: Mayulu 2024-25; Mastantuono 2025-26; El Mala 2025-26; Brunner 2023-24.
+
+Mayulu: 2024-25 Chrome Sapphire UCC auto Orange /25 PSA 10 Nov 12 $465; Chrome UCC Black Lazer auto /25 raw Nov 6
+$148.24; Merlin Chrome auto Orange Mojo /25 raw Nov 7 $100; Chrome auto Gold Lava /50 raw Nov 4 $95; Finest auto Gold
+Lava /50 raw Nov 8 $56; PSG Exhibition on-card auto Red 3/5 Nov 11 $678.50. Veriswap: Merlin auto Orange Mojo PSA 9
+$300; Black Lazer auto PSA 9 $125; Black Lazer auto Magenta $450; 2025-26 Chrome Red Lava /5 $500 (second year);
+2024 Chrome Gold Lava /50 $175.
+Mastantuono: 2025-26 Chrome Sapphire auto Black /10 Nov 7 $390; Sapphire auto Gold /50 Oct 31 $250; Chrome auto
+Orange /25 Oct 31 $232.06; Museum auto Black Diamond /10 Nov 10 $200; Museum Gold Frame auto /10 Nov 4 $213.50; Black
+Lazer auto base $41-$69. Veriswap: Museum Marbelized auto /50 $175; Black Lazer auto $150; Museum Gold Frame auto $750.
+El Mala: 2025-26 Chrome Bundesliga auto Red 1/5 Oct 2 $1,600; Frozen /5 Nov 4 $3,254.82; True Gold /50 Nov 10 $669.93,
+Oct 30 $641.30, $835.96; Gold Wave /50 PSA 10 Sep 21 $465; Bundesliga Gold Future Stars auto /10 Oct 31 $401.90, /25
+Sep 26 $427.56, Sep 27 $251.90, /50 Oct 17 $177.32, Oct 8 $184.99. Veriswap: 2026 Prizm World Cup Red Wave /39 $165,
+Purple Wave /95 $135, Chrome Bundesliga Blue $110 (no comps pulled).
+Brunner: 2023-24 Merlin UCC Marks of Excellence on-card auto Gold /50 Nov 4 $563.45; Sapphire Bundesliga auto /10 Oct 8
+$559.80; BVB Vernissage auto Black /10 PSA 9 Oct 22-23 $448; raw /10 Oct 22 $392.62, Nov 1 $280.08; Chrome Sapphire
+auto Orange /25 SGC 9.5 Oct 25 $430; Chrome Sapphire auto Gold /50 Oct 30 $224.72. Veriswap: 2023 Inception UCC Gold
+1/1 PSA 9 $475 (no comp possible); Chrome auto Toppsfractor /52 $1,250; Museum Archival auto Amethyst /99 $60.
