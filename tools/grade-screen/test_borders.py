@@ -6,8 +6,9 @@ import borders as bd
 S = 2  # supersampling
 
 
-def card(ppm, left=2.5, right=3.5, top=3.0, bottom=4.0, tilt_mm=0.0, frame_line=True, borderless=False):
-    """Flat card at ppm*S px/mm: white border, coloured design, an inner thin frame line 1 mm inside the design edge."""
+def card(ppm, left=2.5, right=3.5, top=3.0, bottom=4.0, tilt_mm=0.0, frame_line=True, borderless=False, strip_mm=0.0):
+    """Flat card at ppm*S px/mm: white border, coloured design, an inner thin frame line 1 mm inside the design edge.
+    strip_mm: G10 scan-edge strip (light grey, all four sides) as on a pre-cropped PSA order scan."""
     R = ppm * S
     W, H = int(round(bd.CARD_W * R)), int(round(bd.CARD_H * R))
     img = np.full((H, W, 3), (235, 238, 240), np.uint8)
@@ -24,6 +25,10 @@ def card(ppm, left=2.5, right=3.5, top=3.0, bottom=4.0, tilt_mm=0.0, frame_line=
         for _ in range(60):
             c = (int(rng.uniform(left + 3, bd.CARD_W - right - 3) * R), int(rng.uniform(top + 3, bd.CARD_H - bottom - 3) * R))
             cv2.circle(img, c, int(rng.uniform(1, 5) * R), tuple(int(v) for v in rng.integers(0, 255, 3)), -1)
+    if strip_mm:
+        k = int(round(strip_mm * R))
+        for sl in (np.s_[:k, :], np.s_[-k:, :], np.s_[:, :k], np.s_[:, -k:]):
+            img[sl] = (200, 203, 205)
     return img
 
 
@@ -136,6 +141,50 @@ def test_borderless_needs_manual():
     out, flat = bd.measure(img, rough(true))
     assert out["status"] == "needs_manual" and flat is not None, out
     assert out["outer"] is not None
+
+
+def scan(flat, ppm=27):
+    """G10: pre-cropped scan: card square to the frame, ~27 px/mm, padded, little noise."""
+    return photo(flat, ppm, angle=0.3, persp=0.0, noise=1.5, size=(2000, 2700))
+
+
+def test_scan_edge_strip_skipped_border_found():
+    """G10: strip at 0.8 mm on all four sides is dropped; the printed border inward is measured."""
+    img, true = scan(card(27, strip_mm=0.8))
+    out, _ = bd.measure(img, rough(true))
+    assert out["status"] == "ok", out
+    assert abs(out["edge_strip_mm"] - 0.8) < 0.1, out
+    want = {"left": 2.5, "right": 3.5, "top": 3.0, "bottom": 4.0}
+    for s in bd.SIDES:
+        assert abs(out["inner"][s]["depth_mm"] - want[s]) < 0.05, (s, out["inner"], out["alternates"])
+    assert abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.005
+
+
+def test_scan_edge_strip_full_art_needs_manual():
+    """G10: full-art card on a pre-cropped scan: the strip is not a border; nothing else qualifies -> needs_manual."""
+    img, true = scan(card(27, borderless=True, strip_mm=0.7))
+    out, _ = bd.measure(img, rough(true))
+    assert out["status"] == "needs_manual" and out["centering"] == {}, out
+    assert "edge_strip_mm" in out and all(out["inner"][s] is None for s in bd.SIDES), out["inner"]
+
+
+def test_real_thin_border_kept():
+    """G10: a real ~1 mm white border that is not a uniform four-side strip is still the border (phone photo)."""
+    want = {"left": 1.0, "right": 1.6, "top": 0.9, "bottom": 1.5}
+    img, true = photo(card(24, **want), 24)
+    out, _ = bd.measure(img, rough(true))
+    assert out["status"] == "ok" and "edge_strip_mm" not in out, out
+    for s in bd.SIDES:
+        assert abs(out["inner"][s]["depth_mm"] - want[s]) < 0.05, (s, out["inner"])
+
+
+def test_name_bar_design_line_needs_manual():
+    """G10: top 3.0 vs bottom 7.5 mm (name bar) is a design line: top/bottom set by hand, no 70/30; L/R still measured."""
+    img, true = photo(card(24, top=3.0, bottom=7.5), 24)
+    out, _ = bd.measure(img, rough(true))
+    assert out["status"] == "needs_manual" and out["manual_axes"] == ["tb"], out
+    assert "tb" not in out["centering"] and abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.005, out["centering"]
+    assert out["design_line"]["axis"] == "tb" and any("design line" in w for w in out["why"])
 
 
 if __name__ == "__main__":

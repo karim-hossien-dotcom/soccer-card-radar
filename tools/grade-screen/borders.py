@@ -11,6 +11,9 @@
 
 Refuses (status "refused") below 12 px/mm (flags results under 20) or when an outer edge is not a clean straight line; says
 "needs_manual" when the inner border of any side cannot be found (borderless designs, full-art cards).
+G10: a thin light strip at the cut edge on all four sides at the same depth (pre-cropped scans) is dropped, not taken
+as the border; a top/bottom pair more than 2.5 mm apart with one side deeper than 6 mm is a design line (name bar):
+that axis is left out of "centering" and listed in "manual_axes".
 All distances are in mm on a 63.5 x 88.9 mm card.
 """
 import cv2
@@ -25,6 +28,15 @@ MAX_RMS_PX = 0.5        # outer edge line fit, inliers only
 MAX_TILT = 0.02         # inner line slope vs the cut edge (mm per mm): steeper is not a border line
 STEP_DE = 9.0
 MAX_ASPECT_ERR = 0.06    # outline width/height vs a real card (63.5/88.9); a PSA slab is ~0.60, a card 0.714           # minimum colour step (delta E) for an inner border candidate
+# G10: pre-cropped scans (PSA order scans, card in a penny sleeve) have a thin light strip at the cut edge on all four
+# sides at the same depth. It is not a printed border.
+STRIP_MAX_MM = 1.2      # strip line lies within this of the cut edge
+STRIP_SPREAD_MM = 0.3   # max - min strip depth over the four sides
+STRIP_MIN_L = 70.0      # outer side of the strip is light ...
+STRIP_MAX_CHROMA = 15.0  # ... and low-chroma (Lab)
+# G10: top/bottom lines this far apart, one deeper than DESIGN_LINE_MM, are a design line (name bar), not the border
+DESIGN_LINE_DIFF_MM = 2.5
+DESIGN_LINE_MM = 6.0
 SIDES = ("top", "right", "bottom", "left")
 
 
@@ -248,6 +260,32 @@ def _pair(a, b):
     return best
 
 
+def edge_strip(cands):
+    """G10: depth (mm) of a scan-edge strip, or None. A strip is a candidate line within STRIP_MAX_MM of the cut edge on
+    all four sides, at near-identical depth, light and low-chroma on the outer side."""
+    near = {}
+    for s in SIDES:
+        c = next((x for x in cands.get(s) or [] if x["depth_mm"] <= STRIP_MAX_MM), None)
+        if c is None:
+            return None
+        L, a, b = c["colors"][0]
+        if L < STRIP_MIN_L or np.hypot(a, b) > STRIP_MAX_CHROMA:
+            return None
+        near[s] = c
+    d = [c["depth_mm"] for c in near.values()]
+    if max(d) - min(d) > STRIP_SPREAD_MM:
+        return None
+    return round(float(np.mean(d)), 3), near
+
+
+def design_line(top, bottom):
+    """G10: True when the top/bottom pair is a design line (e.g. a name bar on Merlin/Chrome), not a printed border."""
+    if not top or not bottom:
+        return False
+    a, b = top["depth_mm"], bottom["depth_mm"]
+    return abs(a - b) > DESIGN_LINE_DIFF_MM and max(a, b) > DESIGN_LINE_MM
+
+
 def split(a, b):
     """(larger share, side of the larger border) e.g. 0.55 means 55/45."""
     t = a + b
@@ -311,6 +349,11 @@ def measure(img, quad):
     out["straight"] = {"px_per_mm": R, "margin_px": M}
     lab = _lab(cv2.GaussianBlur(flat, (0, 0), 0.6))
     cands = {s: inner_lines(lab, s, R, M) for s in SIDES}
+    strip = edge_strip(cands)
+    if strip:  # G10: drop the scan-edge strip so the next line inward is the border
+        out["edge_strip_mm"] = strip[0]
+        cands = {s: [x for x in cands[s] if x is not strip[1][s]] for s in SIDES}
+        out["why"].append(f"scan-edge strip at {strip[0]:.1f} mm on all four sides ignored (pre-cropped scan)")
     l, r = _pair(cands["left"], cands["right"])
     t, b = _pair(cands["top"], cands["bottom"])
     chosen = {"left": l, "right": r, "top": t, "bottom": b}
@@ -320,11 +363,18 @@ def measure(img, quad):
         out["alternates"][s] = [x["depth_mm"] for x in cands[s] if c is None or x is not c]
     missing = [s for s in SIDES if chosen[s] is None]
     out["centering"] = centering(chosen)
+    out["manual_axes"] = []
+    if design_line(t, b):  # G10: no 70/30 from a name bar
+        out["centering"].pop("tb", None)
+        out["manual_axes"].append("tb")
+        out["design_line"] = {"axis": "tb", "top_mm": t["depth_mm"], "bottom_mm": b["depth_mm"]}
+        out["why"].append(f"top/bottom design line: top {t['depth_mm']:.1f} mm vs bottom {b['depth_mm']:.1f} mm looks like a name bar, "
+                          "not the printed border: set top/bottom by hand")
     if missing:
         out["status"] = "needs_manual"
         out["why"].append("printed border not found on " + ", ".join(missing) + " (borderless design, or the border blends into the art): set it by hand")
     else:
-        out["status"] = "ok"
+        out["status"] = "needs_manual" if out["manual_axes"] else "ok"
     if ppm < GOOD_PPM:
         out["why"].append(f"lower resolution ({ppm:.0f} px per mm): check the lines on the confirm screen")
     return out, flat
