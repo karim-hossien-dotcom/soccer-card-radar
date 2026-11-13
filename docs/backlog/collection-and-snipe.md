@@ -306,3 +306,12 @@ G9c QA note (qa, 2026-11-03, feat/G9c at 99bc0a4 + this QA commit):
 - **Still needed from Karim (real phone, cannot be done synthetically):** (a) a card in a penny sleeve and (b) in a toploader -> expect the holder retake; (c) an unsleeved card -> expect it measured, no holder message; (d) a black-bordered card on the dark backdrop -> expect measured or the "sleeve check ... lighter, contrasting backdrop" retake, never "take it out". If any reads wrong, back to engineer.
 - **Risks.** Holder and glare thresholds tuned on synthetic photos only. Hairline penny sleeve under 1.5 mm with no gap reads as raw (look flags may be plastic artefacts; no ceiling effect while the gate is off). Black-bordered card without scanner corners can be traced at its art panel (pre-existing; worth a ticket). Approved behaviour change: chipping/whitening no longer lower ceilings, so most scans show a centering-only ceiling.
 - **Status:** ready for prod. Not merged; waiting for Karim's "ship".
+
+## G10 borders.py false border on pre-cropped scans (found Nov 12 2026, coordinator)
+Status: proposed
+Running condition.py on PSA's order scans of order 26913695 (fronts, ~27 px/mm, cropped at the cut edge, padded) returned "ok" with
+a ~0.7-0.9 mm "printed border" on all four sides of almost every card, including full-art Select, Chrome and die-cut cards that
+have no printed border. The tool locked onto the thin light strip at the scan's cut edge. Expected: needs_manual for borderless
+designs. Fix: ignore inner-line candidates closer than ~1.2 mm to the cut edge when they run the full length of all four sides
+at near-identical depth, and add a full-art test from a pre-cropped scan. Until fixed, no centering or ceiling from pre-cropped
+scans is trusted (results kept out of the Vault).
