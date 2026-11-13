@@ -60,3 +60,9 @@ photos over 2 MB to a 3000 px long side, because Vercel caps a request at 4.5 MB
 Vercel builds from `apps/dashboard`, so the function uses a copy in `apps/dashboard/api/_grade_screen`: after editing
 `condition.py` or `centering.py` run `python3 sync_vercel.py`; `test_api.py` fails if the copy drifts.
 Not on Render (no Python there).
+
+## Re-run on PSA order scans (2026-11-12): baseline-psa-26913695-v2.csv
+borders.py on PSA's order scans (fronts only, ~27 px/mm, cards in penny sleeves, cropped at the edge, padded 150 px) with the
+scan-edge strip skipped (inner lines nearer than 1.3 mm ignored; G10 workaround, not in borders.py yet). Centering only, recorded
+before grades return; the `centering_read` column is the coordinator's reading of which numbers are real border lines (consistent
+depth on opposite sides) and which are design lines. No corner, edge or surface call: the sleeve hides and fakes wear.
