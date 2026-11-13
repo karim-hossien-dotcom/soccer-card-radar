@@ -308,7 +308,7 @@ G9c QA note (qa, 2026-11-03, feat/G9c at 99bc0a4 + this QA commit):
 - **Status:** ready for prod. Not merged; waiting for Karim's "ship".
 
 ## G10 borders.py false border on pre-cropped scans (found Nov 12 2026, coordinator)
-Status: ready for review (approval relayed by the coordinator, Karim Nov 12 2026: "fix the bug"; ticket still read "proposed" on main)
+Status: ready for prod (review + QA green, Nov 12 2026; approval relayed by the coordinator, Karim Nov 12 2026: "fix the bug"). Not merged; waiting for Karim's "ship".
 Change note (engineer, Nov 12 2026, feat/G10, redo after coordinator run on the real scans): the first cut (a four-side
 uniform-strip heuristic) did not fire on real PSA scans, whose strip is uneven (0.4-1.2 mm per side, off-centre crop); it is
 removed. Now an explicit mode: `precropped=True` on borders.measure, condition.side_report / assess_with_centering /
@@ -325,3 +325,34 @@ have no printed border. The tool locked onto the thin light strip at the scan's 
 designs. Fix: ignore inner-line candidates closer than ~1.2 mm to the cut edge when they run the full length of all four sides
 at near-identical depth, and add a full-art test from a pre-cropped scan. Until fixed, no centering or ceiling from pre-cropped
 scans is trusted (results kept out of the Vault).
+
+G10 Review + QA note (reviewer, 2026-11-12, feat/G10 at 5f603ac + review(G10) commit):
+- **Scope:** diff d90db2e..5f603ac (borders.py, condition.py, calibrate.py, test_borders.py, README, vendored copies). The
+  explicit `precropped=True` mode replaces the ticket's auto-detect fix ("four sides at near-identical depth"); the
+  change note explains why (real strips are uneven, 0.4-1.2 mm) and the full-art pre-cropped test the ticket asked for is
+  there (test_precropped_uneven_strip_full_art_needs_manual). Accepted.
+- **Important (fixed):** the name-bar rule covered top/bottom only and needed a gap of more than 2.5 mm, so design lines
+  still produced splits: 640 lr 75/25 (left 3.5 vs right 10.4 mm), 649 tb 75/25 (1.6 vs 4.0 mm), 651/652 tb from a
+  10 mm top line. Fix: the coordinator default (decisions.md, Nov 12 2026): on EITHER axis, a side deeper than 6 mm or
+  larger/smaller > 2 is a design line -> axis left out of `centering`, listed in `manual_axes`, status needs_manual.
+  borders.py `design_line(a, b)` + `AXES` loop in `measure`; `design_lines` lists every flagged axis, `design_line` stays
+  the first one (the existing name-bar test is unchanged and passes). New tests: test_left_right_design_line_needs_manual
+  (3.5 vs 10.4 mm), test_ratio_design_line_needs_manual (1.6 vs 4.0 mm -> manual; 1.9 vs 3.6 mm still split). Both
+  fail on 5f603ac. test_precropped_uneven_strip_full_art_needs_manual: the default-mode bug check now asserts the strip
+  is read on all four sides and gives a false L/R split; its T/B (1.0 vs 0.4 mm) is caught by the new ratio rule.
+- **Important for Karim (not fixed, a business-rule question):** the 2x rule also sends every real border worse than
+  ~67/33 to needs_manual, so a badly off-centre card (PSA 7 = 70/30, 6 = 80/20) is never given a split; it goes
+  to hand-setting instead of a cap. Safe (no false number), but the screen will not catch the worst off-centre cards by
+  itself. Likewise a side deeper than 6 mm is always manual, even a consistent pair: 639 (top 7.5 / bottom 7.3 mm, 51/49)
+  and 638 (6.3 / 7.7) lose their tb split. Coordinator default as written; Karim can override.
+- **Minor (left, outside the diff):** borders.py:32 `MAX_ASPECT_ERR` line carries STEP_DE's comment pasted mid-line
+  ("... a card 0.714   # minimum colour step (delta E) ..."); pre-existing on main, STEP_DE (line 31) has no comment.
+- Checked: no card values, comps, overrides, bids, scans or env touched; no secrets in the diff or the docs; no UI;
+  Vercel copies identical after sync_vercel.py.
+- **Real scans** (order 26913695, 52 fronts, precropped=True; scratchpad res5.json, not committed): 12 ok / 40
+  needs_manual. 11 change vs 5f603ac (res4): lr -> manual: 618, 622, 640, 657, 658; tb -> manual: 618, 632, 638, 639,
+  649, 651, 652. 622 is L/R (right 7.9 / left 7.8 mm, both over 6), not T/B (5.8 / 4.0 mm still 61/39).
+- **QA:** test_borders 15/15, test_api 17 ok + 1 skip (on main already), test_condition 19, test_centering (report
+  run, exit 0), test_screen 6, test_calibrate 1, test_surface 10; pnpm install --frozen-lockfile ok; pnpm build 5/5;
+  dashboard tests 117/117; shared tests 125/125.
+- **Status:** ready for prod. Not merged; waiting for Karim's "ship".

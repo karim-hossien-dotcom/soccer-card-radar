@@ -167,7 +167,9 @@ def test_precropped_uneven_strip_full_art_needs_manual():
     with precropped=True nothing qualifies -> needs_manual, no split."""
     img, true = scan(card(27, borderless=True, strip_mm=UNEVEN))
     bug, _ = bd.measure(img, rough(true))
-    assert bug["status"] == "ok" and all(bug["inner"][s]["depth_mm"] < 1.3 for s in bd.SIDES), bug["inner"]
+    # strip read as the border on every side, and a false L/R split (1.2 vs 0.7 mm); T/B (1.0 vs 0.4 mm, >2x) is caught by
+    # the design-line ratio rule since the G10 review, so the bug shows on L/R only
+    assert all(bug["inner"][s]["depth_mm"] < 1.3 for s in bd.SIDES) and "lr" in bug["centering"], (bug["inner"], bug["centering"])
     out, _ = bd.measure(img, rough(true), precropped=True)
     assert out["status"] == "needs_manual" and out["centering"] == {}, out
     assert all(out["inner"][s] is None for s in bd.SIDES), out["inner"]
@@ -200,6 +202,30 @@ def test_name_bar_design_line_needs_manual():
     assert out["status"] == "needs_manual" and out["manual_axes"] == ["tb"], out
     assert "tb" not in out["centering"] and abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.005, out["centering"]
     assert out["design_line"]["axis"] == "tb" and any("design line" in w for w in out["why"])
+
+
+def test_left_right_design_line_needs_manual():
+    """G10 review (coordinator default): left 3.5 vs right 10.4 mm (a design frame, as on real scan 640) is a design line on
+    L/R: lr set by hand, no 75/25; T/B still measured."""
+    img, true = photo(card(24, left=3.5, right=10.4), 24)
+    out, _ = bd.measure(img, rough(true))
+    assert out["status"] == "needs_manual" and out["manual_axes"] == ["lr"], out
+    assert "lr" not in out["centering"] and abs(out["centering"]["tb"]["mid"] - 4 / 7) < 0.005, out["centering"]
+    assert out["design_lines"] == [out["design_line"]] and out["design_line"]["axis"] == "lr", out["design_lines"]
+    assert any(w.startswith("left/right design line") for w in out["why"]), out["why"]
+
+
+def test_ratio_design_line_needs_manual():
+    """G10 review (coordinator default): top 1.6 vs bottom 4.0 mm (real scan 649), neither deeper than 6 mm but 2.5x apart,
+    is a design line: no 71/29 split. Under 2x is not (1.9 vs 3.6 mm still gives a split)."""
+    img, true = photo(card(24, top=1.6, bottom=4.0), 24)
+    out, _ = bd.measure(img, rough(true))
+    assert abs(out["inner"]["top"]["depth_mm"] - 1.6) < 0.05 and abs(out["inner"]["bottom"]["depth_mm"] - 4.0) < 0.05, out["inner"]
+    assert out["status"] == "needs_manual" and out["manual_axes"] == ["tb"] and "tb" not in out["centering"], out
+    assert "lr" in out["centering"]
+    img, true = photo(card(24, top=1.9, bottom=3.6), 24)
+    out, _ = bd.measure(img, rough(true))
+    assert out["status"] == "ok" and out["manual_axes"] == [] and abs(out["centering"]["tb"]["mid"] - 3.6 / 5.5) < 0.005, out
 
 
 if __name__ == "__main__":

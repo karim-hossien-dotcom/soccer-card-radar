@@ -13,9 +13,9 @@ Refuses (status "refused") below 12 px/mm (flags results under 20) or when an ou
 "needs_manual" when the inner border of any side cannot be found (borderless designs, full-art cards).
 G10: precropped=True is for scans cropped at the cut edge (PSA order scans, card in a penny sleeve): their thin light
 strip at the edge (0.4-1.2 mm, uneven because the crop is off-centre) is not a printed border, so inner lines nearer than
-PRECROP_MIN_MM to the cut edge are ignored on every side. Phone photos (default) are unchanged. A top/bottom pair more
-than 2.5 mm apart with one side deeper than 6 mm is a design line (name bar): that axis is left out of "centering" and
-listed in "manual_axes".
+PRECROP_MIN_MM to the cut edge are ignored on every side. Phone photos (default) are unchanged. On either axis, a pair
+with one side deeper than 6 mm, or one side more than twice the other, is a design line (name bar, frame), not the printed
+border: that axis is left out of "centering" and listed in "manual_axes" (coordinator default, Nov 12 2026).
 All distances are in mm on a 63.5 x 88.9 mm card.
 """
 import cv2
@@ -32,9 +32,11 @@ STEP_DE = 9.0
 MAX_ASPECT_ERR = 0.06    # outline width/height vs a real card (63.5/88.9); a PSA slab is ~0.60, a card 0.714           # minimum colour step (delta E) for an inner border candidate
 MIN_LINE_MM = 0.4       # inner lines nearer the cut edge than this are ignored (phone photos)
 PRECROP_MIN_MM = 1.3    # G10: same, on scans cropped at the cut edge (the edge strip reaches ~1.2 mm on real PSA scans)
-# G10: top/bottom lines this far apart, one deeper than DESIGN_LINE_MM, are a design line (name bar), not the border
-DESIGN_LINE_DIFF_MM = 2.5
+# G10 (coordinator default, Nov 12 2026): on either axis, a line deeper than DESIGN_LINE_MM, or opposite depths more than
+# DESIGN_LINE_RATIO apart (larger / smaller), is a design line (name bar, frame), not the printed border
 DESIGN_LINE_MM = 6.0
+DESIGN_LINE_RATIO = 2.0
+AXES = (("lr", "left", "right"), ("tb", "top", "bottom"))
 SIDES = ("top", "right", "bottom", "left")
 
 
@@ -258,12 +260,13 @@ def _pair(a, b):
     return best
 
 
-def design_line(top, bottom):
-    """G10: True when the top/bottom pair is a design line (e.g. a name bar on Merlin/Chrome), not a printed border."""
-    if not top or not bottom:
+def design_line(a, b):
+    """G10: True when an opposite pair (top/bottom or left/right) is a design line (e.g. a name bar on Merlin/Chrome), not a
+    printed border: either side deeper than DESIGN_LINE_MM, or the larger depth more than DESIGN_LINE_RATIO x the smaller."""
+    if not a or not b:
         return False
-    a, b = top["depth_mm"], bottom["depth_mm"]
-    return abs(a - b) > DESIGN_LINE_DIFF_MM and max(a, b) > DESIGN_LINE_MM
+    x, y = a["depth_mm"], b["depth_mm"]
+    return max(x, y) > DESIGN_LINE_MM or max(x, y) > DESIGN_LINE_RATIO * min(x, y)
 
 
 def split(a, b):
@@ -340,13 +343,19 @@ def measure(img, quad, precropped=False):
         out["alternates"][s] = [x["depth_mm"] for x in cands[s] if c is None or x is not c]
     missing = [s for s in SIDES if chosen[s] is None]
     out["centering"] = centering(chosen)
-    out["manual_axes"] = []
-    if design_line(t, b):  # G10: no 70/30 from a name bar
-        out["centering"].pop("tb", None)
-        out["manual_axes"].append("tb")
-        out["design_line"] = {"axis": "tb", "top_mm": t["depth_mm"], "bottom_mm": b["depth_mm"]}
-        out["why"].append(f"top/bottom design line: top {t['depth_mm']:.1f} mm vs bottom {b['depth_mm']:.1f} mm looks like a name bar, "
-                          "not the printed border: set top/bottom by hand")
+    out["manual_axes"], out["design_lines"] = [], []
+    for axis, s1, s2 in AXES:  # G10: no split from a name bar or design frame, on either axis
+        A, B = chosen[s1], chosen[s2]
+        if not design_line(A, B):
+            continue
+        out["centering"].pop(axis, None)
+        out["manual_axes"].append(axis)
+        out["design_lines"].append({"axis": axis, s1 + "_mm": A["depth_mm"], s2 + "_mm": B["depth_mm"]})
+        out["why"].append(f"{s1}/{s2} design line: {s1} {A['depth_mm']:.1f} mm vs {s2} {B['depth_mm']:.1f} mm looks like a name bar "
+                          f"or design frame (deeper than {DESIGN_LINE_MM:.0f} mm, or more than {DESIGN_LINE_RATIO:.0f}x the other side), "
+                          f"not the printed border: set {s1}/{s2} by hand")
+    if out["design_lines"]:
+        out["design_line"] = out["design_lines"][0]  # first flagged axis; design_lines has all of them
     if missing:
         out["status"] = "needs_manual"
         out["why"].append("printed border not found on " + ", ".join(missing) + " (borderless design, or the border blends into the art): set it by hand")
