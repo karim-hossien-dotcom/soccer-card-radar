@@ -49,3 +49,29 @@ eBay sold shows the list price on best-offer sales; Card Ladder and PSA show the
 | Mbappe #41 Refractor | PSA 10 | PASS WITH NOTES | n=10, median $2,733 | Falling: newest sale $2,139. Two Alt rows (Sep 4, Sep 10) are Card Ladder only; without them n=8, median $2,858 |
 
 Not tested: Karim's own sales (cards not in the Vault). Still open: the other 16 rows of the table above.
+
+## Wider screen (Nov 12 2026): Prizm World Cup parallels, first-year Chrome, case hits; PSA 9/10; ask up to $3,000
+Veriswap: 25 searches, first 25 results each, 173 listings kept. Card Ladder sales history for 16 card/grades (first 8-9 rows,
+titles only). PROVISIONAL: not cross-checked, no verifier, nothing written to CardComp. Window Aug 14 - Nov 12 2026.
+
+| Card | Grade | Lowest ask | 90-day sales | Median | Ratio |
+|---|---|---|---|---|---|
+| Mbappe 2021 Donruss Road to Qatar Kaboom #4 | PSA 9 | 1,100 (cert 86764860) | Oct 19 $1,925; Sep 20 $1,924.99; Aug 16 $1,920; Aug 15 $1,708 | 1,922 | 0.57 |
+| Ronaldo 2020 Obsidian Black Color Blast #5 | PSA 10 | 2,550 (cert 172913899) | Oct 17 $2,903; Aug 19 $3,500 | 3,202 | 0.80 |
+| Haaland 2019 Chrome UCL Refractor #74 | PSA 10 | 1,100 | Sep 9 $1,399; Sep 4 $1,025; Aug 31 $1,350 (Speckle rows rejected) | 1,350 | 0.81 |
+| Messi 2022 Prizm World Cup Green Wave #7 | PSA 10 | 600 (cert 74144158) | Nov 5 $685; Oct 29 $695; Oct 25 $780; Oct 21 $700, $779; Oct 2 $600; Sep 7 $517 | 695 | 0.86 |
+| Haaland 2019 Chrome Sapphire #74 | PSA 10 | 685 | Nov 11 $705.10; Nov 10 $725; Nov 7 $650; Nov 6 $684.90; Oct 31 $689.79; Oct 25 $630; Oct 24 $705, $681 | 687 | 1.00 |
+| Mbappe 2024 Donruss Kaboom #1 | PSA 9 | 1,500 | Oct 14 $1,457.34; Oct 12 $1,499; Oct 11 $1,320; Oct 8 $1,402.80; Sep 27 $1,500; Sep 12 $1,825 | 1,478 | 1.01 |
+| Ronaldo 2018 Prizm World Cup Red/Blue Wave #154 | PSA 10 | 400 | Nov 8 $475; Oct 4 $390; Aug 31 $355; Aug 27 $342 | 373 | 1.07 |
+| Haaland 2023 Donruss Kaboom #14 | PSA 9 | 1,999 | Nov 4 $1,850; Sep 14 $1,999.99; Aug 16 $1,069.28 | 1,850 | 1.08 |
+| Mbappe 2018 Prizm World Cup Silver #80 | PSA 10 | 2,000 | Oct 27 $1,700; Oct 25 $1,600; Oct 8 $1,586; Oct 6 $1,925; Sep 27 $2,326; Sep 16 $1,850; Sep 15 $1,900; Sep 12 $1,900; Aug 23 $1,680 | 1,850 | 1.08 |
+| Messi 2018 Prizm World Cup Mojo #1 | PSA 10 | 850 | Sep 11 $755.45; Aug 24 $719 | 737 | 1.15 |
+| Messi 2018 Prizm World Cup Silver #1 | PSA 10 | 1,400 | Sep 12 $532.80; Sep 6 $1,290; Sep 1 $1,249.99; Aug 31 $1,225; Aug 22 $1,099.99; Aug 15 $1,100 | 1,162 | 1.20 |
+| Mbappe 2018 Prizm World Cup Red/Blue Wave #80 | PSA 10 | 1,250 | Nov 8 $960; Oct 30 $975; Oct 29 $896.40, $940; Oct 27 $960, $942; Oct 25 $885; Oct 11 $1,000 | 950 | 1.32 |
+| Messi 2020 Obsidian Black Color Blast #1 | PSA 9 | 2,350 | Oct 25 $1,680 | 1,680 | 1.40 |
+| Haaland 2023 Obsidian Black Color Blast #11 | PSA 9 | 975 | Oct 24 $555; Sep 29 $635 | 595 | 1.64 |
+| Haaland 2021 Obsidian Black Color Blast #2 | PSA 9 | 700 | none (newest Nov 9 2025 $212) | - | - |
+| Mbappe 2020 Obsidian Black Color Blast | PSA 9 | 1,100 | none (newest Dec 21 2025 $899.99) | - | - |
+
+Not priced: about 45 other card/grades from the screen (2014 Prizm World Cup inserts, 2022 and 2026 World Cup parallels,
+other Color Blast and Kaboom years).
