@@ -95,3 +95,24 @@ card/grades, titles only, first 8 rows. PROVISIONAL. Veriswap's own "Fair priced
 
 No usable result: Haaland 2021 Chrome Gold /50 PSA 10 ($600), Ronaldo 2016 Select Silver PSA 10 ($600; listing does not name
 the tier), Messi 2023 Chrome MLS Let's Go PSA 10 ($650).
+
+## Asks of $900-$1,100 that comp lower (Nov 12 2026)
+Veriswap price filter $900-$1,100, five players, PSA 9/10: 101 listings. Card Ladder for 8 more card/grades, titles only.
+PROVISIONAL.
+
+| Card | Grade | Ask | 90-day sales | Median | Ask / median |
+|---|---|---|---|---|---|
+| Mbappe 2018 Prizm World Cup New Era Silver #NE-9 | PSA 10 | 1,000 | Oct 15 $480; Aug 23 $620 | 550 | 1.82 |
+| Haaland 2023 Obsidian Black Color Blast #11 | PSA 9 | 975 | Oct 24 $555; Sep 29 $635 | 595 | 1.64 |
+| Haaland 2019 Chrome Sapphire #74 | PSA 10 | 1,000 (4 listings) | 8 sales $630-$725 | 687 | 1.46 |
+| Messi 2025 Chrome MLS Helix #HX-1 | PSA 9 | 1,000 | Nov 8 $560.72; Oct 28 $775; Oct 13 $720; Sep 5 $700 | 710 | 1.41 |
+| Messi 2022 Prizm World Cup Green Wave #7 | PSA 10 | 900 | 7 sales $517-$780 | 695 | 1.29 |
+| Haaland 2019 Chrome Bundesliga #72 | PSA 10 | 900-1,000 | Oct 31 $790; Oct 19 $780; Oct 13 $780; Oct 5 $820; Oct 4 $742.93; Oct 3 $800; Oct 1 $799; Sep 29 $800 | 795 | 1.13-1.26 |
+| Mbappe 2018 Prizm World Cup Black/Gold Wave #80 | PSA 9 | 900 | Oct 8 $900; Oct 4 $930 | 915 | 0.98 |
+| Mbappe 2024 Obsidian White Night #5 | PSA 10 | 900 | Aug 15 $886 | 886 | 1.02 |
+
+No recent market: Ronaldo 2016 Prizm Euro Silver PSA 10 (asks $900 and $1,100; last sale Jan 2025 $157.50), Haaland 2022
+Obsidian Color Blast PSA 9 (ask $1,000; last sale Jul 5 $810). Haaland 2023 Select Zebra PSA 10 (asks $800 and $1,000):
+variant unclear; newest Zebra sale Nov 11 $331.55 (#242).
+Cheaper copies of the same card listed on Veriswap: Helix Messi PSA 9 $750; Haaland Sapphire PSA 10 $685-$800 (listing pages
+showed $750 on Nov 12 evening); Messi Green Wave PSA 10 $600; Haaland Bundesliga PSA 10 $800.
