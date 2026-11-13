@@ -75,3 +75,23 @@ titles only). PROVISIONAL: not cross-checked, no verifier, nothing written to Ca
 
 Not priced: about 45 other card/grades from the screen (2014 Prizm World Cup inserts, 2022 and 2026 World Cup parallels,
 other Color Blast and Kaboom years).
+
+## $600-$800 band (Nov 12 2026): five players, PSA 9/10, any set
+Veriswap price filter $600-$800: 127 PSA 9/10 listings seen (Messi PSA 10 had 46 results, 20 shown). Card Ladder for 9 more
+card/grades, titles only, first 8 rows. PROVISIONAL. Veriswap's own "Fair priced only" filter returned 8 listings, including
+2014 Prizm World Cup Messi base PSA 10 at $600 (Vault target comp $440-460), so it was not used as a signal.
+
+| Card | Grade | Ask | 90-day sales | Median | Ratio |
+|---|---|---|---|---|---|
+| Messi 2022 Prizm World Cup Green Wave #7 | PSA 10 | 600 | 7 sales $517-$780 (see above) | 695 | 0.86 |
+| Messi 2020 Finest Blue Refractor /150 #100 | PSA 10 | 800 | Nov 6 $850 (prior May 26 $295) | 850 | 0.94 |
+| Messi 2018 Prizm World Cup Red/Blue Wave #1 | PSA 10 | 750 | Nov 5 $800; Oct 27 $760; Oct 11 $800; Sep 27 $475 | 780 | 0.96 |
+| Mbappe 2023 Obsidian White Night #5 | PSA 10 | 650 | Sep 5 $619; Aug 29 $714 | 667 | 0.97 |
+| Haaland 2019 Chrome Sapphire #74 | PSA 10 | 685 | 8 sales $630-$725 (see above) | 687 | 1.00 |
+| Messi 2024 Optic Plum Blossom #80 | PSA 10 | 750 | Oct 14 $700 | 700 | 1.07 |
+| Messi 2022 Prizm World Cup Silver #7 | PSA 9 | 350 | Oct 20 $435; Oct 6 $445; Sep 26 $290; Sep 20 $282.77; Sep 9 $202.50; Aug 22 $325 | 308 | 1.14 |
+| Ronaldo 2022 Stadium Club Chrome Gold /50 | PSA 10 | 665 | Aug 29 $409.99 | 410 | 1.62 |
+| Mbappe 2021 Chrome Gold Refractor /50 | PSA 10 | 700 | none (Jul 16 $600) | - | - |
+
+No usable result: Haaland 2021 Chrome Gold /50 PSA 10 ($600), Ronaldo 2016 Select Silver PSA 10 ($600; listing does not name
+the tier), Messi 2023 Chrome MLS Let's Go PSA 10 ($650).
