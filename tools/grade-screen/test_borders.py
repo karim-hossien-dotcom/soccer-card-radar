@@ -8,7 +8,7 @@ S = 2  # supersampling
 
 def card(ppm, left=2.5, right=3.5, top=3.0, bottom=4.0, tilt_mm=0.0, frame_line=True, borderless=False, strip_mm=0.0):
     """Flat card at ppm*S px/mm: white border, coloured design, an inner thin frame line 1 mm inside the design edge.
-    strip_mm: G10 scan-edge strip (light grey, all four sides) as on a pre-cropped PSA order scan."""
+    strip_mm: G10 scan-edge strip (light grey) as on a pre-cropped PSA order scan: one depth, or (top, right, bottom, left)."""
     R = ppm * S
     W, H = int(round(bd.CARD_W * R)), int(round(bd.CARD_H * R))
     img = np.full((H, W, 3), (235, 238, 240), np.uint8)
@@ -26,8 +26,8 @@ def card(ppm, left=2.5, right=3.5, top=3.0, bottom=4.0, tilt_mm=0.0, frame_line=
             c = (int(rng.uniform(left + 3, bd.CARD_W - right - 3) * R), int(rng.uniform(top + 3, bd.CARD_H - bottom - 3) * R))
             cv2.circle(img, c, int(rng.uniform(1, 5) * R), tuple(int(v) for v in rng.integers(0, 255, 3)), -1)
     if strip_mm:
-        k = int(round(strip_mm * R))
-        for sl in (np.s_[:k, :], np.s_[-k:, :], np.s_[:, :k], np.s_[:, -k:]):
+        t, r, b, l = (int(round(d * R)) for d in (strip_mm if np.ndim(strip_mm) else [strip_mm] * 4))
+        for sl in (np.s_[:t, :], np.s_[H - b:, :], np.s_[:, :l], np.s_[:, W - r:]):
             img[sl] = (200, 203, 205)
     return img
 
@@ -148,24 +148,39 @@ def scan(flat, ppm=27):
     return photo(flat, ppm, angle=0.3, persp=0.0, noise=1.5, size=(2000, 2700))
 
 
-def test_scan_edge_strip_skipped_border_found():
-    """G10: strip at 0.8 mm on all four sides is dropped; the printed border inward is measured."""
-    img, true = scan(card(27, strip_mm=0.8))
-    out, _ = bd.measure(img, rough(true))
-    assert out["status"] == "ok", out
-    assert abs(out["edge_strip_mm"] - 0.8) < 0.1, out
+UNEVEN = (1.0, 0.7, 0.4, 1.2)  # G10: real PSA scans: strip 0.4-1.2 mm, different on each side (off-centre crop)
+
+
+def test_precropped_uneven_strip_skipped_border_found():
+    """G10: pre-cropped scan with an uneven edge strip: the printed border inward is measured, not the strip."""
+    img, true = scan(card(27, strip_mm=UNEVEN))
+    out, _ = bd.measure(img, rough(true), precropped=True)
+    assert out["status"] == "ok" and out["precropped"], out
     want = {"left": 2.5, "right": 3.5, "top": 3.0, "bottom": 4.0}
     for s in bd.SIDES:
         assert abs(out["inner"][s]["depth_mm"] - want[s]) < 0.05, (s, out["inner"], out["alternates"])
-    assert abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.005
+    assert abs(out["centering"]["lr"]["mid"] - 3.5 / 6) < 0.005 and abs(out["centering"]["tb"]["mid"] - 4 / 7) < 0.005
 
 
-def test_scan_edge_strip_full_art_needs_manual():
-    """G10: full-art card on a pre-cropped scan: the strip is not a border; nothing else qualifies -> needs_manual."""
-    img, true = scan(card(27, borderless=True, strip_mm=0.7))
-    out, _ = bd.measure(img, rough(true))
+def test_precropped_uneven_strip_full_art_needs_manual():
+    """G10: full-art card, uneven strip: without the mode the strip is read as a border (the bug, e.g. 65/35);
+    with precropped=True nothing qualifies -> needs_manual, no split."""
+    img, true = scan(card(27, borderless=True, strip_mm=UNEVEN))
+    bug, _ = bd.measure(img, rough(true))
+    assert bug["status"] == "ok" and all(bug["inner"][s]["depth_mm"] < 1.3 for s in bd.SIDES), bug["inner"]
+    out, _ = bd.measure(img, rough(true), precropped=True)
     assert out["status"] == "needs_manual" and out["centering"] == {}, out
-    assert "edge_strip_mm" in out and all(out["inner"][s] is None for s in bd.SIDES), out["inner"]
+    assert all(out["inner"][s] is None for s in bd.SIDES), out["inner"]
+
+
+def test_precropped_through_condition():
+    """G10: condition.assess_with_centering(..., precropped=True) passes the mode to borders.measure."""
+    import condition as cond
+    img, true = scan(card(27, borderless=True, strip_mm=UNEVEN))
+    ok, jpg = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, 95])
+    rep, cent = cond.assess_with_centering(jpg.tobytes(), holder_guard=False, precropped=True)
+    assert rep["front"]["borders"]["status"] == "needs_manual" and cent == {}, (rep["front"]["borders"]["why"], cent)
+    assert cond.centering_only(jpg.tobytes(), precropped=True)["status"] == "needs_manual"
 
 
 def test_real_thin_border_kept():
@@ -173,7 +188,7 @@ def test_real_thin_border_kept():
     want = {"left": 1.0, "right": 1.6, "top": 0.9, "bottom": 1.5}
     img, true = photo(card(24, **want), 24)
     out, _ = bd.measure(img, rough(true))
-    assert out["status"] == "ok" and "edge_strip_mm" not in out, out
+    assert out["status"] == "ok" and not out["precropped"], out
     for s in bd.SIDES:
         assert abs(out["inner"][s]["depth_mm"] - want[s]) < 0.05, (s, out["inner"])
 

@@ -1,7 +1,10 @@
 """G9c calibration harness: run the condition screen over Karim's own PSA cert-page scans and print, per check, how the
 cap it would set agrees with the grade PSA gave. Read-only: prints a table, writes nothing, switches nothing on.
 
-    python3 calibrate.py <scans folder> <grades csv>
+    python3 calibrate.py <scans folder> <grades csv> [--precropped]
+
+--precropped: scans cropped at the card's cut edge (PSA order scans), not slab cert-page scans: the edge strip is not
+taken as the printed border (borders.py, G10).
 
 grades csv: header `cert,psa_grade`, one row per slab. Scans: <cert>.jpg / .jpeg / .png / .webp in the folder (front), and
 optionally <cert>-back.<ext>. Keep them in tools/grade-screen/calibration/ (git-ignored: the repo is public). See
@@ -33,10 +36,10 @@ def hint(path):
     return (q / np.float32([img.shape[1], img.shape[0]])).tolist()
 
 
-def predict(front, back=None):
+def predict(front, back=None, precropped=False):
     """{check: PSA cap it would set (None = no cap), ...} or None when the front could not be measured."""
-    hints = {"front": hint(front), "back": hint(back) if back else None}
-    rep, cent = cond.assess_with_centering(front, back, hints=hints, holder_guard=False)
+    hints = {} if precropped else {"front": hint(front), "back": hint(back) if back else None}  # no slab around a pre-cropped scan
+    rep, cent = cond.assess_with_centering(front, back, hints=hints, holder_guard=False, precropped=precropped)
     f = rep["front"]
     if not f or f.get("outline_error"):
         return None
@@ -46,7 +49,7 @@ def predict(front, back=None):
     return out
 
 
-def run(folder, grades_csv):
+def run(folder, grades_csv, precropped=False):
     """(per-card rows, per-check summary rows)."""
     cards = []
     with open(grades_csv, newline="") as fh:
@@ -56,7 +59,7 @@ def run(folder, grades_csv):
             if not front or not grade:
                 cards.append({"cert": cert, "psa": float(grade) if grade else None, "pred": None, "note": "no scan" if not front else "no grade"})
                 continue
-            pred = predict(front, find(folder, cert + "-back"))
+            pred = predict(front, find(folder, cert + "-back"), precropped)
             cards.append({"cert": cert, "psa": float(grade), "pred": pred, "note": None if pred else "front not measured"})
     summary = []
     for check in CHECKS:
@@ -82,6 +85,7 @@ def table(cards, summary):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
+    args = [a for a in sys.argv[1:] if a != "--precropped"]
+    if len(args) != 2:
         sys.exit(__doc__)
-    print(table(*run(sys.argv[1], sys.argv[2])))
+    print(table(*run(args[0], args[1], precropped="--precropped" in sys.argv[1:])))

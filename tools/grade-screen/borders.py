@@ -11,9 +11,11 @@
 
 Refuses (status "refused") below 12 px/mm (flags results under 20) or when an outer edge is not a clean straight line; says
 "needs_manual" when the inner border of any side cannot be found (borderless designs, full-art cards).
-G10: a thin light strip at the cut edge on all four sides at the same depth (pre-cropped scans) is dropped, not taken
-as the border; a top/bottom pair more than 2.5 mm apart with one side deeper than 6 mm is a design line (name bar):
-that axis is left out of "centering" and listed in "manual_axes".
+G10: precropped=True is for scans cropped at the cut edge (PSA order scans, card in a penny sleeve): their thin light
+strip at the edge (0.4-1.2 mm, uneven because the crop is off-centre) is not a printed border, so inner lines nearer than
+PRECROP_MIN_MM to the cut edge are ignored on every side. Phone photos (default) are unchanged. A top/bottom pair more
+than 2.5 mm apart with one side deeper than 6 mm is a design line (name bar): that axis is left out of "centering" and
+listed in "manual_axes".
 All distances are in mm on a 63.5 x 88.9 mm card.
 """
 import cv2
@@ -28,12 +30,8 @@ MAX_RMS_PX = 0.5        # outer edge line fit, inliers only
 MAX_TILT = 0.02         # inner line slope vs the cut edge (mm per mm): steeper is not a border line
 STEP_DE = 9.0
 MAX_ASPECT_ERR = 0.06    # outline width/height vs a real card (63.5/88.9); a PSA slab is ~0.60, a card 0.714           # minimum colour step (delta E) for an inner border candidate
-# G10: pre-cropped scans (PSA order scans, card in a penny sleeve) have a thin light strip at the cut edge on all four
-# sides at the same depth. It is not a printed border.
-STRIP_MAX_MM = 1.2      # strip line lies within this of the cut edge
-STRIP_SPREAD_MM = 0.3   # max - min strip depth over the four sides
-STRIP_MIN_L = 70.0      # outer side of the strip is light ...
-STRIP_MAX_CHROMA = 15.0  # ... and low-chroma (Lab)
+MIN_LINE_MM = 0.4       # inner lines nearer the cut edge than this are ignored (phone photos)
+PRECROP_MIN_MM = 1.3    # G10: same, on scans cropped at the cut edge (the edge strip reaches ~1.2 mm on real PSA scans)
 # G10: top/bottom lines this far apart, one deeper than DESIGN_LINE_MM, are a design line (name bar), not the border
 DESIGN_LINE_DIFF_MM = 2.5
 DESIGN_LINE_MM = 6.0
@@ -183,11 +181,11 @@ def _steps(prof, R, w_mm=0.25):
     return s
 
 
-def inner_lines(lab, side, R, M):
-    """Candidate printed-border lines for one side, nearest the cut edge first."""
+def inner_lines(lab, side, R, M, min_mm=MIN_LINE_MM):
+    """Candidate printed-border lines for one side, nearest the cut edge first (none nearer than min_mm)."""
     pos, dep, prof = _side_profiles(lab, side, R, M)
     s = _steps(prof, R)
-    lo = int(0.4 * R)
+    lo = int(min_mm * R)
     peaks = []  # (profile index, depth mm, strength)
     for r in range(len(pos)):
         sr = s[r]
@@ -260,24 +258,6 @@ def _pair(a, b):
     return best
 
 
-def edge_strip(cands):
-    """G10: depth (mm) of a scan-edge strip, or None. A strip is a candidate line within STRIP_MAX_MM of the cut edge on
-    all four sides, at near-identical depth, light and low-chroma on the outer side."""
-    near = {}
-    for s in SIDES:
-        c = next((x for x in cands.get(s) or [] if x["depth_mm"] <= STRIP_MAX_MM), None)
-        if c is None:
-            return None
-        L, a, b = c["colors"][0]
-        if L < STRIP_MIN_L or np.hypot(a, b) > STRIP_MAX_CHROMA:
-            return None
-        near[s] = c
-    d = [c["depth_mm"] for c in near.values()]
-    if max(d) - min(d) > STRIP_SPREAD_MM:
-        return None
-    return round(float(np.mean(d)), 3), near
-
-
 def design_line(top, bottom):
     """G10: True when the top/bottom pair is a design line (e.g. a name bar on Merlin/Chrome), not a printed border."""
     if not top or not bottom:
@@ -316,8 +296,9 @@ def outline_shape_error(quad):
     return None
 
 
-def measure(img, quad):
-    """Everything the confirm screen needs. img: full-resolution BGR photo; quad: rough corners in image px."""
+def measure(img, quad, precropped=False):
+    """Everything the confirm screen needs. img: full-resolution BGR photo; quad: rough corners in image px.
+    precropped: scan cropped at the cut edge (G10): ignore inner lines nearer than PRECROP_MIN_MM on every side."""
     q = order(np.float32(quad))
     sides_px = [np.linalg.norm(q[(k + 1) % 4] - q[k]) for k in range(4)]
     ppm = float((sides_px[0] + sides_px[2]) / 2 / CARD_W + (sides_px[1] + sides_px[3]) / 2 / CARD_H) / 2
@@ -348,12 +329,8 @@ def measure(img, quad):
     flat, M = straighten(img, corners, R)
     out["straight"] = {"px_per_mm": R, "margin_px": M}
     lab = _lab(cv2.GaussianBlur(flat, (0, 0), 0.6))
-    cands = {s: inner_lines(lab, s, R, M) for s in SIDES}
-    strip = edge_strip(cands)
-    if strip:  # G10: drop the scan-edge strip so the next line inward is the border
-        out["edge_strip_mm"] = strip[0]
-        cands = {s: [x for x in cands[s] if x is not strip[1][s]] for s in SIDES}
-        out["why"].append(f"scan-edge strip at {strip[0]:.1f} mm on all four sides ignored (pre-cropped scan)")
+    out["precropped"] = bool(precropped)
+    cands = {s: inner_lines(lab, s, R, M, PRECROP_MIN_MM if precropped else MIN_LINE_MM) for s in SIDES}
     l, r = _pair(cands["left"], cands["right"])
     t, b = _pair(cands["top"], cands["bottom"])
     chosen = {"left": l, "right": r, "top": t, "bottom": b}

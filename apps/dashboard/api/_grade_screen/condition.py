@@ -530,18 +530,20 @@ CANT_JUDGE = [
 ]
 
 
-def centering_only(path, hint=None):
-    """Borders and splits only (no image, no wear checks): the extra stills of the 3-shot repeatability check."""
+def centering_only(path, hint=None, precropped=False):
+    """Borders and splits only (no image, no wear checks): the extra stills of the 3-shot repeatability check.
+    precropped: scan cropped at the cut edge (borders.measure, G10)."""
     img, q, err = locate(path, hint)
     if q is None:
         return {"status": "refused", "why": [err], "centering": {}}
-    out, _ = bd.measure(img, q)
+    out, _ = bd.measure(img, q, precropped)
     return {k: out[k] for k in ("status", "why", "centering", "px_per_mm", "inner")}
 
 
-def side_report(path, hint=None, straight=None, holder_guard=True):
+def side_report(path, hint=None, straight=None, holder_guard=True, precropped=False):
     """One side's checks. straight: a dict that receives the card straightened by the border check (for the
-    confirm screen), keyed "img". holder_guard=False skips the sleeve/toploader detection (calibrate.py on slab scans)."""
+    confirm screen), keyed "img". holder_guard=False skips the sleeve/toploader detection (calibrate.py on slab scans).
+    precropped: scan cropped at the cut edge, e.g. PSA order scans (borders.measure, G10)."""
     img, q, err = locate(path, hint)
     if q is None:
         return None, err
@@ -549,7 +551,7 @@ def side_report(path, hint=None, straight=None, holder_guard=True):
     card, ppm = warp_with_margin(img, q), w / 63.0
     if ppm < 8:
         return None, f"photo too small ({ppm:.1f} px per mm; need 8+) to judge corners and edges"
-    borders, flat = bd.measure(img, q)
+    borders, flat = bd.measure(img, q, precropped)
     rep = {"file": path if isinstance(path, str) else None, "px_per_mm": round(ppm, 1), "borders": borders, "_card": card}
     shape = bd.outline_shape_error(q)
     sleeve, unsure = None, False
@@ -579,19 +581,20 @@ def assess(front, back=None, holder=False, hints=None):
     return assess_with_centering(front, back, holder, hints)[0]
 
 
-def assess_with_centering(front, back=None, holder=False, hints=None, straight=None, holder_guard=True):
+def assess_with_centering(front, back=None, holder=False, hints=None, straight=None, holder_guard=True, precropped=False):
     """assess(), plus the unrounded centering splits (worse side, 0.5-1) keyed front_lr / front_tb / back_lr / back_tb,
     measured from the printed border lines (borders.py) at the worst point along each side.
     straight: optional dict that receives {"front": {"img"}, "back": {"img"}} straightened cards.
     hints: {"front": corners, "back": corners} from the phone scanner (fractions of the photo).
     holder_guard: detect a sleeve/toploader from the photo (G9c); False only for calibrate.py on slab scans.
+    precropped: scans cropped at the cut edge (PSA order scans): the edge strip is not taken as the border (G10).
     A detected holder on either side takes the same path as holder=True."""
     hints = hints or {}
     straight = straight if straight is not None else {}
     straight.setdefault("front", {}); straight.setdefault("back", {})
     guard = holder_guard and not holder
-    f, ferr = side_report(front, hints.get("front"), straight["front"], guard)
-    b, berr = side_report(back, hints.get("back"), straight["back"], guard) if back else (None, "no back photo")
+    f, ferr = side_report(front, hints.get("front"), straight["front"], guard, precropped)
+    b, berr = side_report(back, hints.get("back"), straight["back"], guard, precropped) if back else (None, "no back photo")
     seen = [(n, r["holder"]) for n, r in (("front", f), ("back", b)) if r and r.get("holder")]
     holder = holder or bool(seen)
     if holder:

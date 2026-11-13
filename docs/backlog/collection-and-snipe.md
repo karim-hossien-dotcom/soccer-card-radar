@@ -309,13 +309,16 @@ G9c QA note (qa, 2026-11-03, feat/G9c at 99bc0a4 + this QA commit):
 
 ## G10 borders.py false border on pre-cropped scans (found Nov 12 2026, coordinator)
 Status: ready for review (approval relayed by the coordinator, Karim Nov 12 2026: "fix the bug"; ticket still read "proposed" on main)
-Change note (engineer, Nov 12 2026, feat/G10): borders.py `edge_strip` drops a candidate line that lies within 1.2 mm of the
-cut edge on all four sides, within 0.3 mm depth spread, light (L >= 70) and low-chroma (<= 15) on its outer side; the next
-line inward is used, else the side is needs_manual (result carries `edge_strip_mm`). `design_line`: top/bottom depths more
-than 2.5 mm apart with one deeper than 6 mm -> "tb" left out of `centering`, listed in `manual_axes`, `design_line` and a
-"why" line, status needs_manual. Tests in test_borders.py: strip + border, strip + full-art, real non-uniform ~1 mm border,
-name bar (the first three new cases fail on the old borders.py). Vercel copy synced. Not covered: a real, perfectly
-centred, light, uniform <= 1.2 mm border on all four sides is indistinguishable from the strip and is dropped.
+Change note (engineer, Nov 12 2026, feat/G10, redo after coordinator run on the real scans): the first cut (a four-side
+uniform-strip heuristic) did not fire on real PSA scans, whose strip is uneven (0.4-1.2 mm per side, off-centre crop); it is
+removed. Now an explicit mode: `precropped=True` on borders.measure, condition.side_report / assess_with_centering /
+centering_only, and `calibrate.py --precropped`, ignores inner-line candidates within 1.3 mm of the cut edge on every side;
+default (phone photos) unchanged (0.4 mm). Name-bar rule kept: top/bottom depths more than 2.5 mm apart with one deeper than
+6 mm -> "tb" left out of `centering`, listed in `manual_axes` + `design_line` + a "why" line, status needs_manual.
+Tests (test_borders.py): uneven strip (1.0/0.7/0.4/1.2 mm) + border, uneven strip + full-art (default mode reproduces the bug,
+precropped gives needs_manual), the mode through condition.py, real non-uniform ~1 mm phone border, name bar. Real scans
+(order 26913695, 52 fronts, precropped=True): 46/52 identical to the coordinator's 1.3 mm workaround run (res2); the 6
+differences are the name-bar rule turning a top/bottom split into needs_manual (621, 623, 624, 631, 640, 641).
 Running condition.py on PSA's order scans of order 26913695 (fronts, ~27 px/mm, cropped at the cut edge, padded) returned "ok" with
 a ~0.7-0.9 mm "printed border" on all four sides of almost every card, including full-art Select, Chrome and die-cut cards that
 have no printed border. The tool locked onto the thin light strip at the scan's cut edge. Expected: needs_manual for borderless
