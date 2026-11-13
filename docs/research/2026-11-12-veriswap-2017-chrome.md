@@ -138,3 +138,26 @@ Card Ladder for 14 case hits, titles only, first 7 rows. PROVISIONAL. No ask cle
 | Karl 2025 Chrome Helix | PSA 9 | 600 | one sale found, $455, date not read | - | - |
 
 Not priced: the autograph and numbered listings (thin sales), and about 35 other case hits.
+
+## Haaland and Arda Guler only, $600-$1,000 (Nov 12 2026)
+Veriswap: "haaland" 89 listings in range (59 PSA 9/10), "guler" 19. Card Ladder, 15 searches, titles only. PROVISIONAL.
+90-day window Aug 14 - Nov 12.
+
+| Card | Grade | Ask | 90-day sales | Median | Ratio |
+|---|---|---|---|---|---|
+| Guler 2022-23 Merlin Chrome auto Mojo /99 (cert 85704581) | PSA 10 | 1,000 | Oct 11 $1,175 (92/99; same copy also listed Oct 3 $1,175, counted once); Oct 1 $1,150; Aug 21 $907 | 1,150 | 0.87 |
+| Guler 2022-23 Merlin Chrome auto Wave /150 (cert 82481187) | PSA 10 | 900 | Nov 11 $995.29 (base auto PSA 10: Oct 5 $1,049) | 995 | 0.90 |
+| Haaland 2022-23 Donruss FIFA Beautiful Game auto Blue (cert 84161626) | PSA 10 | 600 | no exact sale. Proxies: same card PSA 9 Sep 11 $500.59 (27/49); 2023-24 base auto PSA 10 Nov 10 $685.61, Sep 13 $726 | - | under by proxy |
+| Guler 2025-26 Prizm FIFA Manga #1 | PSA 9 | 1,000 | Nov 10 $766; Oct 18 $926; Sep 13 $960, $1,025 | 943 | 1.06 |
+| Haaland 2023-24 Select PL Stained Glass #26 | PSA 10 | 700 | Oct 18 $516; Aug 30 $596.87 | 556 | 1.26 |
+| Haaland 2023-24 Prizm PL Penmanship | PSA 10 | 790 | Oct 24 $435; Oct 1 $580; Aug 31 $598.50; Aug 23 $696.50; Aug 20 $550 | 580 | 1.36 |
+| Haaland 2022-23 Prizm PL Signatures | PSA 10 | 895 | Sep 21 $589 (Aug 7 $698 is outside the window) | 589 | 1.52 |
+| Haaland 2022-23 Select PL Stained Glass #5 | PSA 9 | 1,000 | Nov 3 $799; Oct 28 $700; Oct 26 $635; Aug 24 $670 | 685 | 1.46 |
+| Haaland 2023-24 Obsidian Color Blast #11 | PSA 9 | 975 | Oct 24 $555; Sep 29 $635 | 595 | 1.64 |
+| Guler 2023 Finest Road to Euro auto Neon Green Wave /99 | PSA 10 | 999 | Oct 9 $453; Oct 3 $488; Sep 27 $424; Sep 19 $432 | 443 | 2.26 |
+
+No 90-day exact sale: Guler 2023-24 Chrome auto Orange /25 PSA 10 ($600; Mar 25 $1,000) and PSA 9 ($600; May 26 $400);
+Guler Chrome auto Black /10 PSA 10 ($1,000; Mar 31 $649); Haaland 2021-22 Obsidian Color Blast #2 PSA 9 ($700, cert
+96598057; last Nov 2025 $212-$275); Haaland 2021-22 Chrome UCL Gold /50 PSA 10 ($600; Mar 22 $255); Haaland Finest
+The Man Orange /25 ($875; Aug 11 $875 PSA 10); Haaland Select Zebra, Prizm Signatures Silver, Guler Fuchsia Lava /75,
+Future Stars Gold, Black Starball auto, Orange Mojo.
