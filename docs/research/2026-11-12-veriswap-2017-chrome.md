@@ -161,3 +161,21 @@ Guler Chrome auto Black /10 PSA 10 ($1,000; Mar 31 $649); Haaland 2021-22 Obsidi
 96598057; last Nov 2025 $212-$275); Haaland 2021-22 Chrome UCL Gold /50 PSA 10 ($600; Mar 22 $255); Haaland Finest
 The Man Orange /25 ($875; Aug 11 $875 PSA 10); Haaland Select Zebra, Prizm Signatures Silver, Guler Fuchsia Lava /75,
 Future Stars Gold, Black Starball auto, Orange Mojo.
+
+## Mbappe only, $600-$1,000 (Nov 12 2026)
+Veriswap: "mbappe" 84 listings in range (56 PSA 9/10). Card Ladder, 8 searches, titles only. PROVISIONAL.
+No ask clearly under market.
+
+| Card | Grade | Ask | 90-day sales | Median | Ratio |
+|---|---|---|---|---|---|
+| 2023-24 Obsidian White Night #5 | PSA 10 | 650 | Sep 5 $619; Aug 29 $714 | 667 | 0.98 |
+| 2024-25 Obsidian White Night #5 | PSA 10 | 900 | Aug 15 $886 | 886 | 1.02 |
+| 2024-25 Donruss Beautiful Game auto Blue /99 (cert 120787284) | PSA 9 | 700 | no exact sale. Proxies: 2023-24 Blue /99 PSA 9 Oct 25 $659; 2024-25 base auto PSA 9 Sep 6 $672.14 | - | about 1.05 by proxy |
+| 2022-23 Chrome UCC Gold /50 #100 | PSA 10 | 1,000 | Sep 28 $1,000; Aug 30 $751 | 876 | 1.14 |
+| 2023-24 Donruss Beautiful Game auto | PSA 9 | 900 | Aug 21 $550 | 550 | 1.64 |
+
+No 90-day exact sale: 2023-24 Beautiful Game auto PSA 10 ($1,000; Jul $880-$1,650); 2022-23 Beautiful Game auto PSA 9
+($899); 2021 Chrome UCL Gold /50 PSA 10 ($700; Jul 16 $600); 2020 Obsidian Electric Etch Red Pulsar /28 PSA 10 ($750;
+Jul 6 $539) and Blue /30 ($675); 2022 Prizm WC Zebra Choice PSA 9 ($850, $925; Aug 2 $870), Elephant ($800; Jun 28
+$690), Tiger Stripe ($800; Dec 2025 $780), Blue Mojo /75 PSA 9 ($850; Jan 2025 $113.50); 2020 Sapphire Purple /25
+PSA 10 ($699; Jun 7 $276); 2023-24 Immaculate Shadowbox Signatures /99 PSA 9 ($750); Mystic Nights Gold /50 ($1,000).
