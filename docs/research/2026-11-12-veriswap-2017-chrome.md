@@ -116,3 +116,25 @@ Obsidian Color Blast PSA 9 (ask $1,000; last sale Jul 5 $810). Haaland 2023 Sele
 variant unclear; newest Zebra sale Nov 11 $331.55 (#242).
 Cheaper copies of the same card listed on Veriswap: Helix Messi PSA 9 $750; Haaland Sapphire PSA 10 $685-$800 (listing pages
 showed $750 on Nov 12 evening); Messi Green Wave PSA 10 $600; Haaland Bundesliga PSA 10 $800.
+
+## Any soccer player, $600-$1,000: autographs, numbered /99 or lower, case hits (Nov 12 2026)
+Veriswap filters: Soccer, price $600-$1,000; Autograph (130 listings, 51 PSA 9/10 seen), Numbered (38 PSA 9/10 at /99 or
+lower seen), and keyword searches kaboom, manga, color blast, white night, helix, stained glass (50 PSA 9/10 seen).
+Card Ladder for 14 case hits, titles only, first 7 rows. PROVISIONAL. No ask clearly under market.
+
+| Card | Grade | Ask | 90-day sales | Median | Ratio |
+|---|---|---|---|---|---|
+| Saka 2025 Donruss Road to '26 Kaboom #5 | PSA 10 | 900 | Oct 31 $900; Sep 27 $930; Sep 15 $1,103.63; Sep 13 $990 | 960 | 0.94 |
+| Palmer 2024 Prizm Premier League Manga #18 | PSA 9 | 650 | Oct 18 $620; Sep 26 $585; Sep 13 $660 | 620 | 1.05 |
+| Haaland 2025 Chrome Premier League Helix #2 | PSA 9 | 700 | Sep 30 $650 | 650 | 1.08 |
+| Ibrahimovic 2024 Donruss Kaboom #25 | PSA 9 | 600 | Oct 21 $535.74; Aug 24 $565 | 550 | 1.09 |
+| Son 2025 Prizm Manga #13 | PSA 10 | 900 | Nov 8 $690; Oct 23 $1,050; Oct 18 $690; Oct 15 $802.80; Oct 12 $812; Oct 4 $850; Oct 1 $875 | 812 | 1.11 |
+| Pedri 2023 Donruss Kaboom #12 | PSA 9 | 650 | Nov 1 $424.60, $421; Oct 5 $520; Oct 1 $427; Aug 15 $485 | 427 | 1.52 |
+| Joao Felix 2021 Road to Qatar Kaboom #16 | PSA 10 | 650 | Oct 22 $361.20 | 361 | 1.80 |
+| Gavi 2022 Donruss Kaboom #8 | PSA 10 | 1,000 | Oct 15 $480 | 480 | 2.08 |
+| Foden 2024 Prizm Premier League Manga #15 | PSA 10 | 800 | Sep 4 $799 and $1,125 (same title) | unclear | - |
+| Gavi 2022 Prizm World Cup Manga #19 | PSA 10 | 700 | Sep 5 $799 (Jul-Aug sales $337-$448) | unclear | - |
+| Saka 2023 Obsidian Color Blast | PSA 10 | 600 | none (May 17 $499.99) | - | - |
+| Karl 2025 Chrome Helix | PSA 9 | 600 | one sale found, $455, date not read | - | - |
+
+Not priced: the autograph and numbered listings (thin sales), and about 35 other case hits.
