@@ -1,41 +1,33 @@
 ---
 name: card-comps
-description: Karim's rules for pricing a card - 90-day comps of the exact card, naming, Card Ladder search and value rules, parallel ratios and the base-move rule. Use whenever finding, checking or proposing a card's value or a comp.
+description: Karim's rules for pricing a card - 90-day comps of the exact card, naming, Card Ladder search and value rules (90-day median, else the Card Ladder value). Use whenever finding, checking or proposing a card's value or a comp.
 ---
 # Card comps (single source of truth; researcher, researcher-2, price-auditor and scheduled tasks follow this)
 
-## Value rules (Karim, Oct 29-30 2026)
-- Value = median of sales of the EXACT card (year, set, insert, number, parallel, print run, auto or not, solo or dual)
-  in the last 90 days. Older sales are context only, never the price.
-- No 90-day sale: the latest Card Ladder value for that exact card.
-- Sources, in order: eBay sold -> Card Ladder sales history (graded sales included) -> PSA Auction Prices.
-  Check every source before writing "no sale found". Zero results means the query was too narrow: broaden it.
-- Never invent or "fill in" a price. Every number is a sale (date, price, title), Karim's cost, or an estimate made
-  by a rule below with its inputs shown.
-- No usable sale and no trustworthy CL value (Karim, Nov 3 2026): the job applies an estimate itself, without asking:
-  CardComp source `estimate`, method naming the rule (parallel_ratio, base_move, grade_ratio, proxy), inputs in the
-  report. A real exact sale replaces it as soon as one exists. Method: the thin-market formula `thin_blend` (approved by Karim Nov 3 2026; write-up only in the card-mcp project doc
-  research/2026-11-02-thin-market-pricing.md, amended by research/2026-11-12-thin-blend-amendment.md, which wins on conflict). Run it with the engine (shipped Nov 3 2026): write the signals to a JSON file and run
-  `pnpm -s --filter @soccer-card-radar/shared thin-blend <input.json>` from the repo, always passing `now`, an `indexFactor` on every sale older
-  than 2 weeks (player's Card Ladder index now ÷ index at the sale date, read from /players/<Name> Chart.instances; never
-  leave it to default to 1 when the index has moved), and dated ratio
-  pairs ({r, date} = newer sale of the pair; pairs older than 365 days are dropped). Store value, and the range/confidence
-  in the report (and in CardComp low/high/confidence once that migration is applied). No local checkout: clone the repo to a
-  temp folder and `pnpm install` first; if that fails, apply the formula by hand with every term shown.
-- Only graded sales in 90 days: never derive a raw value from graded prices (no PSA 9 / 2, PSA 10 / 4) or the reverse.
-  Look up the raw value on PSA or Card Ladder and record source and date, else "no raw value found".
-  (The snipe max-bid ceiling in packages/shared is a separate, approved bidding rule, not a valuation.)
-- Karim's own purchases and sales (same date and price/seller as his ledger row, or his eBay account as seller/buyer) are
-  never comps and never an estimate input (Karim, Nov 12 2026: thin_blend has no purchase signal). Cost is shown separately.
-- Estimates: sales older than 24 months are dropped; a sale older than 2 weeks with no player index factor gets half
-  weight and the value is confidence 1.
-- Every proposed CardComp passes `pnpm -s --filter @soccer-card-radar/shared comp-guard <input.json>` before insert
-  (once shipped, ticket PC1); a non-zero exit means it is not written.
-- Approved owner values are ONLY CardComp rows with source owner_set or ratio_to_base: they stand; report, never "fix".
-  Rows with source workbook_import (the old workbook's "Value used" column, imported 2026-10-16) are ordinary old
-  prices, not Karim's choices: newer comps replace them.
+## Value rules (Karim, Nov 19 2026; replaces the Oct 29 - Nov 12 rules)
+Only two ways to value a card:
+1. Median of sales of the EXACT card (year, set, insert, number, parallel, print run, auto or not, solo or dual, grader
+   and grade) in the last 90 days, after the sale check. Older sales are never used.
+2. No exact 90-day sale: the Card Ladder value for that exact card and grade (its own cert or ladder profile). Card
+   Ladder index-adjusts it even when the last sale is old; use their number and do no index math of our own. Source
+   `cardladder_value`, with the CL page and date as evidence.
+Neither: no value. Write no CardComp; open item "no market: no 90-day sale and no CL value".
+- No estimates of any kind: thin_blend, base-move, parallel or grade ratios and proxies are withdrawn (Nov 19 2026).
+- Grades never derive from each other: no multiples or bands, no PSA 9 / 2 or PSA 10 / 4, no raw from graded or the reverse.
+- Wherever a card's value is used (Vault, Snipe, eBay drafts, Veriswap bundles and offers), use the comp for the card's
+  OWN grade; another grade's comp is never a substitute.
+- Sources for sales, in order: eBay sold -> Card Ladder sales history -> PSA Auction Prices. Check every source before
+  writing "no sale found". Zero results means the query was too narrow: broaden it. PSA Estimate is never the number.
+- Never invent or "fill in" a price. Karim's own purchases and sales are never comps. Cost is shown separately.
+- Every proposed CardComp passes `pnpm -s --filter @soccer-card-radar/shared comp-guard <input.json>` before insert.
+- Approved owner values are ONLY CardComp rows with source owner_set or ratio_to_base: they stand. workbook_import rows
+  are ordinary old prices: newer comps replace them.
 - Vault value of a card = newest CardComp for its current grade ("raw" when raw or at PSA); same-date ties: owner_set /
-  ratio_to_base win, workbook_import loses (one helper: apps/dashboard/src/lib/vault-comp.ts).
+  ratio_to_base win, workbook_import loses (apps/dashboard/src/lib/vault-comp.ts).
+- Snipe max bid (a bidding rule, not a valuation): C5 in packages/shared/src/snipe-score.ts, EV after 13% eBay fee and
+  grading fee / 2, capped at 80% of raw; no EV = 80% of raw. A stored SnipeTarget.maxBid overrides it; only Karim sets one.
+- Protected cards (Card.protected = true): never in a trade, bundle, offer or listing unless Karim approves that deal for
+  a bigger card.
 
 ## Sale check: every sale, before it can enter any value (Karim, Nov 12 2026)
 Card Ladder and PSA results mix in parallels, autos, other grades and Karim's own sales; their CL Value and PSA Estimate
@@ -49,8 +41,7 @@ are built on that mix. Never take their number. Take their sale LIST and keep a 
 4. Same grader and grade (raw = ungraded; "CGC Authentic"/"AUTH"/"Altered" is never a grade). No lots.
 5. Not Karim's own sale or buy: seller or buyer = his eBay account, or same date+price as his ledger.
 6. Ambiguous title: check the photo; still unclear -> reject.
-7. Age: only sales in the last 90 days make a value. If the newest kept sale is older than 12 months, the value is an
-   estimate (thin_blend with index factors, or proxy), confidence 1, and the report says "no market in 12 months".
+7. Age: only sales in the last 90 days make a value. None: the exact card's CL value. Neither: "no market".
 Write every kept and rejected sale (date, price, title, source, reason) into the job report. A value without its list
 of kept sales is not written.
 
@@ -77,12 +68,8 @@ for redo, then stay "open" in the report (first line Incomplete: N open). Only v
    for each item from an earlier run that this run resolved, set closedAt = now() and closedHow (one line: what fixed it).
 
 ## Parallels
-- Inversion: a numbered parallel valued below its own base -> hand to researcher-2.
-- Base-move rule (Karim): if a parallel's own sales are older than its base's latest sales and the base has moved >20%:
-  ratio = each parallel sale / base price at that time (median of base sales in the 60 days before it);
-  value = median ratio x the base's newest sale. Never above the next scarcer parallel's recent sales. Show inputs.
-- Ratio pairing (Card Ladder's grade-ratio method applied to parallels): a pair counts only when the two sales are within
-  6 months of each other and the comparison card has a sale in the last 6 months. Prefer the nearest parallel.
+- Withdrawn Nov 19 2026: the base-move rule and ratio pairing. A parallel is valued like any card: its own 90-day
+  median, else its own Card Ladder value, else "no market". A numbered parallel below its base is reported, not re-priced.
 
 ## Naming (cards were mis-identified before)
 - Search as Year + Set + Player + Parallel, set as one simple word: "2026 Prizm Haaland White",
@@ -94,8 +81,8 @@ for redo, then stay "open" in the report (first line Incomplete: N open). Only v
   and grade ("/50 PSA 10") as well as the colour word, and check the serial in the photo, before calling a card unsold.
 - An "Auto Patch" / patch auto is a different card from an on-card "Autograph" of the same set (Dynasty DAV-KM1 is
   on-card; Sep 27 2026 $1,184 "Auto Patch Black 4/5" is not a comp for it). A Card Ladder value with no exact sale
-  behind it is not a comp either; compare it with the proxy before trusting it.
-- No exact sale in any grade: always add a proxy signal; with no exact sale and no proxy the card has no value ("no market"), never its purchase price. Proxy = the same player's
+  behind it for that exact card and grade is not a comp either.
+- (Withdrawn Nov 19 2026: proxy signals. No 90-day sale and no CL value = "no market", never its purchase price.) Old note: proxy = the same player's
   same tier in the same grade (e.g. other 2024-26 Topps Gold /50 autos PSA 10 of that player), last 90 days; never
   other players unless the same player has none (Karim, Nov 10 2026: Bellingham gold auto PSA 10s).
 - Confirm insert and parallel names on the official checklist. PSA's cert label is the authority for a graded card's name.
