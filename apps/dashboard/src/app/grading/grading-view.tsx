@@ -81,7 +81,7 @@ export default function GradingView({ open, back, backTotals: t, vault, listings
                       <tr key={c.id}>
                         <td><span className={s.player}>{c.player}</span><div className={s.card}>{c.item}</div></td>
                         <td className="num">{usd(c.cost, 2)}</td>
-                        <td className="num">{usd(c.psa9)}{c.estimated && <span className={s.small}>est.</span>}</td>
+                        <td className="num">{usd(c.psa9)}</td>
                         <td className="num">{usd(c.psa10)}</td>
                         <td className={`num ${s.hideM}`}><span className={tone(c.net9)}>{signed(c.net9)}</span></td>
                       </tr>

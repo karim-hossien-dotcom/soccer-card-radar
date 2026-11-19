@@ -1,4 +1,7 @@
 /**
+ * UNUSED since Nov 19 2026 (Karim: no estimates; value = 90-day median, else the Card Ladder value). Kept for history;
+ * the comp-guard CLI refuses source "estimate".
+ *
  * thin_blend (TB1): value for a card with few recent exact sales.
  * Every input becomes a log-value with a variance; signals are combined by
  * precision (inverse-variance) weighting. Pure functions, no I/O; `now` is a

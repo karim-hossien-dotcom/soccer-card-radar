@@ -157,7 +157,6 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
         {list.map((c) => {
           const v = scenarioValue(c, scen);
           const g = cardGain(c, scen);
-          const est = scen !== "now" && c.estimated && c.status !== "graded";
           const on = selSet.has(c.id);
           // V1: the tile is a wrapper; the open button and the select checkbox are siblings (no control inside a button).
           return (
@@ -180,7 +179,7 @@ export default function CollectionView({ cards, weeks, trends, openId }: Collect
               <div className={s.meta}>
                 <div className={s.pl}>{c.player}{c.stale && <span className={s.staleTag}>stale</span>}</div>
                 <div className={s.nums}>
-                  <span className={s.val}>{usd(v)}{est ? <small> est.</small> : scen === "now" && c.valueEst ? <small>{estTileTag(c.valueEst)}</small> : null}</span>
+                  <span className={s.val}>{usd(v)}{scen === "now" && c.valueEst ? <small>{estTileTag(c.valueEst)}</small> : null}</span>
                   <span className={tone(g)}>{signed(g)}</span>
                 </div>
                 {trends[c.id]?.wow ? <div className={`${s.sub} ${tone(trends[c.id].wow)}`}>{signed(trends[c.id].wow)} this week</div> : null}
@@ -309,7 +308,6 @@ function Drawer({ card: c, series, onClose }: { card: CollectionCard; series: { 
           </table>
         )}
         {c.decision && <div className={s.dec}>{c.decision}</div>}
-        {c.estimated && showScen && <p className={s.note}>No PSA 10/9 sales found: graded values use the {c.band} raw-to-graded multiples.</p>}
         <p className={s.note}>
           {c.maxBid !== null && showScen && <>Snipe max bid for another copy: {usd(c.maxBid, 2)} (expected value if graded, after selling and grading fees, ÷ your target multiple, capped at a share of the raw price; same rule and settings as the Snipe board). </>}
           <a href={snipeHref(prefillFromComps(c.item, c.player, c.cert, c.gradeLabel.split(" ")[0], c.comps))}>Snipe another copy →</a>

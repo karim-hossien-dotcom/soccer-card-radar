@@ -94,7 +94,8 @@ export type GuardCode =
   | "value_jump"
   | "method_forbidden"
   | "reject_reason_missing"
-  | "reject_reason_on_kept";
+  | "reject_reason_on_kept"
+  | "estimate_withdrawn";
 
 export interface GuardIssue {
   code: GuardCode | string;
@@ -632,4 +633,16 @@ export function compGuard(input: CompGuardInput): CompGuardResult {
 /** For the CLI: JSON with ISO dates. `now` is required (no clock default: the rules depend on it). */
 export function compGuardFromJson(json: unknown): CompGuardResult {
   return compGuard(json as CompGuardInput);
+}
+
+/** Karim, Nov 19 2026: a value is the 90-day median or the Card Ladder value; no new estimate comps. */
+export const WITHDRAWN_SOURCES = ["estimate"];
+
+/** What the CLI (and every job) runs: compGuard plus the Nov 19 2026 rule that refuses new estimate comps. */
+export function compGuardPolicy(json: unknown): CompGuardResult {
+  const r = compGuardFromJson(json);
+  const source = String((json as CompGuardInput | null)?.proposed?.source ?? "");
+  if (!WITHDRAWN_SOURCES.includes(source)) return r;
+  const issue: GuardIssue = { code: "estimate_withdrawn", message: "estimates are withdrawn (Nov 19 2026): use the 90-day median or the Card Ladder value, else no value" };
+  return { ...r, ok: false, errors: [...r.errors, issue] };
 }

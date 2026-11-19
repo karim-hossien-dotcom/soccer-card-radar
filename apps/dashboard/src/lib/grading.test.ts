@@ -4,7 +4,7 @@ import { buildGrading, snipeHref, prefillFromComps, findTarget, type GCard, type
 
 const card = (o: Partial<GCard>): GCard => ({
   id: o.id ?? "x", status: "raw", item: "item", player: "P", gradeLabel: "Raw", submissionId: null, cost: null, valueNow: null,
-  psa10: null, psa9: null, net10: null, net9: null, decision: null, estimated: false, ...o,
+  psa10: null, psa9: null, net10: null, net9: null, decision: null, ...o,
 });
 const sub = (o: Partial<Submission>): Submission => ({ id: "s", subNumber: null, grader: "PSA", serviceLevel: null, feePerCard: null, status: null, arrivedOn: null, estComplete: null, ...o });
 

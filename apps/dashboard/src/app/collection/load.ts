@@ -32,8 +32,6 @@ export type CollectionCard = {
   net9: number | null;
   net8: number | null;
   decision: Decision | null;
-  estimated: boolean;
-  band: string | null;
   maxBid: number | null;
   comps: CompRow[];
   compGrade: string; // grade the current value is priced at ("raw" for raw / at PSA)

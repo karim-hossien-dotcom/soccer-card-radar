@@ -607,3 +607,14 @@ test("review(PC1b) a print run written after the number with a space keeps the n
   assert.deepEqual(codes(titled("2019 Fictional Chrome Test Player 7 /25", gold)), []);
   onlyCode(titled("2019 Fictional Chrome Test Player Gold 07/25", { ...gold, number: "25" }), "card", 0);
 });
+
+// ---- Nov 19 2026: estimates withdrawn (the CLI runs compGuardPolicy) ----
+test("policy: a new estimate comp is refused with estimate_withdrawn; market comps pass through unchanged", async () => {
+  const { compGuardPolicy, compGuard } = await import("./comp-guard.ts");
+  const est = estimate();
+  const r = compGuardPolicy(est);
+  assert.equal(r.ok, false);
+  assert.ok(r.errors.some((e) => e.code === "estimate_withdrawn"));
+  const market = base();
+  assert.deepEqual(compGuardPolicy(market), compGuard(market));
+});

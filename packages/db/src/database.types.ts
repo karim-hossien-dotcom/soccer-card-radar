@@ -217,6 +217,7 @@ export interface Database {
           submissionId: string | null;
           dateAdded: string | null;
           imagePath: string | null;
+          protected: boolean; // Nov 19 2026: never traded, listed or bundled without Karim's yes
           psaSpecId: number | null;
           notes: string | null;
           createdAt: string;
@@ -239,6 +240,7 @@ export interface Database {
           submissionId?: string | null;
           dateAdded?: string | null;
           imagePath?: string | null;
+          protected?: boolean;
           psaSpecId?: number | null;
           notes?: string | null;
           createdAt?: string;

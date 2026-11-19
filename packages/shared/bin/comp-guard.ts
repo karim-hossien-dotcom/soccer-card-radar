@@ -3,7 +3,7 @@
 // Exit 0 when ok, 1 when not ok (the CardComp is not written), 2 on usage, read or parse errors.
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { compGuardFromJson } from "../src/comp-guard.ts";
+import { compGuardPolicy } from "../src/comp-guard.ts";
 
 const fail = (error: string) => {
   process.stdout.write(JSON.stringify({ error }) + "\n");
@@ -20,6 +20,6 @@ try {
 } catch (e) {
   fail(`cannot read ${file}: ${e instanceof Error ? e.message : String(e)}`);
 }
-const result = compGuardFromJson(json);
+const result = compGuardPolicy(json);
 process.stdout.write(JSON.stringify(result, null, 2) + "\n");
 process.exit(result.ok ? 0 : 1);

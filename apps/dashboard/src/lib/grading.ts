@@ -4,7 +4,7 @@
 export type GCard = {
   id: string; status: string; item: string; player: string; gradeLabel: string; submissionId: string | null;
   cost: number | null; valueNow: number | null; psa10: number | null; psa9: number | null;
-  net10: number | null; net9: number | null; decision: string | null; estimated: boolean;
+  net10: number | null; net9: number | null; decision: string | null;
 };
 export type Submission = {
   id: string; subNumber: string | null; grader: string; serviceLevel: string | null; feePerCard: number | null;
