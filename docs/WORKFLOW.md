@@ -1,38 +1,34 @@
-# Build workflow (agents + approval gates)
+# Workflow (one coordinator, three workstreams, approval gates) — Nov 19 2026
 
-Coordinator (main Claude session) -> Research -> PM -> [Karim approves tickets] -> Engineer -> Reviewer -> QA/UAT
--> [Karim approves ship] -> Prod (merge to main, Vercel deploys)
+Karim -> coordinator (main Claude session) -> one of three workstream skills -> report -> [Karim's yes] -> applied.
+The coordinator is the only writer. Subagents read (researcher) or check (checker). App changes go through the builder.
 
-| Stage | Agent | Output | Gate |
+| Workstream | Skill | Typical output | Gate |
 |---|---|---|---|
-| Coordinate | main session | one plan; tasks handed to agents; memory, CLAUDE.md, docs/decisions.md and scheduled tasks kept in line | Karim approves the plan |
-| Research | researcher (+ researcher-2 for thin comps) | docs/research/*.md, ranked gaps or value proposals | Karim picks features / approves values |
-| Plan | pm | docs/backlog/<feature>.md tickets | Karim: "approved" |
-| Build | engineer | feat/<ticket-id> branch, tests green | - |
-| Review | reviewer | review note + separate review(<id>) fix commit | - |
-| Test/UAT | qa | QA note + screenshots in docs/backlog/uat/ | Karim: "ship" |
-| Prod | qa | merge to main, Vercel deploy green, health check | - |
-| Audit | price-auditor, photo-auditor | docs/audits/*.md with proposed SQL | Karim approves each fix |
+| My Vault | vault | values, costs, photos, grading picks, snipe targets | approved job rules; anything else Karim's yes |
+| eBay | ebay | listing drafts (card-mcp ebay/), saved snipe candidates | every listing and every bid: Karim's yes |
+| Veriswap | veriswap | ready-to-send offer list (card-mcp veriswap/) | every offer: Karim's "send N" |
 
-Ticket status: proposed -> approved -> in progress -> ready for review -> ready for QA -> ready for prod -> shipped
-(or back to engineer).
+| Helper | When | Output |
+|---|---|---|
+| researcher | several independent lookups at once (players, sets, 90-day sales) | compact table to the coordinator |
+| checker | before anything is written, sent or shipped; Sunday price audit; monthly photos | report, first line Pass / Fail: N |
+| builder | any app change | ticket -> "approved" -> branch + tests -> checker -> UAT screenshots -> "ship" -> merge |
 
+Ticket status: proposed -> approved -> in progress -> checked -> ready for prod -> shipped (or back to builder).
 Every agent reports first and changes nothing (data, money, bids, live site) without Karim's yes.
-
 UAT environment: local (`pnpm --filter @soccer-card-radar/dashboard dev`, port 3100) with Playwright.
 
 ## Scheduled (run on Karim's computer so Card Ladder in Chrome works; reports saved to the card-mcp project)
-| When (ET) | What | Runs as |
+| When (ET) | What | Workstream |
 |---|---|---|
-| Daily 11:47 UTC | eBay auction scan for the Snipe board | Vercel cron /api/scan |
-| Daily 12:17 UTC | Log paid wins | Vercel cron /api/snipe/wins |
-| Sun 7:43pm | Prices: Vault comps (writes by the card-comps rules) + snipe-target comps and rule max bids + audit checks -> audits/<date>-prices.md | scheduled task |
-| Sun 11:13pm | Independent price audit (report only, fresh agent; re-checks every value against the sale check / comp-guard) -> audits/<date>-price-audit.md | scheduled task (cloud) |
-| Mon 1:23pm | Players: player form (unapproved rows) + rookie radar with Card Ladder prices -> research/<date>-players.md | scheduled task |
-| 1st of month 8:19pm | Photos audit -> audits/<date>-photos.md | scheduled task |
+| Daily 11:47 UTC | eBay auction scan for the Snipe board (Vercel cron /api/scan) | eBay |
+| Daily 12:17 UTC | Log paid wins (Vercel cron /api/snipe/wins) | eBay |
+| Daily morning | Veriswap check: offers, interests, asks, ready-to-send list (report only) | Veriswap |
+| Sun 7:43pm | Prices: ownership, costs, values (90-day or CL value), snipe targets and rule max bids | Vault |
+| Sun 11:13pm | Independent price audit (checker, prices mode; report only) | Vault |
+| Mon 1:23pm | Players: form + rookie radar (researcher) | Vault (research) |
+| 1st of month 8:19pm | Photos (checker, photos mode) | Vault |
 
-Every job closes its gaps (retry by another route, then a verifier agent) before reporting; first line Complete / Incomplete: N open.
-
+Every job closes its gaps (retry another route, then the checker) before reporting; first line Complete / Incomplete: N open.
 Hard rules: CLAUDE.md. Owner decisions: docs/decisions.md.
-
-Current roadmap: Collection -> Snipe (done = one real snipe won within the $500 biweekly budget).

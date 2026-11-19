@@ -29,21 +29,23 @@ behind a login), Supabase Postgres (project zsubyufjenapkgkwpqzv). The repo is P
 - A job is not done while items are open: retry blocked or conflicting items by another route, then a verifier agent;
   the report's first line says "Complete" or "Incomplete: N items open" with the reason for each.
 
-## Coordinator (main Claude session)
-Splits Karim's request into tasks, hands each to the right agent, checks the result, and brings back one plan.
-Keeps memory, these files, docs/decisions.md and the scheduled tasks consistent. Workflow: @docs/WORKFLOW.md
+## How the work is organised (Karim, Nov 19 2026)
+One coordinator (the main Claude session) runs three workstream skills and is the only writer. Subagents only read
+(research in parallel) or check (clean context). Rules live in one place: .claude/skills/card-comps.
 
-## Agents (.claude/agents)
-| Agent | Does | Writes |
+| Workstream skill | Covers |
+|---|---|
+| vault (.claude/skills/vault) | intake, costs, values, photos and grading checks, the one snipe target list |
+| ebay (.claude/skills/ebay) | listing drafts and posts; finding and saving snipes for the Vault's targets |
+| veriswap (.claude/skills/veriswap) | trade-ups and good deals, bundles, offers for Karim's yes |
+
+| Agent (.claude/agents) | Does | Writes |
 |---|---|---|
-| researcher | market/feature research; 90-day comps | docs/research/ |
-| researcher-2 | parallel-ratio / base-move estimates when comps are thin | docs/research/*-estimates.md |
-| pm | tickets with acceptance criteria | docs/backlog/ |
-| engineer | one approved ticket on feat/<id>, with tests | branch |
-| reviewer | reviews and fixes the engineer's branch | branch (separate review commit) |
-| qa | tests, UAT screenshots, merge after "ship" | docs/backlog/uat/ |
-| price-auditor | costs and values audit | docs/audits/*-prices.md |
-| photo-auditor | photo = the card the row names | docs/audits/*-photos.md |
+| researcher | read-only research: undervalued cards, rookies, 90-day sales, features; parallel runs allowed | nothing (returns a table) |
+| checker | clean-context check of prices, costs, photos, offers, drafts and code diffs | its report only |
+| builder | app changes: ticket -> "approved" -> branch + tests -> checker -> UAT -> "ship" -> merge | branch, ticket |
+
+price-auditor.md and photo-auditor.md remain as pointers to the checker for the scheduled jobs. Workflow: @docs/WORKFLOW.md
 
 Auditors get live data as a snapshot file the coordinator exports to `.snapshots/<YYYY-MM-DD>-<name>.json`
 (git-ignored: it holds costs). They refuse a snapshot that isn't from today.

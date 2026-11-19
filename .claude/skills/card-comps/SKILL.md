@@ -2,7 +2,7 @@
 name: card-comps
 description: Karim's rules for pricing a card - 90-day comps of the exact card, naming, Card Ladder search and value rules (90-day median, else the Card Ladder value). Use whenever finding, checking or proposing a card's value or a comp.
 ---
-# Card comps (single source of truth; researcher, researcher-2, price-auditor and scheduled tasks follow this)
+# Card comps (single source of truth; the coordinator, every agent and every scheduled task follow this)
 
 ## Value rules (Karim, Nov 19 2026; replaces the Oct 29 - Nov 12 rules)
 Only two ways to value a card:
